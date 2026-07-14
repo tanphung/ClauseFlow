@@ -33,7 +33,8 @@
 
 - Target amount: `0.015 GEN`
 - Structured refund draft tx: `0xe3fdc5710b5d0aeaae02360deb2891a8a863cb5f6a47d48bb4333b333025632c`
-- Current state: accepted with `FINISHED_WITH_RETURN`, waiting for Bradbury finalization before publishing/funding/reviewing/reclaiming the refund path.
+- Current state: finalized with `FINISHED_WITH_RETURN`.
+- Current blocker: `publish_offer` for the refund draft reverts in the Bradbury consensus-main EVM transaction before the contract method executes. Last observed EVM tx: `0x6a83f42f1f6c71b6d0870b78f16e5f160cb1d7e6ff679b9a7b65c5fd9cef87f6`.
 
 ## Safety
 

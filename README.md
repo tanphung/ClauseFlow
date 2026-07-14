@@ -50,7 +50,7 @@ Current Bradbury smoke state:
 - Payment claim tx: `0x7244899ea285fb7843b4c24a8fac0d2939fefa7cc2b8599a72468a9e23dc77df`, finalized with `FINISHED_WITH_RETURN`
 - Payment confirm tx: `0xc397e1c6ebecfe7f2fef4c2cef7de78681ca34b06e2272e7a51e2a945b727968`, accepted with `FINISHED_WITH_RETURN`
 - Dashboard state: deal `1` is `PAID`; `totalPaidAtto` is `20000000000000000`
-- Refund smoke: structured refund draft tx `0xe3fdc5710b5d0aeaae02360deb2891a8a863cb5f6a47d48bb4333b333025632c` is accepted and waiting for Bradbury finalization before publishing/funding the refund-path deal.
+- Refund smoke: structured refund draft tx `0xe3fdc5710b5d0aeaae02360deb2891a8a863cb5f6a47d48bb4333b333025632c` finalized with `FINISHED_WITH_RETURN`; publishing the refund offer is still blocked by an EVM revert in the Bradbury consensus-main submission path before the contract method executes.
 
 ## Contract API
 
@@ -141,4 +141,4 @@ Official references:
 
 Full source repository: [github.com/tanphung/ClauseFlow](https://github.com/tanphung/ClauseFlow)
 
-Project submission remains paused until GenLayer reopens the queue. The repository and live app currently demonstrate a complete paid agreement on the public Dashboard. The refund-path smoke is in progress and should be completed before final reward submission.
+Project submission remains paused until GenLayer reopens the queue. The repository and live app currently demonstrate a complete paid agreement on the public Dashboard. The refund-path smoke is implemented locally but should be completed on Bradbury before final reward submission.
