@@ -82,6 +82,8 @@ The two-step settlement state reflects GenLayer external-message semantics: a cl
 
 The React app has no mock agreement fallback. It reads canonical offers, deals, aggregate totals, and per-deal timelines from the configured Bradbury contract.
 
+Live app: [clauseflow-two.vercel.app](https://clauseflow-two.vercel.app/)
+
 - Public totals for offers, funded/active/completed deals, paid GEN, and refunded GEN
 - Builder, Client, and title/address filters
 - Full agreement detail with accepted clauses and delivery evidence
