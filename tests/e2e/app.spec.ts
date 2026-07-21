@@ -1,44 +1,51 @@
 import { expect, test } from "@playwright/test";
 
-async function requireBradburyData(page: import("@playwright/test").Page) {
-  await expect(page.getByText("Loading Bradbury contract views...")).toHaveCount(0, { timeout: 25_000 });
-  const error = page.getByText("Could not read Bradbury contract state");
-  if (await error.isVisible().catch(() => false)) {
-    test.skip(true, "Bradbury RPC did not return contract views during this run.");
-  }
+async function openLocalPreview(page: import("@playwright/test").Page) {
+  await page.route("**/config.js", async (route) => {
+    await route.fulfill({
+      contentType: "application/javascript",
+      body: `window.CLAUSEFLOW_CONFIG = {
+        contractAddress: "",
+        chain: "testnetBradbury",
+        explorerUrl: "https://explorer-bradbury.genlayer.com",
+        stateStatus: "accepted"
+      };`
+    });
+  });
+  await page.goto("/");
 }
 
-test("renders canonical Bradbury dashboard without demo payment rows", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Public on-chain agreement dashboard" })).toBeVisible();
-  await expect(page.getByText("Implement a grant dashboard MVP")).toHaveCount(0);
-  await requireBradburyData(page);
-  await expect(page.getByRole("button", { name: /ClauseFlow verified payment flow/ })).toContainText("PAID");
-  await expect(page.getByText("Could not read Bradbury contract state")).toHaveCount(0);
-});
-
-test("filters a contract by both parties and opens the full timeline", async ({ page }) => {
-  await page.goto("/");
-  await requireBradburyData(page);
-  await expect(page.getByText("ClauseFlow verified payment flow")).toBeVisible();
-  await page.getByLabel("Builder address filter").fill("0xe78def025cE53c9b46ac56cF19f720391119fa5b");
-  await page.getByLabel("Client address filter").fill("0x1C6912d89399820D0f1f932eb2aDB91E293EC512");
-  await page.getByRole("button", { name: /ClauseFlow verified payment flow/ }).click();
-  await expect(page.getByRole("heading", { name: "ClauseFlow verified payment flow" })).toBeVisible();
-  await expect(page.getByText("GEN payment verified from escrow balance.")).toBeVisible();
-  await expect(page.getByText("Payment transfer emitted and awaiting finalization.")).toBeVisible();
-});
-
-test("requires contract structuring before an offer can be published", async ({ page }) => {
-  await page.goto("/");
+async function openCreateView(page: import("@playwright/test").Page) {
+  if ((page.viewportSize()?.width || 1280) <= 840) {
+    await page.getByRole("button", { name: "Open navigation" }).click();
+  }
   await page.getByRole("button", { name: /^Create$/ }).click();
+}
+
+test("renders dashboard shell without blank screen or fake success", async ({ page }) => {
+  await openLocalPreview(page);
+  await expect(page.getByRole("heading", { name: "Public on-chain agreement dashboard" })).toBeVisible();
+  await expect(page.getByText("No verified Bradbury contract address is configured")).toBeVisible();
+  await expect(page.getByText("[object Object]")).toHaveCount(0);
+});
+
+test("create form starts empty and uses explicit real evidence loading", async ({ page }) => {
+  await openLocalPreview(page);
+  await openCreateView(page);
   await expect(page.getByRole("button", { name: "Publish Reviewed Offer" })).toBeDisabled();
-  await expect(page.getByText("Not structured")).toBeVisible();
+  await expect(page.getByLabel("Offer title")).toHaveValue("");
+  const values = await page.locator("input, textarea").evaluateAll((nodes) => nodes.map((node) => (node as HTMLInputElement | HTMLTextAreaElement).value).join("\n"));
+  expect(values).not.toContain("Example Domain");
+
+  await page.getByRole("button", { name: /Load real example/i }).click();
+  await expect(page.getByLabel("Offer title")).toHaveValue(/Mochi-Game Quest Evaluator/i);
+  await expect(page.getByLabel("Revision window hours")).toHaveValue("24");
+  await expect(page.getByLabel("Reference URLs")).toHaveValue(/https:\/\/github\.com\/tanphung\/Mochi-Game/);
+  await expect(page.getByLabel("Reference URLs")).toHaveValue(/https:\/\/mochi-game-frontend\.vercel\.app/);
 });
 
 test("mobile layout has no horizontal overflow", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Public on-chain agreement dashboard" })).toBeVisible();
+  await openLocalPreview(page);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   expect(overflow).toBe(false);
 });

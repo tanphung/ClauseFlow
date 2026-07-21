@@ -1,0 +1,39 @@
+name: Bug report
+description: Report a reproducible ClauseFlow contract or frontend problem.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Never include private keys, seed phrases, or `.env` contents.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Intelligent Contract
+        - Wallet or transaction lifecycle
+        - Dashboard or agreement detail
+        - Evidence review
+        - Responsive or accessibility
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Include public transaction, deal, or explorer links when available.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true

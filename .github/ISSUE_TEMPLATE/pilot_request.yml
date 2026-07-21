@@ -1,0 +1,37 @@
+name: Agreement pilot request
+description: Propose a real Bradbury agreement between a Builder and Client.
+title: "[Pilot]: "
+labels: [pilot]
+body:
+  - type: markdown
+    attributes:
+      value: Use public evidence only. Never share private keys, seed phrases, or `.env` contents.
+  - type: input
+    id: project
+    attributes:
+      label: Public project URL
+      placeholder: https://github.com/owner/project
+    validations:
+      required: true
+  - type: textarea
+    id: deliverables
+    attributes:
+      label: Observable deliverables
+      description: Describe what validators can verify from public web sources.
+    validations:
+      required: true
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Acceptance criteria
+      description: List objective, testable conditions for approval.
+    validations:
+      required: true
+  - type: input
+    id: amount
+    attributes:
+      label: Proposed test amount
+      description: Use less than 0.5 GEN for a testnet pilot.
+      placeholder: 0.05 GEN
+    validations:
+      required: true

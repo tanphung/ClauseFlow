@@ -2,9 +2,14 @@
 
 ClauseFlow is a two-party service agreement dApp on GenLayer. Builders publish precise work offers, Clients fund them with GEN, and the Intelligent Contract evaluates public delivery evidence before allowing payment or refund. The public Dashboard reads the complete agreement and settlement history from on-chain views.
 
+![ClauseFlow public on-chain agreement dashboard](docs/assets/clauseflow-dashboard.png)
+
 ## Why GenLayer
 
-ClauseFlow does not attach consensus to generic AI output. Offer structuring is deterministic and contract-owned. Validator consensus is used only at the settlement-critical boundary where subjective evidence must be checked against accepted clauses.
+ClauseFlow does not attach consensus to generic AI output. GenLayer is used at two contract-critical moments:
+
+1. `structure_offer` turns a Builder's rough service scope into a complete, ready-to-accept agreement. Validators check material drafting fields such as specific scope, testable deliverables, objective acceptance criteria, evidence requirements, payment terms, refund terms, and source coverage.
+2. `review_delivery` evaluates public delivery evidence against the exact funded agreement before payment or refund can proceed.
 
 During `review_delivery`, every validator can independently:
 
@@ -13,7 +18,7 @@ During `review_delivery`, every validator can independently:
 3. derive `APPROVED`, `REVISION_REQUIRED`, or `REJECTED`;
 4. compare material result fields, evidence accessibility, score thresholds, and criteria coverage.
 
-The outcome changes who can receive escrowed GEN, which is why this decision belongs in a GenLayer Intelligent Contract instead of an off-chain AI service.
+The outcome changes who can receive escrowed GEN, which is why these decisions belong in a GenLayer Intelligent Contract instead of an off-chain AI service.
 
 ## Lifecycle
 
@@ -34,23 +39,24 @@ flowchart LR
 
 Deadline, grace period, revision exhaustion, refund eligibility, escrow accounting, and idempotency are deterministic contract rules.
 
-## Bradbury Deployment
+## Bradbury Deployment Status
 
-- Network: Testnet Bradbury, chain ID `4221`
-- Contract: `0xe25eE0393ebd3DE303D1FeFebA6ce00551C68d3D`
-- Deploy transaction: `0x327a4029d7a6a9dc4e2d87b925e545f75091cf918d3ac0bb3cb46d3b0f374c4e`
+Clean contract deployment is verified for this version.
+
+- Network: GenLayer Testnet Bradbury, chain ID `4221`
+- Contract: `0xA851b0D3cD85f5Abc91E459C172bc326d5A41bdf`
+- Deploy tx: `0x08b7d84fc341dbe035b00027eaa62acb7f56f97047e8350e870c955f5e1f3ad2`
 - Deploy result: `ACCEPTED / AGREE / FINISHED_WITH_RETURN`
-- Explorer: [contract](https://explorer-bradbury.genlayer.com/address/0xe25eE0393ebd3DE303D1FeFebA6ce00551C68d3D)
+- Verified schema: 18 public methods, 9 writes and 9 views
+- Verified views: `get_offer_ids`, `get_deal_ids`, `get_dashboard_stats`
+- Verified smoke: deal `1` completed as `PAID` with `0.01 GEN` paid from escrow after public Mochi-Game evidence review.
 
-The deployed schema exposes 9 write methods and 9 public views. `get_deal_ids` and `get_dashboard_stats` were successfully read after deployment.
+The intended smoke scenario now uses the user's real Mochi-Game evidence:
 
-Current Bradbury smoke state:
-
-- Payment deal: `ClauseFlow verified payment flow`, deal `1`, funded with `0.02 GEN`
-- Payment claim tx: `0x7244899ea285fb7843b4c24a8fac0d2939fefa7cc2b8599a72468a9e23dc77df`, finalized with `FINISHED_WITH_RETURN`
-- Payment confirm tx: `0xc397e1c6ebecfe7f2fef4c2cef7de78681ca34b06e2272e7a51e2a945b727968`, accepted with `FINISHED_WITH_RETURN`
-- Dashboard state: deal `1` is `PAID`; `totalPaidAtto` is `20000000000000000`
-- Refund smoke: structured refund draft tx `0xe3fdc5710b5d0aeaae02360deb2891a8a863cb5f6a47d48bb4333b333025632c` finalized with `FINISHED_WITH_RETURN`; publishing the refund offer is still blocked by an EVM revert in the Bradbury consensus-main submission path before the contract method executes.
+- GitHub: [tanphung/Mochi-Game](https://github.com/tanphung/Mochi-Game)
+- Live app: [mochi-game-frontend.vercel.app](https://mochi-game-frontend.vercel.app/)
+- Agreement: audit and polish the Mochi-Game Quest Evaluator reviewer path
+- Test value: below `0.5 GEN`
 
 ## Contract API
 
@@ -82,7 +88,7 @@ The two-step settlement state reflects GenLayer external-message semantics: a cl
 
 The React app has no mock agreement fallback. It reads canonical offers, deals, aggregate totals, and per-deal timelines from the configured Bradbury contract.
 
-Live app: [clauseflow-two.vercel.app](https://clauseflow-two.vercel.app/)
+`public/config.js` points to the verified clean Bradbury contract above.
 
 - Public totals for offers, funded/active/completed deals, paid GEN, and refunded GEN
 - Builder, Client, and title/address filters
@@ -120,8 +126,7 @@ Current local verification:
 
 - GenVM lint: 18 methods validated
 - Direct contract tests: 5 passed
-- Frontend unit tests: 4 passed
-- Production dependency audit: 0 vulnerabilities
+- Frontend unit tests: 5 passed
 - TypeScript typecheck and production build: passed
 - Browser E2E suite: desktop and mobile coverage
 
@@ -141,4 +146,11 @@ Official references:
 
 Full source repository: [github.com/tanphung/ClauseFlow](https://github.com/tanphung/ClauseFlow)
 
-Project submission remains paused until GenLayer reopens the queue. The repository and live app currently demonstrate a complete paid agreement on the public Dashboard. The refund-path smoke is implemented locally but should be completed on Bradbury before final reward submission.
+ClauseFlow is being developed as one substantial Project rather than a family of template variations. The reviewer package documents the real trust problem, contract-critical use of validator consensus, verified claims, and the exact demo path:
+
+- [Reviewer submission notes](docs/SUBMISSION.md)
+- [Three-minute demo script](docs/DEMO_SCRIPT.md)
+- [Focused product roadmap](docs/ROADMAP.md)
+- [Contribution and pilot guide](CONTRIBUTING.md)
+
+Do not submit the final Project until the public app is hosted and the clean-deployment refund smoke is verified. The current paid Mochi-Game agreement is already visible through the Bradbury-backed Dashboard.

@@ -1,23 +1,31 @@
 import {
   Activity,
+  ArrowRight,
   BadgeCheck,
-  Banknote,
   CheckCircle2,
+  ChevronRight,
+  CircleDollarSign,
   Clock3,
+  ClipboardCheck,
   ExternalLink,
   FileText,
   Filter,
   GitBranch,
+  Landmark,
+  Layers3,
   LockKeyhole,
+  Menu,
+  Plus,
   RefreshCcw,
   Search,
   ShieldCheck,
   Sparkles,
-  Wallet
+  Wallet,
+  X
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { connectWallet, createReadClient, explorerAddressUrl, explorerTxUrl, hasContractAddress, readJsonView, writeAndVerify, type ClauseFlowConfig } from "./lib/genlayer";
+import { connectWallet, createReadClient, explorerAddressUrl, explorerTxUrl, hasContractAddress, normalizeError, readJsonView, writeAndVerify, type ClauseFlowConfig } from "./lib/genlayer";
 import type { CalldataEncodable } from "genlayer-js/types";
 
 type DealStatus = "FUNDED" | "SUBMITTED" | "APPROVED" | "REVISION_REQUIRED" | "REJECTED" | "PAYMENT_PENDING" | "REFUND_PENDING" | "PAID" | "REFUNDED";
@@ -51,6 +59,9 @@ type Deal = {
   paymentTxType: string;
   paid: string;
   refunded: string;
+  reviewEvidenceSummary?: string;
+  reviewCriteriaResults?: string;
+  reviewMissingItems?: string;
 };
 
 type Offer = {
@@ -97,6 +108,10 @@ type StructuredClauses = {
   paymentTerms: string;
   refundConditions: string;
   summary: string;
+  milestones?: string;
+  evidenceRequirements?: string;
+  verificationPlan?: string;
+  priceDisplay?: string;
 };
 
 type StructuredDraft = {
@@ -141,6 +156,7 @@ const defaultStats: Stats = {
 
 export function App() {
   const [view, setView] = useState<"dashboard" | "offers" | "create" | "deal">("dashboard");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [config, setConfig] = useState<ClauseFlowConfig | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
@@ -215,7 +231,7 @@ export function App() {
       setHistories(chainHistories);
       if (chainDeals[0]) setSelectedDealId(chainDeals[0].id);
     } catch (error) {
-      setLoadError(`Could not read Bradbury contract state: ${error instanceof Error ? error.message : String(error)}`);
+      setLoadError(`Could not read Bradbury contract state: ${normalizeError(error)}`);
     } finally {
       setLoading(false);
     }
@@ -228,7 +244,7 @@ export function App() {
       setWalletAddress(connected.address);
       setLoadError("");
     } catch (error) {
-      setLoadError(error instanceof Error ? error.message : String(error));
+      setLoadError(normalizeError(error));
     }
   }
 
@@ -244,46 +260,67 @@ export function App() {
       await refreshFromChain();
       return result;
     } catch (error) {
-      setTxState((current) => ({ ...current, lifecycle: "failed", executionResult: current.executionResult === "WAITING_FOR_SIGNATURE" ? "NOT_SUBMITTED" : current.executionResult, consensusResult: error instanceof Error && error.message.startsWith("CONSENSUS_") ? error.message.split(":")[0].replace("CONSENSUS_", "") : current.consensusResult, message: error instanceof Error ? error.message : String(error) }));
+      const message = normalizeError(error);
+      setTxState((current) => ({ ...current, lifecycle: "failed", executionResult: current.executionResult === "WAITING_FOR_SIGNATURE" ? "NOT_SUBMITTED" : current.executionResult, consensusResult: message.startsWith("CONSENSUS_") ? message.split(":")[0].replace("CONSENSUS_", "") : current.consensusResult, message }));
       throw error;
     }
   }
 
+  function openView(nextView: "dashboard" | "offers" | "create" | "deal") {
+    setView(nextView);
+    setMobileNavOpen(false);
+    if (txState.lifecycle === "failed") {
+      setTxState({ hash: "", label: "No transaction submitted in this browser session.", lifecycle: "idle", executionResult: "NOT_SUBMITTED", consensusResult: "IDLE", message: "Read-only dashboard is available without connecting a wallet.", childTransactions: [] });
+    }
+  }
+
   return (
-    <main>
-      <aside>
+    <main className="appShell">
+      <aside className={mobileNavOpen ? "sidebar open" : "sidebar"}>
         <div className="brand">
-          <ShieldCheck size={26} />
-          <span>ClauseFlow</span>
+          <span className="brandMark"><ShieldCheck size={21} strokeWidth={2.2} /></span>
+          <span className="brandCopy">
+            <strong>ClauseFlow</strong>
+            <small>Agreement protocol</small>
+          </span>
+          <button className="mobileClose iconButton" aria-label="Close navigation" title="Close navigation" onClick={() => setMobileNavOpen(false)}><X size={18} /></button>
         </div>
-        <nav>
-          <button className={view === "dashboard" ? "active" : ""} onClick={() => setView("dashboard")}><Activity size={16} /> Dashboard</button>
-          <button className={view === "offers" ? "active" : ""} onClick={() => setView("offers")}><FileText size={16} /> Offers</button>
-          <button className={view === "create" ? "active" : ""} onClick={() => setView("create")}><Sparkles size={16} /> Create</button>
-          <button className={view === "deal" ? "active" : ""} onClick={() => setView("deal")}><LockKeyhole size={16} /> Deal Detail</button>
+        <nav aria-label="Primary navigation">
+          <span className="navLabel">Workspace</span>
+          <button className={view === "dashboard" ? "active" : ""} onClick={() => openView("dashboard")}><Activity size={16} /> Dashboard</button>
+          <button className={view === "offers" ? "active" : ""} onClick={() => openView("offers")}><FileText size={16} /> Offers</button>
+          <button aria-label="Create" className={view === "create" ? "active" : ""} onClick={() => openView("create")}><Plus size={16} /> New offer</button>
+          <button className={view === "deal" ? "active" : ""} onClick={() => openView("deal")}><LockKeyhole size={16} /> Deal Detail</button>
         </nav>
-        <section className="network">
-          <span>{config?.chain || "testnetBradbury"}</span>
-          <strong>{hasContractAddress(config) ? short(config?.contractAddress || "") : "Contract not configured"}</strong>
+        <section className="sidebarProof">
+          <div className="proofIcon"><Landmark size={18} /></div>
+          <div>
+            <span className="networkState"><i /> Bradbury testnet</span>
+            <strong>{hasContractAddress(config) ? short(config?.contractAddress || "") : "Contract unavailable"}</strong>
+          </div>
+          {config?.contractAddress && <a href={explorerAddressUrl(config, config.contractAddress)} target="_blank" rel="noreferrer" aria-label="Open contract in explorer" title="Open contract in explorer"><ExternalLink size={15} /></a>}
         </section>
       </aside>
+      {mobileNavOpen && <button className="sidebarScrim" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} />}
 
       <section className="workspace">
-        <header>
-          <div>
-            <p className="eyebrow">GenLayer agreement platform</p>
-            <h1>{titleFor(view)}</h1>
+        <header className="topbar">
+          <div className="topbarIdentity">
+            <button className="mobileMenu iconButton" aria-label="Open navigation" title="Open navigation" onClick={() => setMobileNavOpen(true)}><Menu size={19} /></button>
+            <div>
+              <p className="breadcrumb">ClauseFlow <ChevronRight size={13} /> {viewLabel(view)}</p>
+              <h1>{titleFor(view)}</h1>
+            </div>
           </div>
           <div className="headerActions">
-            <button onClick={refreshFromChain}><RefreshCcw size={16} /> Refresh On-chain</button>
-            <button onClick={handleConnectWallet}><Wallet size={16} /> {walletAddress ? short(walletAddress) : "Connect wallet"}</button>
-            {config?.contractAddress && <a className="buttonLink" href={explorerAddressUrl(config, config.contractAddress)} target="_blank" rel="noreferrer"><ExternalLink size={16} /> Contract</a>}
+            <button className="iconButton" aria-label="Refresh on-chain data" title="Refresh on-chain data" onClick={refreshFromChain}><RefreshCcw size={17} className={loading ? "spin" : ""} /></button>
+            <button className="walletButton" onClick={handleConnectWallet}><Wallet size={16} /> {walletAddress ? short(walletAddress) : "Connect wallet"}</button>
           </div>
         </header>
 
-        {loadError && <div className="notice">{loadError}</div>}
-        {loading && <div className="notice">Loading Bradbury contract views...</div>}
-        {txState.lifecycle !== "idle" && <TransactionBanner txState={txState} config={config} />}
+        {loadError && <div className="notice errorNotice"><ShieldCheck size={17} /><span>{loadError}</span></div>}
+        {loading && <div className="loadingBar" aria-label="Loading Bradbury contract views" />}
+        {txState.lifecycle !== "idle" && <TransactionBanner txState={txState} config={config} onDismiss={() => setTxState({ hash: "", label: "No transaction submitted in this browser session.", lifecycle: "idle", executionResult: "NOT_SUBMITTED", consensusResult: "IDLE", message: "Read-only dashboard is available without connecting a wallet.", childTransactions: [] })} />}
 
         {view === "dashboard" && (
           <Dashboard
@@ -299,6 +336,8 @@ export function App() {
               setSelectedDealId(dealId);
               setView("deal");
             }}
+            openCreate={() => openView("create")}
+            openOffers={() => openView("offers")}
             config={config}
           />
         )}
@@ -318,45 +357,66 @@ export function App() {
             walletAddress={walletAddress}
           />
         )}
-        {view === "deal" && !selectedDeal && <section className="panel emptyState"><h2>No on-chain deals yet</h2><p>Publish an offer and fund it to start the agreement timeline.</p></section>}
+        {view === "deal" && !selectedDeal && <section className="emptyState"><span className="emptyIcon"><Layers3 size={24} /></span><h2>No on-chain deals yet</h2><p>Publish an offer and fund it to start the agreement timeline.</p><button className="primary" onClick={() => openView("offers")}>Browse offers <ArrowRight size={16} /></button></section>}
       </section>
     </main>
   );
 }
 
-function Dashboard({ stats, deals, filter, setFilter, builderFilter, setBuilderFilter, clientFilter, setClientFilter, selectDeal, config }: { stats: Stats; deals: Deal[]; filter: string; setFilter: (value: string) => void; builderFilter: string; setBuilderFilter: (value: string) => void; clientFilter: string; setClientFilter: (value: string) => void; selectDeal: (dealId: string) => void; config: ClauseFlowConfig | null }) {
+function Dashboard({ stats, deals, filter, setFilter, builderFilter, setBuilderFilter, clientFilter, setClientFilter, selectDeal, openCreate, openOffers, config }: { stats: Stats; deals: Deal[]; filter: string; setFilter: (value: string) => void; builderFilter: string; setBuilderFilter: (value: string) => void; clientFilter: string; setClientFilter: (value: string) => void; selectDeal: (dealId: string) => void; openCreate: () => void; openOffers: () => void; config: ClauseFlowConfig | null }) {
   return (
-    <div className="grid">
-      <section className="statsGrid">
-        <Metric icon={<FileText size={18} />} label="Offers" value={stats.totalOffers} />
+    <div className="dashboardPage pageStack">
+      <section className="protocolHero">
+        <div className="heroContent">
+          <p className="eyebrow">Public agreement ledger</p>
+          <h2>Every clause, review, and settlement in one verifiable record.</h2>
+          <p>Track funded work from accepted terms to validator-reviewed evidence and final GEN movement.</p>
+          <div className="heroActions">
+            <button className="primary" onClick={openCreate}><Plus size={16} /> Create offer</button>
+            <button className="secondary" onClick={openOffers}>Browse offers <ArrowRight size={16} /></button>
+          </div>
+        </div>
+        <div className="heroProof">
+          <span><i /> Live contract</span>
+          <strong>{config?.contractAddress ? short(config.contractAddress) : "Not configured"}</strong>
+          <small>Canonical history from Bradbury views</small>
+        </div>
+      </section>
+
+      <section className="statsBand" aria-label="Protocol summary">
+        <Metric icon={<FileText size={18} />} label="Published offers" value={stats.totalOffers} />
         <Metric icon={<LockKeyhole size={18} />} label="Funded deals" value={stats.totalDeals} />
         <Metric icon={<BadgeCheck size={18} />} label="Completed" value={stats.completedDeals} />
-        <Metric icon={<Banknote size={18} />} label="GEN paid" value={formatGen(stats.totalPaidAtto)} />
+        <Metric icon={<CircleDollarSign size={18} />} label="GEN paid" value={formatGen(stats.totalPaidAtto)} />
         <Metric icon={<RefreshCcw size={18} />} label="GEN refunded" value={formatGen(stats.totalRefundedAtto)} />
       </section>
 
-      <section className="panel">
-        <div className="sectionTitle">
-          <h2>On-chain contract and payment history</h2>
-          <div className="filterBox"><Search size={16} /><input value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Filter by builder, client, or title" /></div>
+      <section className="ledgerSection">
+        <div className="sectionTitle ledgerTitle">
+          <div>
+            <p className="eyebrow">Agreement history</p>
+            <h2>On-chain contracts and payments</h2>
+            <p>{deals.length} agreement{deals.length === 1 ? "" : "s"} match the current view.</p>
+          </div>
+          <div className="filterBox"><Search size={16} /><input aria-label="Search agreements" value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Search title or address" /></div>
         </div>
         <div className="partyFilters">
-          <label>Builder address<input aria-label="Builder address filter" value={builderFilter} onChange={(event) => setBuilderFilter(event.target.value)} placeholder="0x..." /></label>
-          <label>Client address<input aria-label="Client address filter" value={clientFilter} onChange={(event) => setClientFilter(event.target.value)} placeholder="0x..." /></label>
+          <label><span><Filter size={13} /> Builder address</span><input aria-label="Builder address filter" value={builderFilter} onChange={(event) => setBuilderFilter(event.target.value)} placeholder="0x..." /></label>
+          <label><span><Filter size={13} /> Client address</span><input aria-label="Client address filter" value={clientFilter} onChange={(event) => setClientFilter(event.target.value)} placeholder="0x..." /></label>
         </div>
-        <div className="table">
-          <div className="row head"><span>Deal</span><span>Parties</span><span>Amount</span><span>Status</span><span>Completed</span><span>Proof</span></div>
+        <div className="ledgerTable">
+          <div className="ledgerRow ledgerHead"><span>Agreement</span><span>Parties</span><span>Value</span><span>State</span><span>Last settlement</span><span aria-hidden="true" /></div>
           {deals.map((deal) => (
-            <button className="row" key={deal.id} onClick={() => selectDeal(deal.id)}>
-              <span>#{deal.id} {deal.title}</span>
-              <span>{short(deal.builder)} {"->"} {short(deal.client)}</span>
-              <span>{formatGen(deal.lockedAttoGen)} GEN</span>
+            <button className="ledgerRow" key={deal.id} onClick={() => selectDeal(deal.id)}>
+              <span className="dealIdentity"><small>Deal #{deal.id}</small><strong>{deal.title}</strong></span>
+              <span className="partyPair"><span title={deal.builder}>{short(deal.builder)}</span><ArrowRight size={13} /><span title={deal.client}>{short(deal.client)}</span></span>
+              <span className="amountCell"><strong>{formatGen(deal.lockedAttoGen)}</strong><small>GEN</small></span>
               <span><Status status={deal.status} /></span>
-              <span>{deal.completedAt || deal.paidAt || deal.refundedAt || "Pending"}</span>
-              <span>{config?.contractAddress ? "Explorer" : "Local preview"}</span>
+              <span className="dateCell">{formatDate(deal.completedAt || deal.paidAt || deal.refundedAt)}</span>
+              <span className="rowArrow"><ChevronRight size={18} /></span>
             </button>
           ))}
-          {deals.length === 0 && <div className="emptyState">No on-chain agreements yet. Publish and fund an offer to begin.</div>}
+          {deals.length === 0 && <div className="emptyState compact"><span className="emptyIcon"><ClipboardCheck size={22} /></span><h3>No matching agreements</h3><p>Clear the address filters or publish a new offer to begin.</p></div>}
         </div>
       </section>
     </div>
@@ -365,59 +425,105 @@ function Dashboard({ stats, deals, filter, setFilter, builderFilter, setBuilderF
 
 type ExecuteWrite = (label: string, functionName: string, args: CalldataEncodable[], value?: bigint) => Promise<unknown>;
 
+const emptyOfferForm = {
+  title: "",
+  serviceDescription: "",
+  scope: "",
+  deliverables: "",
+  acceptanceCriteria: "",
+  price: "",
+  deadlineDays: "",
+  revisionRounds: "",
+  revisionWindowHours: "",
+  gracePeriodHours: "",
+  refundRule: "",
+  referenceUrls: ""
+};
+
+const mochiAgreementForm = {
+  title: "Audit and polish Mochi-Game Quest Evaluator demo flow",
+  serviceDescription: "Review Mochi-Game and make its Quest Evaluator demo path reviewer-ready.",
+  scope: "Audit the live app and README, then deliver public evidence for the Quest Evaluator flow.",
+  deliverables: "Live app URL, GitHub repo, README/docs URL, and a delivery note for reviewers.",
+  acceptanceCriteria: "Validators can fetch the live app and README and confirm Quest Evaluator, GenLayer consensus, transaction/result UX, and demo checklist.",
+  price: "0.02",
+  deadlineDays: "3",
+  revisionRounds: "1",
+  revisionWindowHours: "24",
+  gracePeriodHours: "24",
+  refundRule: "Client may claim a refund after deadline plus grace period if no valid public evidence is submitted, or after a rejected review.",
+  referenceUrls: "https://github.com/tanphung/Mochi-Game\nhttps://mochi-game-frontend.vercel.app"
+};
+
 function Offers({ offers, executeWrite }: { offers: Offer[]; executeWrite: ExecuteWrite }) {
   return (
-    <div className="grid two">
-      <section className="panel">
-        <div className="sectionTitle"><h2>Published offers</h2><span>{offers.length} on-chain</span></div>
+    <div className="offersLayout">
+      <section className="offersMain">
+        <div className="sectionTitle">
+          <div><p className="eyebrow">Ready to fund</p><h2>Published Builder offers</h2><p>Review exact terms before locking GEN.</p></div>
+          <span className="countPill">{offers.length} on-chain</span>
+        </div>
         <div className="offerList">
           {offers.map((offer) => (
             <article className="offerCard" key={offer.id}>
-              <strong>{offer.title}</strong>
-              <p>{offer.scope}</p>
-              <dl>
-                <dt>Builder</dt><dd>{short(offer.builder)}</dd>
-                <dt>Price</dt><dd>{formatGen(offer.priceAttoGen)} GEN</dd>
-                <dt>Deadline</dt><dd>{offer.deadlineDays} days</dd>
-                <dt>Revisions</dt><dd>{offer.revisionRounds}</dd>
-              </dl>
+              <header className="offerHeader">
+                <div>
+                  <span className="offerNumber">Offer #{offer.id}</span>
+                  <h3>{offer.title}</h3>
+                  <p className="builderLine"><span className="avatar">{offer.builder.slice(2, 4).toUpperCase()}</span> Builder {short(offer.builder)}</p>
+                </div>
+                <div className="offerPrice"><strong>{formatGen(offer.priceAttoGen)}</strong><span>GEN</span></div>
+              </header>
+              <p className="offerScope">{offer.scope}</p>
+              <div className="offerTerms">
+                <span><Clock3 size={15} /><small>Delivery</small><strong>{offer.deadlineDays} days</strong></span>
+                <span><RefreshCcw size={15} /><small>Revisions</small><strong>{offer.revisionRounds} round{offer.revisionRounds === "1" ? "" : "s"}</strong></span>
+                <span><ShieldCheck size={15} /><small>Status</small><strong>Open</strong></span>
+              </div>
               <OfferClauses value={offer.structuredClauses} />
-              <button className="primary wide" onClick={() => void executeWrite("Accept & Lock GEN", "accept_offer", [offer.id], BigInt(offer.priceAttoGen)).catch(() => undefined)}><LockKeyhole size={16} /> Accept & Lock GEN</button>
+              <div className="offerFooter">
+                <span><LockKeyhole size={15} /> Funds stay in contract escrow</span>
+                <button className="primary" onClick={() => void executeWrite("Accept & Lock GEN", "accept_offer", [offer.id], BigInt(offer.priceAttoGen)).catch(() => undefined)}>Accept & Lock {formatGen(offer.priceAttoGen)} GEN <ArrowRight size={16} /></button>
+              </div>
             </article>
           ))}
+          {offers.length === 0 && <div className="emptyState"><span className="emptyIcon"><FileText size={22} /></span><h3>No published offers</h3><p>The marketplace will show terms here after a Builder publishes an on-chain offer.</p></div>}
         </div>
       </section>
-      <section className="panel">
-        <h2>Transaction truth</h2>
-        <p>Wallet writes require both validator agreement and `FINISHED_WITH_RETURN` before the UI marks applied state.</p>
-        <div className="clause"><h3>Protected from fake success</h3><ul><li>Lifecycle status alone is not enough.</li><li>State refresh runs after successful execution result.</li><li>Explorer links are displayed separately from app status.</li></ul></div>
-      </section>
+      <aside className="trustRail">
+        <div className="trustVisual">
+          <span>Protected settlement</span>
+          <strong>Terms become executable state.</strong>
+        </div>
+        <section className="trustSteps">
+          <p className="eyebrow">How acceptance works</p>
+          <div><span>01</span><p><strong>Read the clauses</strong>Scope, evidence, revisions, and refund rules are fixed before funding.</p></div>
+          <div><span>02</span><p><strong>Lock exact GEN</strong>The accepted amount moves into contract-controlled escrow.</p></div>
+          <div><span>03</span><p><strong>Verify settlement</strong>ClauseFlow waits for successful execution and refreshed on-chain state.</p></div>
+        </section>
+      </aside>
     </div>
   );
 }
 
 function CreateOffer({ executeWrite, config, walletAddress }: { executeWrite: ExecuteWrite; config: ClauseFlowConfig | null; walletAddress: string }) {
-  const [form, setForm] = useState({
-    title: "Build a verified public example page",
-    serviceDescription: "Deliver a public page that validators can fetch and verify.",
-    scope: "Provide a publicly accessible page showing the Example Domain content.",
-    deliverables: "A working HTTPS delivery URL with visible Example Domain text.",
-    acceptanceCriteria: "The URL is accessible and the page visibly contains Example Domain.",
-    price: "0.1",
-    deadlineDays: "1",
-    revisionRounds: "1",
-    revisionWindowHours: "24",
-    gracePeriodHours: "24",
-    refundRule: "Client may claim a refund after deadline plus grace period if no valid delivery is submitted.",
-    referenceUrls: "https://example.com"
-  });
+  const [form, setForm] = useState(emptyOfferForm);
   const [draft, setDraft] = useState<StructuredDraft | null>(null);
   const [draftError, setDraftError] = useState("");
+  const formError = validateOfferForm(form);
   const setField = (field: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
-    setDraftError("Offer fields changed. Run clause structuring again before publishing.");
+    if (draft) setDraftError("Offer fields changed. Run clause structuring again before publishing.");
+    else setDraftError("");
+    setDraft(null);
+  };
+  const loadMochiScenario = () => {
+    setForm(mochiAgreementForm);
+    setDraft(null);
+    setDraftError("");
   };
   const structure = async () => {
+    if (formError) throw new Error(formError);
     setDraftError("");
     const result = await executeWrite("Structure Clauses", "structure_offer", [
       form.title,
@@ -453,137 +559,235 @@ function CreateOffer({ executeWrite, config, walletAddress }: { executeWrite: Ex
     form.referenceUrls
   ]);
   return (
-    <div className="grid two">
-      <section className="panel formPanel">
-        <h2>Builder offer</h2>
-        <input aria-label="Offer title" value={form.title} onChange={(event) => setField("title", event.target.value)} />
-        <textarea aria-label="Service description" value={form.serviceDescription} onChange={(event) => setField("serviceDescription", event.target.value)} />
-        <textarea aria-label="Detailed scope" value={form.scope} onChange={(event) => setField("scope", event.target.value)} />
-        <textarea aria-label="Deliverables" value={form.deliverables} onChange={(event) => setField("deliverables", event.target.value)} />
-        <textarea aria-label="Acceptance criteria" value={form.acceptanceCriteria} onChange={(event) => setField("acceptanceCriteria", event.target.value)} />
-        <div className="fields"><input aria-label="Price in GEN" value={form.price} onChange={(event) => setField("price", event.target.value)} /><input aria-label="Deadline days" value={form.deadlineDays} onChange={(event) => setField("deadlineDays", event.target.value)} /><input aria-label="Revision rounds" value={form.revisionRounds} onChange={(event) => setField("revisionRounds", event.target.value)} /><input aria-label="Grace period hours" value={form.gracePeriodHours} onChange={(event) => setField("gracePeriodHours", event.target.value)} /></div>
-        <textarea aria-label="Refund rule" value={form.refundRule} onChange={(event) => setField("refundRule", event.target.value)} />
-        <input aria-label="Reference URLs" value={form.referenceUrls} onChange={(event) => setField("referenceUrls", event.target.value)} />
-        <button className="wide" onClick={() => void structure().catch((error) => setDraftError(error instanceof Error ? error.message : String(error)))}><Sparkles size={16} /> Structure Clauses</button>
-        <button className="primary wide" disabled={!draft || Boolean(draftError) || Boolean(draft.publishedOfferId)} onClick={() => void publish().catch(() => undefined)}><FileText size={16} /> Publish Reviewed Offer</button>
+    <div className="createPage">
+      <ol className="creationSteps" aria-label="Offer creation progress">
+        <li className="active"><span>1</span><div><strong>Define</strong><small>Work and terms</small></div></li>
+        <li className={draft ? "complete" : ""}><span>2</span><div><strong>Structure</strong><small>GenLayer clauses</small></div></li>
+        <li><span>3</span><div><strong>Publish</strong><small>Commit on-chain</small></div></li>
+      </ol>
+      <div className="createWorkspace">
+      <section className="formPanel">
+        <div className="formHeading">
+          <div><p className="eyebrow">Builder workspace</p><h2>Define the agreement</h2><p>Write what can be verified. The Client will fund these exact terms.</p></div>
+          <button className="secondary compactButton" type="button" onClick={loadMochiScenario}><Sparkles size={15} /> Load real example</button>
+        </div>
+        <fieldset>
+          <legend>Service</legend>
+          <label className="field full"><span>Offer title <b>Required</b></span><input aria-label="Offer title" placeholder="Audit and polish a real dApp delivery flow" value={form.title} onChange={(event) => setField("title", event.target.value)} /></label>
+          <label className="field full"><span>Service description <b>Required</b></span><textarea aria-label="Service description" placeholder="Describe the outcome the Builder will deliver." value={form.serviceDescription} onChange={(event) => setField("serviceDescription", event.target.value)} /></label>
+        </fieldset>
+        <fieldset>
+          <legend>Scope and evidence</legend>
+          <label className="field full"><span>Detailed scope <b>Required</b></span><textarea aria-label="Detailed scope" placeholder="Define the work boundaries and what is included." value={form.scope} onChange={(event) => setField("scope", event.target.value)} /></label>
+          <label className="field full"><span>Deliverables <b>Required</b></span><textarea aria-label="Deliverables" placeholder="List public app, repository, docs, or other artifacts." value={form.deliverables} onChange={(event) => setField("deliverables", event.target.value)} /></label>
+          <label className="field full"><span>Acceptance criteria <b>Required</b></span><textarea aria-label="Acceptance criteria" placeholder="Use objective checks validators can verify from public evidence." value={form.acceptanceCriteria} onChange={(event) => setField("acceptanceCriteria", event.target.value)} /></label>
+          <label className="field full"><span>Reference URLs <b>Required</b></span><textarea className="shortTextarea" aria-label="Reference URLs" placeholder={"One public URL per line"} value={form.referenceUrls} onChange={(event) => setField("referenceUrls", event.target.value)} /></label>
+        </fieldset>
+        <fieldset>
+          <legend>Commercial terms</legend>
+          <div className="fields commercialFields">
+            <label className="field"><span>Price</span><div className="inputWithUnit"><input aria-label="Price in GEN" inputMode="decimal" placeholder="0.02" value={form.price} onChange={(event) => setField("price", event.target.value)} /><em>GEN</em></div></label>
+            <label className="field"><span>Deadline</span><div className="inputWithUnit"><input aria-label="Deadline days" inputMode="numeric" placeholder="3" value={form.deadlineDays} onChange={(event) => setField("deadlineDays", event.target.value)} /><em>days</em></div></label>
+            <label className="field"><span>Revision rounds</span><input aria-label="Revision rounds" inputMode="numeric" placeholder="1" value={form.revisionRounds} onChange={(event) => setField("revisionRounds", event.target.value)} /></label>
+            <label className="field"><span>Revision window</span><div className="inputWithUnit"><input aria-label="Revision window hours" inputMode="numeric" placeholder="24" value={form.revisionWindowHours} onChange={(event) => setField("revisionWindowHours", event.target.value)} /><em>hours</em></div></label>
+            <label className="field"><span>Grace period</span><div className="inputWithUnit"><input aria-label="Grace period hours" inputMode="numeric" placeholder="24" value={form.gracePeriodHours} onChange={(event) => setField("gracePeriodHours", event.target.value)} /><em>hours</em></div></label>
+          </div>
+          <label className="field full"><span>Refund rule <b>Required</b></span><textarea aria-label="Refund rule" placeholder="State exactly when the Client can reclaim escrow." value={form.refundRule} onChange={(event) => setField("refundRule", event.target.value)} /></label>
+        </fieldset>
+        {formError && <div className="inlineValidation"><CircleDotIcon /> <span>{formError}</span></div>}
+        <div className="formActions">
+          <span><ShieldCheck size={15} /> Drafting creates a reviewable on-chain clause set.</span>
+          <button className="primary" disabled={Boolean(formError)} onClick={() => void structure().catch((error) => setDraftError(normalizeError(error)))}><Sparkles size={16} /> Structure clauses</button>
+        </div>
       </section>
-      <section className="panel">
-        <div className="sectionTitle"><h2>Contract-structured clauses</h2><span>{draft ? "Stored on-chain" : "Not structured"}</span></div>
-        {draftError && <div className="notice warning">{draftError}</div>}
-        {!draft && <div className="emptyState">Structure the offer to generate a contract-owned draft. Publishing stays locked until the reviewed clauses are loaded from Bradbury.</div>}
-        {draft && <div className="draftClauses">
+      <aside className="draftPanel">
+        <div className="draftHeader">
+          <div><p className="eyebrow">Agreement preview</p><h2>Structured clauses</h2></div>
+          <span className={draft ? "draftState ready" : "draftState"}><i /> {draft ? "Stored on-chain" : "Awaiting draft"}</span>
+        </div>
+        {draftError && <div className="notice warning"><CircleDotIcon /><span>{draftError}</span></div>}
+        {!draft && <div className="documentEmpty">
+          <div className="documentGhost"><span /><span /><span /><span /></div>
+          <h3>Your executable agreement appears here</h3>
+          <p>GenLayer structures the source terms into scope, evidence, payment, revision, and refund clauses. Nothing is published until you review it.</p>
+        </div>}
+        {draft && <div className="draftClauses contractDocument">
+          <div className="documentTitle"><ShieldCheck size={18} /><span><strong>{form.title}</strong><small>ClauseFlow structured agreement</small></span></div>
           <ClauseBlock title="Scope" items={[draft.clauses.scope]} />
           <ClauseBlock title="Deliverables" items={[draft.clauses.deliverables]} />
+          {draft.clauses.milestones && <ClauseBlock title="Milestones" items={[draft.clauses.milestones]} />}
           <ClauseBlock title="Acceptance criteria" items={[draft.clauses.acceptanceCriteria]} />
+          {draft.clauses.evidenceRequirements && <ClauseBlock title="Evidence requirements" items={[draft.clauses.evidenceRequirements]} />}
+          {draft.clauses.verificationPlan && <ClauseBlock title="Validator verification plan" items={[draft.clauses.verificationPlan]} />}
           <ClauseBlock title="Deadline" items={[draft.clauses.deadline]} />
           <ClauseBlock title="Revision rules" items={[draft.clauses.revisionRules]} />
           <ClauseBlock title="Payment" items={[draft.clauses.paymentTerms]} />
           <ClauseBlock title="Refund" items={[draft.clauses.refundConditions]} />
           <p className="draftMeta">Structured {formatDate(draft.structuredAt)} for {short(draft.builder)}</p>
         </div>}
-      </section>
+        <div className="publishBar">
+          <span>{draft ? "Review complete? Commit this offer to Bradbury." : "Structure the clauses to unlock publishing."}</span>
+          <button className="primary wide" disabled={!draft || Boolean(draftError) || Boolean(draft.publishedOfferId)} onClick={() => void publish().catch((error) => setDraftError(normalizeError(error)))}><FileText size={16} /> Publish reviewed offer</button>
+        </div>
+      </aside>
+      </div>
     </div>
   );
 }
 
 function DealDetail({ deal, offer, history, txState, executeWrite, config, walletAddress }: { deal: Deal; offer?: Offer; history: HistoryEvent[]; txState: TxState; executeWrite: ExecuteWrite; config: ClauseFlowConfig | null; walletAddress: string }) {
-  const [delivery, setDelivery] = useState({ deliveryUrl: "https://example.com", githubUrl: "", demoUrl: "https://example.com", documentationUrl: "https://www.iana.org/help/example-domains", deliveryNote: "The public delivery is accessible and visibly contains the agreed Example Domain content." });
+  const [delivery, setDelivery] = useState({ deliveryUrl: "", githubUrl: "", demoUrl: "", documentationUrl: "", deliveryNote: "" });
+  const [detailTab, setDetailTab] = useState<"agreement" | "evidence" | "history">("agreement");
   const isBuilder = walletAddress.toLowerCase() === deal.builder.toLowerCase();
   const isClient = walletAddress.toLowerCase() === deal.client.toLowerCase();
+  const deliveryError = validateDeliveryForm(delivery);
+  const loadMochiEvidence = () => setDelivery({
+    deliveryUrl: "https://mochi-game-frontend.vercel.app",
+    githubUrl: "https://github.com/tanphung/Mochi-Game",
+    demoUrl: "https://mochi-game-frontend.vercel.app",
+    documentationUrl: "https://github.com/tanphung/Mochi-Game#readme",
+    deliveryNote: "Mochi-Game evidence package: live app, GitHub repository, README checklist, and Quest Evaluator flow are public for GenLayer validators to fetch and compare against the accepted agreement."
+  });
   return (
-    <section className="panel dealPanel">
-      <div className="dealHeader">
-        <div><p className="eyebrow">Deal #{deal.id}</p><h2>{deal.title}</h2></div>
-        <Status status={deal.status} />
+    <section className="dealPage">
+      <header className="dealHero">
+        <div className="dealHeroMain">
+          <span className="dealNumber">Agreement CF-{deal.id.padStart(4, "0")}</span>
+          <h2>{deal.title}</h2>
+          <div className="partyFlow"><span className="avatar">{deal.builder.slice(2, 4).toUpperCase()}</span><span><small>Builder</small><strong>{short(deal.builder)}</strong></span><ArrowRight size={16} /><span className="avatar clientAvatar">{deal.client.slice(2, 4).toUpperCase()}</span><span><small>Client</small><strong>{short(deal.client)}</strong></span></div>
+        </div>
+        <div className="dealHeroState">
+          <Status status={deal.status} />
+          <strong>{formatGen(deal.lockedAttoGen)} <small>GEN</small></strong>
+          <span>{deal.paid === "true" ? "Settlement released" : deal.refunded === "true" ? "Escrow refunded" : "Contract escrow"}</span>
+        </div>
+      </header>
+
+      <div className="lifecycle">
+        {["FUNDED", "SUBMITTED", "REVIEWED", settlementStep(deal)].map((event, index) => {
+          const complete = history.some((item) => item.eventType === event) || deal.status === event;
+          return <div className={complete ? "lifecycleStep complete" : "lifecycleStep"} key={event}><span>{complete ? <CheckCircle2 size={15} /> : index + 1}</span><strong>{event.replaceAll("_", " ")}</strong><small>{history.find((item) => item.eventType === event)?.timestamp ? formatDate(history.find((item) => item.eventType === event)?.timestamp || "") : "Awaiting event"}</small></div>;
+        })}
       </div>
-      <div className="timeline">{["FUNDED", "SUBMITTED", "REVIEWED", settlementStep(deal)].map((event) => <span className={history.some((item) => item.eventType === event) || deal.status === event ? "done" : ""} key={event}>{event}</span>)}</div>
-      <div className="grid three">
-        <Metric icon={<Wallet size={18} />} label="Builder" value={short(deal.builder)} />
-        <Metric icon={<Filter size={18} />} label="Client" value={short(deal.client)} />
-        <Metric icon={<Banknote size={18} />} label="Locked GEN" value={formatGen(deal.lockedAttoGen)} />
+
+      <section className="dealFacts">
+        <div><Clock3 size={17} /><span><small>Deadline</small><strong>{formatUnix(deal.deadlineAtUnix)}</strong></span></div>
+        <div><RefreshCcw size={17} /><span><small>Refund eligibility</small><strong>{formatUnix(deal.refundAvailableAtUnix)}</strong></span></div>
+        <div><ShieldCheck size={17} /><span><small>Review decision</small><strong>{deal.reviewResult || "Not reviewed"}</strong></span></div>
+      </section>
+
+      <div className="detailTabs" role="tablist" aria-label="Deal detail sections">
+        <button role="tab" aria-selected={detailTab === "agreement"} className={detailTab === "agreement" ? "active" : ""} onClick={() => setDetailTab("agreement")}><FileText size={16} /> Agreement</button>
+        <button role="tab" aria-selected={detailTab === "evidence"} className={detailTab === "evidence" ? "active" : ""} onClick={() => setDetailTab("evidence")}><ClipboardCheck size={16} /> Evidence & review</button>
+        <button role="tab" aria-selected={detailTab === "history"} className={detailTab === "history" ? "active" : ""} onClick={() => setDetailTab("history")}><Activity size={16} /> On-chain history</button>
       </div>
-      <div className="dealMeta">
-        <span><Clock3 size={15} /> Deadline {formatUnix(deal.deadlineAtUnix)}</span>
-        <span><RefreshCcw size={15} /> Refund eligibility {formatUnix(deal.refundAvailableAtUnix)}</span>
-      </div>
-      {offer && <section className="acceptedTerms"><h3>Accepted on-chain clauses</h3><OfferClauses value={offer.structuredClauses} /></section>}
-      <div className="execution">
-        <section>
-          <h3>Evidence package</h3>
-          <p>{deal.deliveryNote || "No delivery note yet."}</p>
-          <LinkLine label="Delivery" href={deal.deliveryUrl} />
-          <LinkLine label="Demo" href={deal.demoUrl} />
-          <LinkLine label="Docs" href={deal.documentationUrl} />
-          <LinkLine label="GitHub" href={deal.githubUrl} />
-          {deal.status === "FUNDED" || deal.status === "REVISION_REQUIRED" ? <div className="deliveryForm">
-            <input aria-label="Delivery URL" value={delivery.deliveryUrl} onChange={(event) => setDelivery({ ...delivery, deliveryUrl: event.target.value })} />
-            <input aria-label="GitHub URL" value={delivery.githubUrl} onChange={(event) => setDelivery({ ...delivery, githubUrl: event.target.value })} />
-            <input aria-label="Demo URL" value={delivery.demoUrl} onChange={(event) => setDelivery({ ...delivery, demoUrl: event.target.value })} />
-            <input aria-label="Documentation URL" value={delivery.documentationUrl} onChange={(event) => setDelivery({ ...delivery, documentationUrl: event.target.value })} />
-            <textarea aria-label="Delivery note" value={delivery.deliveryNote} onChange={(event) => setDelivery({ ...delivery, deliveryNote: event.target.value })} />
-          </div> : null}
-          <button disabled={!isBuilder || !["FUNDED", "REVISION_REQUIRED"].includes(deal.status)} onClick={() => void executeWrite("Submit Delivery", "submit_delivery", [deal.id, delivery.deliveryUrl, delivery.githubUrl, delivery.demoUrl, delivery.documentationUrl, delivery.deliveryNote]).catch(() => undefined)}><GitBranch size={16} /> Submit Delivery</button>
+
+      {detailTab === "agreement" && <div className="agreementTab">
+        <section className="agreementDocument">
+          <div className="documentTitle"><ShieldCheck size={18} /><span><strong>Accepted agreement</strong><small>Offer #{deal.offerId}, immutable after funding</small></span></div>
+          {offer ? <OfferClauses value={offer.structuredClauses} expanded /> : <div className="notice warning"><CircleDotIcon /><span>Accepted clause data is unavailable.</span></div>}
         </section>
-        <section className="review">
-          <h3>GenLayer review result</h3>
-          <strong>{deal.reviewResult || "Not reviewed"} / {deal.reviewScore || "0"}%</strong>
-          <p>{deal.reviewReason || deal.nextAction}</p>
+        <aside className="settlementPanel">
+          <p className="eyebrow">Settlement controls</p>
+          <h3>{nextActionTitle(deal)}</h3>
+          <p>{deal.nextAction || "Actions unlock only for the correct party and lifecycle state."}</p>
+          <div className="settlementAmount"><small>Escrow value</small><strong>{formatGen(deal.lockedAttoGen)} <span>GEN</span></strong></div>
+          <div className="actions verticalActions">
+            <button className="primary" onClick={() => void executeWrite("Claim Payment", "claim_payment", [deal.id]).catch(() => undefined)} disabled={!isBuilder || deal.status !== "APPROVED"}><LockKeyhole size={16} /> Claim payment</button>
+            <button className="secondary" onClick={() => void executeWrite("Claim Refund", "claim_refund", [deal.id]).catch(() => undefined)} disabled={!isClient || !["REJECTED", "FUNDED", "REVISION_REQUIRED"].includes(deal.status)}>Claim refund</button>
+            <button className="secondary" onClick={() => void executeWrite("Confirm Payment", "confirm_payment", [deal.id]).catch(() => undefined)} disabled={deal.status !== "PAYMENT_PENDING"}>Confirm payment</button>
+            <button className="secondary" onClick={() => void executeWrite("Confirm Refund", "confirm_refund", [deal.id]).catch(() => undefined)} disabled={deal.status !== "REFUND_PENDING"}>Confirm refund</button>
+          </div>
+          {!walletAddress && <p className="roleHint"><Wallet size={14} /> Connect the participating wallet to unlock eligible actions.</p>}
+        </aside>
+      </div>}
+
+      {detailTab === "evidence" && <div className="evidenceTab">
+        <section className="evidencePanel">
+          <div className="sectionTitle"><div><p className="eyebrow">Builder submission</p><h3>Evidence package</h3></div>{deal.submittedAt && <span className="countPill">Submitted {formatDate(deal.submittedAt)}</span>}</div>
+          <p className="deliveryNote">{deal.deliveryNote || "No delivery has been submitted."}</p>
+          <div className="evidenceLinks">
+            <LinkLine label="Delivery" href={deal.deliveryUrl} />
+            <LinkLine label="Demo" href={deal.demoUrl} />
+            <LinkLine label="Docs" href={deal.documentationUrl} />
+            <LinkLine label="GitHub" href={deal.githubUrl} />
+          </div>
+          {deal.status === "FUNDED" || deal.status === "REVISION_REQUIRED" ? <div className="deliveryForm">
+            <div className="deliveryFormHead"><h4>Submit public evidence</h4><button className="secondary compactButton" type="button" onClick={loadMochiEvidence}><Sparkles size={15} /> Load real example</button></div>
+            <label className="field"><span>Delivery URL</span><input aria-label="Delivery URL" placeholder="https://your-delivery.app" value={delivery.deliveryUrl} onChange={(event) => setDelivery({ ...delivery, deliveryUrl: event.target.value })} /></label>
+            <label className="field"><span>GitHub URL</span><input aria-label="GitHub URL" placeholder="https://github.com/owner/repository" value={delivery.githubUrl} onChange={(event) => setDelivery({ ...delivery, githubUrl: event.target.value })} /></label>
+            <label className="field"><span>Demo URL</span><input aria-label="Demo URL" placeholder="https://your-delivery.app/demo" value={delivery.demoUrl} onChange={(event) => setDelivery({ ...delivery, demoUrl: event.target.value })} /></label>
+            <label className="field"><span>Documentation URL</span><input aria-label="Documentation URL" placeholder="https://github.com/owner/repository#readme" value={delivery.documentationUrl} onChange={(event) => setDelivery({ ...delivery, documentationUrl: event.target.value })} /></label>
+            <label className="field full"><span>Delivery note</span><textarea aria-label="Delivery note" placeholder="Explain where validators can verify each accepted criterion." value={delivery.deliveryNote} onChange={(event) => setDelivery({ ...delivery, deliveryNote: event.target.value })} /></label>
+            {deliveryError && <div className="inlineValidation"><CircleDotIcon /><span>{deliveryError}</span></div>}
+            <button className="primary" disabled={!isBuilder || Boolean(deliveryError) || !["FUNDED", "REVISION_REQUIRED"].includes(deal.status)} onClick={() => void executeWrite("Submit Delivery", "submit_delivery", [deal.id, delivery.deliveryUrl, delivery.githubUrl, delivery.demoUrl, delivery.documentationUrl, delivery.deliveryNote]).catch(() => undefined)}><GitBranch size={16} /> Submit delivery</button>
+          </div> : null}
+        </section>
+        <section className={`reviewPanel ${deal.reviewResult.toLowerCase()}`}>
+          <div className="reviewHeading"><span className="reviewSeal"><ShieldCheck size={23} /></span><div><p className="eyebrow">Validator outcome</p><h3>{humanReviewResult(deal.reviewResult)}</h3></div><strong className="reviewScore">{deal.reviewScore || "0"}<small>/100</small></strong></div>
+          <p className="reviewReason">{deal.reviewReason || "Evidence has not been reviewed yet."}</p>
+          {deal.reviewEvidenceSummary && <div className="reviewBox"><h4>Evidence checked</h4><p>{deal.reviewEvidenceSummary}</p></div>}
+          {deal.reviewCriteriaResults && <ClauseBlock title="Criteria results" items={splitLines(deal.reviewCriteriaResults)} />}
+          {deal.reviewMissingItems && <ClauseBlock title="Missing items" items={splitLines(deal.reviewMissingItems)} />}
           {deal.revisionChecklist && <ClauseBlock title="Revision checklist" items={[deal.revisionChecklist]} />}
-          <div className="actions">
-            <button onClick={() => void executeWrite("Run Review", "review_delivery", [deal.id]).catch(() => undefined)} disabled={deal.status !== "SUBMITTED"}><Sparkles size={16} /> Run Review</button>
-            <button className="primary" onClick={() => void executeWrite("Claim Payment", "claim_payment", [deal.id]).catch(() => undefined)} disabled={!isBuilder || deal.status !== "APPROVED"}><LockKeyhole size={16} /> Claim Payment</button>
-            <button onClick={() => void executeWrite("Claim Refund", "claim_refund", [deal.id]).catch(() => undefined)} disabled={!isClient || !["REJECTED", "FUNDED", "REVISION_REQUIRED"].includes(deal.status)}>Claim Refund</button>
-            <button onClick={() => void executeWrite("Confirm Payment", "confirm_payment", [deal.id]).catch(() => undefined)} disabled={deal.status !== "PAYMENT_PENDING"}>Confirm Payment</button>
-            <button onClick={() => void executeWrite("Confirm Refund", "confirm_refund", [deal.id]).catch(() => undefined)} disabled={deal.status !== "REFUND_PENDING"}>Confirm Refund</button>
+          <button className="primary wide" onClick={() => void executeWrite("Run Review", "review_delivery", [deal.id]).catch(() => undefined)} disabled={deal.status !== "SUBMITTED"}><Sparkles size={16} /> Run validator review</button>
+        </section>
+      </div>}
+
+      {detailTab === "history" && <div className="historyTab">
+        <section className="historyPanel">
+          <div className="sectionTitle"><div><p className="eyebrow">Canonical record</p><h3>Agreement lifecycle</h3></div><span className="countPill">{history.length} events</span></div>
+          <div className="historyList">
+            {history.map((event, index) => <div key={`${event.eventType}-${index}`}><span className="historyNode"><CheckCircle2 size={15} /></span><div><strong>{event.eventType.replaceAll("_", " ")}</strong><time>{formatDate(event.timestamp)}</time><p>{friendlyHistoryNote(event, deal)}</p><small>Actor {short(event.actor)}</small></div></div>)}
           </div>
         </section>
-      </div>
-      <section className="txPanel">
-        <h3>Transaction truth panel</h3>
-        <dl>
-          <dt>Action</dt><dd>{txState.label}</dd>
-          <dt>Lifecycle</dt><dd>{txState.lifecycle}</dd>
-          <dt>Execution</dt><dd>{txState.executionResult}</dd>
-          <dt>Consensus</dt><dd>{txState.consensusResult}</dd>
-          <dt>Hash</dt><dd>{txState.hash.startsWith("0x") && config ? <a href={explorerTxUrl(config, txState.hash)} target="_blank" rel="noreferrer">{txState.hash}</a> : txState.hash || "None"}</dd>
-        </dl>
-        <p>{txState.message}</p>
-        {txState.childTransactions.map((hash) => config ? <a key={hash} href={explorerTxUrl(config, hash)} target="_blank" rel="noreferrer">Child GEN transfer {short(hash)}</a> : null)}
-      </section>
-      <section className="panel inset">
-        <h3>On-chain lifecycle history</h3>
-        <div className="historyList">
-          {history.map((event, index) => <div key={`${event.eventType}-${index}`}><strong>{event.eventType}</strong><span>{event.timestamp}</span><p>{event.note}</p><small>{short(event.actor)}</small></div>)}
-        </div>
-      </section>
+        <section className="txPanel">
+          <div className="sectionTitle"><div><p className="eyebrow">Browser session</p><h3>Transaction proof</h3></div><Status status={txState.lifecycle.toUpperCase()} /></div>
+          <dl>
+            <dt>Action</dt><dd>{txState.label}</dd>
+            <dt>Lifecycle</dt><dd>{txState.lifecycle}</dd>
+            <dt>Execution</dt><dd>{txState.executionResult}</dd>
+            <dt>Consensus</dt><dd>{txState.consensusResult}</dd>
+            <dt>Hash</dt><dd>{txState.hash.startsWith("0x") && config ? <a href={explorerTxUrl(config, txState.hash)} target="_blank" rel="noreferrer">{txState.hash}<ExternalLink size={13} /></a> : txState.hash || "No transaction in this session"}</dd>
+          </dl>
+          <p>{txState.message}</p>
+          {txState.childTransactions.map((hash) => config ? <a className="childTx" key={hash} href={explorerTxUrl(config, hash)} target="_blank" rel="noreferrer">Child GEN transfer {short(hash)} <ExternalLink size={13} /></a> : null)}
+        </section>
+      </div>}
     </section>
   );
 }
 
 function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
-  return <div className="info">{icon}<span>{label}</span><strong>{value}</strong></div>;
+  return <div className="metric"><span className="metricIcon">{icon}</span><div><span>{label}</span><strong>{value}</strong></div></div>;
 }
 
-function TransactionBanner({ txState, config }: { txState: TxState; config: ClauseFlowConfig | null }) {
-  return <section className={`txBanner ${txState.lifecycle}`}>
-    <div><strong>{txState.label}</strong><span>{txState.lifecycle} / {txState.consensusResult} / {txState.executionResult}</span></div>
-    <p>{txState.message}</p>
-    {txState.hash && config ? <a href={explorerTxUrl(config, txState.hash)} target="_blank" rel="noreferrer"><ExternalLink size={14} /> View transaction</a> : null}
+function TransactionBanner({ txState, config, onDismiss }: { txState: TxState; config: ClauseFlowConfig | null; onDismiss: () => void }) {
+  return <section className={`txToast ${txState.lifecycle}`} aria-live="polite">
+    <span className="txToastIcon">{txState.lifecycle === "failed" ? <X size={17} /> : txState.lifecycle === "pending" ? <RefreshCcw className="spin" size={17} /> : <CheckCircle2 size={17} />}</span>
+    <div><strong>{txState.label}</strong><p>{txState.message}</p><span>{humanTxState(txState)}</span></div>
+    <div className="txToastActions">
+      {txState.hash && config ? <a href={explorerTxUrl(config, txState.hash)} target="_blank" rel="noreferrer" aria-label="View transaction" title="View transaction"><ExternalLink size={15} /></a> : null}
+      <button className="iconButton" type="button" onClick={onDismiss} aria-label="Dismiss transaction status" title="Dismiss"><X size={15} /></button>
+    </div>
   </section>;
 }
 
 function ClauseBlock({ title, items }: { title: string; items: string[] }) {
-  return <div className="clause"><h3>{title}</h3><ul>{items.map((item) => <li key={item}>{item}</li>)}</ul></div>;
+  return <div className="clause"><h3>{title}</h3><ul>{items.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul></div>;
 }
 
-function OfferClauses({ value }: { value: string }) {
+function OfferClauses({ value, expanded = false }: { value: string; expanded?: boolean }) {
   const clauses = parseStructuredClauses(value);
-  if (!clauses) return <div className="notice warning">Structured clauses are unavailable for this offer.</div>;
-  return <details className="offerClauses">
-    <summary>Review accepted clauses</summary>
+  if (!clauses) return <div className="notice warning"><CircleDotIcon /><span>Structured clauses are unavailable for this offer.</span></div>;
+  return <details className="offerClauses" open={expanded || undefined}>
+    <summary><span>{expanded ? "Full accepted terms" : "Review all clauses"}</span><ChevronRight size={16} /></summary>
     <ClauseBlock title="Scope" items={[clauses.scope]} />
     <ClauseBlock title="Deliverables" items={[clauses.deliverables]} />
+    {clauses.milestones && <ClauseBlock title="Milestones" items={splitLines(clauses.milestones)} />}
     <ClauseBlock title="Acceptance criteria" items={[clauses.acceptanceCriteria]} />
+    {clauses.evidenceRequirements && <ClauseBlock title="Evidence requirements" items={splitLines(clauses.evidenceRequirements)} />}
+    {clauses.verificationPlan && <ClauseBlock title="Validator verification plan" items={splitLines(clauses.verificationPlan)} />}
     <ClauseBlock title="Deadline" items={[clauses.deadline]} />
     <ClauseBlock title="Revision rules" items={[clauses.revisionRules]} />
     <ClauseBlock title="Payment" items={[clauses.paymentTerms]} />
@@ -592,11 +796,15 @@ function OfferClauses({ value }: { value: string }) {
 }
 
 function LinkLine({ label, href }: { label: string; href: string }) {
-  return <p className="linkLine"><span>{label}</span>{href ? <a href={href} target="_blank" rel="noreferrer">{href}</a> : <em>Not provided</em>}</p>;
+  return <div className="linkLine"><span>{label}</span>{href ? <a href={href} target="_blank" rel="noreferrer"><span>{displayUrl(href)}</span><ExternalLink size={14} /></a> : <em>Not provided</em>}</div>;
 }
 
 function Status({ status }: { status: string }) {
-  return <span className={`status ${status.toLowerCase().replaceAll("_", "")}`}><CheckCircle2 size={12} /> {status.replaceAll("_", " ")}</span>;
+  return <span className={`status ${status.toLowerCase().replaceAll("_", "")}`}><i /> {status.replaceAll("_", " ")}</span>;
+}
+
+function CircleDotIcon() {
+  return <span className="validationDot" aria-hidden="true" />;
 }
 
 function titleFor(view: string) {
@@ -606,10 +814,128 @@ function titleFor(view: string) {
   return "Public on-chain agreement dashboard";
 }
 
+function viewLabel(view: string) {
+  if (view === "deal") return "Agreement";
+  if (view === "create") return "New offer";
+  return view.charAt(0).toUpperCase() + view.slice(1);
+}
+
 function settlementStep(deal: Deal) {
   if (deal.status === "PAYMENT_PENDING") return "PAYMENT_PENDING";
   if (deal.status === "REFUND_PENDING") return "REFUND_PENDING";
-  return deal.paid === "true" ? "PAID" : "REFUNDED";
+  if (deal.paid === "true") return "PAID";
+  if (deal.refunded === "true") return "REFUNDED";
+  return "SETTLEMENT";
+}
+
+function validateOfferForm(form: typeof emptyOfferForm) {
+  const required: Array<[keyof typeof emptyOfferForm, string]> = [
+    ["title", "Offer title"],
+    ["serviceDescription", "Service description"],
+    ["scope", "Scope"],
+    ["deliverables", "Deliverables"],
+    ["acceptanceCriteria", "Acceptance criteria"],
+    ["price", "Price"],
+    ["deadlineDays", "Deadline"],
+    ["revisionRounds", "Revision rounds"],
+    ["revisionWindowHours", "Revision window"],
+    ["gracePeriodHours", "Grace period"],
+    ["refundRule", "Refund rule"],
+    ["referenceUrls", "Reference URLs"]
+  ];
+  const missing = required.find(([field]) => !form[field].trim());
+  if (missing) return `${missing[1]} is required before GenLayer clause structuring.`;
+  try {
+    const price = parseGen(form.price);
+    if (price <= 0n) return "Price must be greater than 0 GEN.";
+  } catch (error) {
+    return normalizeError(error);
+  }
+  for (const field of ["deadlineDays", "revisionRounds", "revisionWindowHours", "gracePeriodHours"] as const) {
+    if (!/^\d+$/.test(form[field]) || BigInt(form[field]) < 0n) return `${field} must be a whole number.`;
+  }
+  if (BigInt(form.deadlineDays) <= 0n) return "Deadline must be at least 1 day.";
+  if (!hasHttpUrl(form.referenceUrls)) return "Reference URLs must include at least one public http(s) link.";
+  return "";
+}
+
+function validateDeliveryForm(delivery: { deliveryUrl: string; githubUrl: string; demoUrl: string; documentationUrl: string; deliveryNote: string }) {
+  if (!isHttpUrl(delivery.deliveryUrl)) return "Delivery URL must be a public http(s) link.";
+  if (delivery.githubUrl && !isHttpUrl(delivery.githubUrl)) return "GitHub URL must be a public http(s) link.";
+  if (delivery.demoUrl && !isHttpUrl(delivery.demoUrl)) return "Demo URL must be a public http(s) link.";
+  if (delivery.documentationUrl && !isHttpUrl(delivery.documentationUrl)) return "Documentation URL must be a public http(s) link.";
+  if (!delivery.deliveryNote.trim()) return "Delivery note is required.";
+  return "";
+}
+
+function hasHttpUrl(value: string) {
+  return value.split(/\s+/).some(isHttpUrl);
+}
+
+function isHttpUrl(value: string) {
+  return /^https?:\/\/\S+\.\S+/.test(value.trim());
+}
+
+function splitLines(value: string) {
+  return value.split(/\n|;|•/).map((item) => item.trim()).filter(Boolean);
+}
+
+function friendlyHistoryNote(event: HistoryEvent, deal?: Deal) {
+  if (event.eventType === "FUNDED") return "Client accepted the offer and locked GEN in contract escrow.";
+  if (event.eventType === "SUBMITTED") return "Builder submitted a public delivery evidence package for validator review.";
+  if (event.eventType === "PAYMENT_PENDING") return "The contract emitted the Builder payment and is waiting for escrow balance verification.";
+  if (event.eventType === "REFUND_PENDING") return "The contract emitted the Client refund and is waiting for escrow balance verification.";
+  if (event.eventType === "PAID") return "GEN payment was verified from the contract escrow balance.";
+  if (event.eventType === "REFUNDED") return "GEN refund was verified from the contract escrow balance.";
+  if (event.eventType === "REVIEWED") {
+    try {
+      const review = JSON.parse(event.note) as { result?: string; score?: string; reason?: string; evidenceSummary?: string };
+      const outcome = humanReviewResult(review.result || "REVIEWED");
+      const score = review.score ? ` (${review.score}/100)` : "";
+      return `${outcome}${score}. ${review.evidenceSummary || review.reason || "Validators completed the evidence review."}`;
+    } catch {
+      const outcome = deal?.reviewResult ? humanReviewResult(deal.reviewResult) : "Review completed";
+      const score = deal?.reviewScore ? ` (${deal.reviewScore}/100)` : "";
+      return `${outcome}${score}. ${deal?.reviewEvidenceSummary || deal?.reviewReason || "Validators stored the material evidence result on-chain."}`;
+    }
+  }
+  return event.note;
+}
+
+function humanReviewResult(result: string) {
+  if (!result) return "Awaiting review";
+  if (result === "APPROVED") return "Approved";
+  if (result === "REVISION_REQUIRED") return "Revision required";
+  if (result === "REJECTED") return "Rejected";
+  return result.replaceAll("_", " ").toLowerCase().replace(/^\w/, (letter) => letter.toUpperCase());
+}
+
+function nextActionTitle(deal: Deal) {
+  if (deal.status === "APPROVED") return "Payment is ready to claim";
+  if (deal.status === "PAYMENT_PENDING") return "Verify the emitted payment";
+  if (deal.status === "REFUND_PENDING") return "Verify the emitted refund";
+  if (deal.status === "PAID") return "Agreement settled";
+  if (deal.status === "REFUNDED") return "Escrow returned";
+  if (deal.status === "SUBMITTED") return "Evidence is ready for review";
+  if (deal.status === "REVISION_REQUIRED") return "Revision evidence is required";
+  if (deal.status === "REJECTED") return "Refund may be available";
+  return "Delivery is in progress";
+}
+
+function humanTxState(txState: TxState) {
+  if (txState.lifecycle === "pending") return "Waiting for validator consensus";
+  if (txState.lifecycle === "failed") return "Transaction did not change contract state";
+  if (txState.lifecycle === "accepted" || txState.lifecycle === "finalized") return "Execution verified on-chain";
+  return "No transaction submitted";
+}
+
+function displayUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return `${url.hostname}${url.pathname === "/" ? "" : url.pathname}`;
+  } catch {
+    return value;
+  }
 }
 
 function formatGen(atto: string) {

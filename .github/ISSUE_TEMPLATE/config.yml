@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: GenLayer security guidance
+    url: https://docs.genlayer.com/
+    about: Review network and account safety guidance before reporting sensitive issues.
