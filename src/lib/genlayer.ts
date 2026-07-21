@@ -1,6 +1,7 @@
-import { createClient } from "genlayer-js";
+import { abi, createClient } from "genlayer-js";
 import { studionet, testnetBradbury } from "genlayer-js/chains";
 import type { CalldataEncodable } from "genlayer-js/types";
+import { createPublicClient as createViemPublicClient, encodeFunctionData, http, parseEventLogs, toHex, type Hash } from "viem";
 
 export type ClauseFlowConfig = {
   contractAddress: string;
@@ -16,16 +17,6 @@ export function hasContractAddress(config: ClauseFlowConfig | null | undefined) 
 export function createReadClient(config: ClauseFlowConfig) {
   const chain = config.chain === "studionet" ? studionet : testnetBradbury;
   return createClient({ chain });
-}
-
-function addWriteGasMargin<T extends { estimateTransactionGas: (...args: never[]) => Promise<bigint> }>(client: T): T {
-  const estimateTransactionGas = client.estimateTransactionGas.bind(client);
-  client.estimateTransactionGas = (async (...args: never[]) => {
-    const estimate = await estimateTransactionGas(...args);
-    const buffered = (estimate * 6n) + 1_000_000n;
-    return buffered > 5_000_000n ? buffered : 5_000_000n;
-  }) as T["estimateTransactionGas"];
-  return client;
 }
 
 type WalletProvider = {
@@ -61,17 +52,61 @@ export async function connectWallet(config: ClauseFlowConfig) {
   const address = accounts[0];
   if (!address) throw new Error("The wallet did not return an account.");
   const chain = config.chain === "studionet" ? studionet : testnetBradbury;
-  const client = addWriteGasMargin(createClient({
+  const client = createClient({
     chain,
     account: address as `0x${string}`,
     provider: provider as never
-  }));
+  });
   await client.connect(config.chain === "studionet" ? "studionet" : "testnetBradbury");
-  return { client, address };
+  return { client, address, provider };
 }
 
 type ConnectedClient = Awaited<ReturnType<typeof connectWallet>>["client"];
 type TransactionHash = Parameters<ConnectedClient["getTransaction"]>[0]["hash"];
+
+async function submitBradburyWrite(
+  provider: WalletProvider,
+  address: string,
+  contractAddress: string,
+  functionName: string,
+  args: CalldataEncodable[],
+  value: bigint
+): Promise<TransactionHash> {
+  const consensus = testnetBradbury.consensusMainContract;
+  if (!consensus?.address || !consensus.abi) throw new Error("Bradbury consensus contract configuration is unavailable.");
+  const appCalldata = abi.calldata.encode(abi.calldata.makeCalldataObject(functionName, args, undefined));
+  const serializedData = abi.transactions.serialize([appCalldata, false]);
+  const encodedData = encodeFunctionData({
+    abi: consensus.abi,
+    functionName: "addTransaction",
+    args: [
+      address as `0x${string}`,
+      contractAddress as `0x${string}`,
+      BigInt(testnetBradbury.defaultNumberOfInitialValidators),
+      5n,
+      serializedData,
+      BigInt(Math.floor(Date.now() / 1000) + 3600)
+    ]
+  });
+  const evmHash = await provider.request({
+    method: "eth_sendTransaction",
+    params: [{
+      from: address,
+      to: consensus.address,
+      data: encodedData,
+      value: toHex(value),
+      gas: toHex(5_000_000n)
+    }]
+  }) as Hash;
+  const publicClient = createViemPublicClient({ chain: testnetBradbury, transport: http() });
+  const receipt = await publicClient.waitForTransactionReceipt({ hash: evmHash });
+  if (receipt.status !== "success") throw new Error(`Consensus activation reverted after using ${receipt.gasUsed} gas: ${evmHash}`);
+  const events = parseEventLogs({ abi: consensus.abi, logs: receipt.logs, strict: false }) as unknown as Array<{ eventName: string; args?: { txId?: string } }>;
+  const created = events.find((event) => event.eventName === "NewTransaction" || event.eventName === "CreatedTransaction");
+  const txId = created?.args?.txId;
+  if (!txId) throw new Error(`Consensus activation ${evmHash} did not emit a transaction ID.`);
+  return txId as TransactionHash;
+}
 
 async function waitForAcceptedExecution(client: ConnectedClient, hash: TransactionHash) {
   let transientFailures = 0;
@@ -108,8 +143,7 @@ export async function writeAndVerify(
   onSubmitted?: (hash: string) => void
 ) {
   if (!hasContractAddress(config)) throw new Error("ClauseFlow contract address is not configured.");
-  const { client, address } = await connectWallet(config);
-  const aiMethod = functionName === "structure_offer";
+  const { client, address, provider } = await connectWallet(config);
   const writeParams = {
     address: config.contractAddress as `0x${string}`,
     functionName,
@@ -117,17 +151,9 @@ export async function writeAndVerify(
     value,
     consensusMaxRotations: 5
   };
-  const params = aiMethod ? {
-    ...writeParams,
-    fees: {
-      distribution: {
-        leaderTimeunitsAllocation: "500",
-        validatorTimeunitsAllocation: "500",
-        rotations: ["0", "1", "2", "3", "4"]
-      }
-    }
-  } : writeParams;
-  const hash = await client.writeContract(params as Parameters<typeof client.writeContract>[0]);
+  const hash = config.chain === "testnetBradbury"
+    ? await submitBradburyWrite(provider, address, config.contractAddress, functionName, args, value)
+    : await client.writeContract(writeParams as Parameters<typeof client.writeContract>[0]);
   onSubmitted?.(hash);
   const receipt = await waitForAcceptedExecution(client, hash);
   const executionResult = receipt.txExecutionResultName || "NOT_VOTED";
