@@ -35,6 +35,24 @@ export function getWalletProvider(): WalletProvider | null {
   return (window as unknown as { ethereum?: WalletProvider }).ethereum || null;
 }
 
+export function normalizeError(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object") {
+    const record = error as Record<string, unknown>;
+    for (const key of ["shortMessage", "details", "message", "reason"]) {
+      if (typeof record[key] === "string" && record[key]) return record[key] as string;
+    }
+    try {
+      const serialized = JSON.stringify(record);
+      if (serialized && serialized !== "{}") return serialized;
+    } catch {
+      return "Transaction failed with an unreadable wallet or RPC error object.";
+    }
+  }
+  return String(error || "Unknown error");
+}
+
 export async function connectWallet(config: ClauseFlowConfig) {
   const provider = getWalletProvider();
   if (!provider) throw new Error("No compatible browser wallet was found.");
@@ -60,7 +78,7 @@ export async function writeAndVerify(
 ) {
   if (!hasContractAddress(config)) throw new Error("ClauseFlow contract address is not configured.");
   const { client, address } = await connectWallet(config);
-  const aiMethod = functionName === "review_delivery";
+  const aiMethod = functionName === "structure_offer";
   const writeParams = {
     address: config.contractAddress as `0x${string}`,
     functionName,
@@ -93,12 +111,12 @@ export async function writeAndVerify(
       break;
     } catch (error) {
       lastError = error;
-      const message = error instanceof Error ? error.message : String(error);
+      const message = normalizeError(error);
       if (!message.includes("Internal error") || attempt === 12) throw error;
       await new Promise((resolve) => window.setTimeout(resolve, 5000));
     }
   }
-  if (!receipt) throw lastError instanceof Error ? lastError : new Error("Transaction receipt was unavailable.");
+  if (!receipt) throw lastError instanceof Error ? lastError : new Error(normalizeError(lastError) || "Transaction receipt was unavailable.");
   const executionResult = receipt.txExecutionResultName || "NOT_VOTED";
   if (executionResult !== "FINISHED_WITH_RETURN") {
     throw new Error(`${executionResult}: contract execution did not succeed.`);
@@ -135,12 +153,12 @@ export async function readJsonView<T>(client: ReturnType<typeof createReadClient
       break;
     } catch (error) {
       lastError = error;
-      const message = error instanceof Error ? error.message : String(error);
+      const message = normalizeError(error);
       if (!(message.includes("Internal error") || message.includes("timed out")) || attempt === 2) throw error;
       await new Promise((resolve) => window.setTimeout(resolve, 2_000));
     }
   }
-  if (result === undefined) throw lastError instanceof Error ? lastError : new Error(`${functionName} returned no data.`);
+  if (result === undefined) throw lastError instanceof Error ? lastError : new Error(normalizeError(lastError) || `${functionName} returned no data.`);
   if (typeof result === "string") {
     return JSON.parse(result) as T;
   }

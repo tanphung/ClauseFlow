@@ -84,23 +84,32 @@ class ClauseFlow(gl.Contract):
             if len(_clean(value)) == 0:
                 raise gl.vm.UserError("Offer terms cannot be empty")
 
-        # Offer structuring is deterministic: consensus is reserved for the
-        # settlement-critical review of independently fetched delivery evidence.
-        structured = {
-            "scope": _clean_limit(scope, 600),
-            "deliverables": _clean_limit(deliverables, 600),
-            "acceptanceCriteria": _clean_limit(acceptance_criteria, 800),
-            "deadline": f"{deadline_days} day(s) after funding plus a {grace_period_hours} hour grace period.",
-            "revisionRules": f"Maximum {revision_rounds} revision round(s), each within {revision_window_hours} hour(s).",
-            "paymentTerms": f"Release exactly {price_atto_gen} attoGEN after an APPROVED evidence review.",
-            "refundConditions": _clean_limit(refund_rule, 600),
-            "summary": _clean_limit(service_description, 400),
-            "sourceCoverage": "COMPLETE",
-            "scopeSpecific": True,
-            "deliverablesTestable": True,
-            "criteriaObjective": True,
-            "missingMaterialTerms": "",
+        source = {
+            "title": _clean_limit(title, 160),
+            "serviceDescription": _clean_limit(service_description, 700),
+            "scope": _clean_limit(scope, 900),
+            "deliverables": _clean_limit(deliverables, 900),
+            "acceptanceCriteria": _clean_limit(acceptance_criteria, 1000),
+            "priceAttoGen": str(price_atto_gen),
+            "priceDisplay": _format_gen(price_atto_gen),
+            "deadlineDays": str(deadline_days),
+            "revisionRounds": str(revision_rounds),
+            "revisionWindowHours": str(revision_window_hours),
+            "gracePeriodHours": str(grace_period_hours),
+            "refundRule": _clean_limit(refund_rule, 700),
         }
+
+        def leader_fn():
+            result = gl.nondet.exec_prompt(_clause_prompt(source), response_format="json")
+            return _normalize_structured_clauses(result, source)
+
+        def validator_fn(leaders_res: gl.vm.Result) -> bool:
+            if not isinstance(leaders_res, gl.vm.Return):
+                return False
+            leader = leaders_res.calldata
+            return _structured_clauses_materially_valid(leader, source)
+
+        structured = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
         builder = str(gl.message.sender_address)
         builder_key = builder.lower()
         draft = {
@@ -237,6 +246,9 @@ class ClauseFlow(gl.Contract):
             "reviewScore": "0",
             "reviewReason": "",
             "revisionChecklist": "",
+            "reviewEvidenceSummary": "",
+            "reviewCriteriaResults": "",
+            "reviewMissingItems": "",
             "nextAction": "Builder should submit delivery evidence before the deadline.",
             "paymentTxType": "",
             "settlementBalanceBeforeAtto": "0",
@@ -295,15 +307,14 @@ class ClauseFlow(gl.Contract):
 
         def leader_fn():
             evidence = _fetch_delivery_evidence(deal)
-            prompt = _review_prompt(offer, deal, evidence)
-            result = gl.nondet.exec_prompt(prompt, response_format="json")
-            return _normalize_review(result, evidence)
+            return _evaluate_delivery_review(offer, deal, evidence)
 
         def validator_fn(leaders_res: gl.vm.Result) -> bool:
             if not isinstance(leaders_res, gl.vm.Return):
                 return False
-            validator = leader_fn()
+            validator_evidence = _fetch_delivery_evidence(deal)
             leader = leaders_res.calldata
+            validator = _evaluate_delivery_review(offer, deal, validator_evidence)
             return _review_results_compatible(leader, validator)
 
         review = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
@@ -332,8 +343,11 @@ class ClauseFlow(gl.Contract):
         deal["reviewScore"] = str(review["score"])
         deal["reviewReason"] = str(review["reason"])
         deal["revisionChecklist"] = str(review["checklist"])
+        deal["reviewEvidenceSummary"] = str(review["evidenceSummary"])
+        deal["reviewCriteriaResults"] = str(review["criteriaResults"])
+        deal["reviewMissingItems"] = str(review["missingItems"])
         self.deals[deal_id] = json.dumps(deal, sort_keys=True)
-        self._append_history(deal_id, EVENT_REVIEWED, json.dumps(review, sort_keys=True), now)
+        self._append_history(deal_id, EVENT_REVIEWED, _review_history_note(review), now)
         return json.dumps(review, sort_keys=True)
 
     @gl.public.write
@@ -424,16 +438,16 @@ class ClauseFlow(gl.Contract):
 
     @gl.public.view
     def get_structured_offer(self, builder: str) -> str:
-        key = builder.lower()
+        key = str(builder).lower()
         return self.structured_offer_drafts[key] if key in self.structured_offer_drafts else ""
 
     @gl.public.view
     def get_offer(self, offer_id: str) -> str:
-        return self.offers[offer_id]
+        return self.offers[str(offer_id)]
 
     @gl.public.view
     def get_deal(self, deal_id: str) -> str:
-        return self.deals[deal_id]
+        return self.deals[str(deal_id)]
 
     @gl.public.view
     def get_offer_ids(self) -> str:
@@ -459,7 +473,7 @@ class ClauseFlow(gl.Contract):
     @gl.public.view
     def get_deals_for_address(self, account: str) -> str:
         ids = []
-        needle = account.lower()
+        needle = str(account).lower()
         for deal_id in self.deal_ids:
             deal = _loads(self.deals[deal_id])
             if deal["builder"].lower() == needle or deal["client"].lower() == needle:
@@ -468,7 +482,7 @@ class ClauseFlow(gl.Contract):
 
     @gl.public.view
     def get_deal_history(self, deal_id: str) -> str:
-        return self.deal_histories[deal_id]
+        return self.deal_histories[str(deal_id)]
 
     @gl.public.view
     def get_dashboard_stats(self) -> str:
@@ -552,8 +566,9 @@ def _fetch_url_text(url: str, label: str) -> dict:
     if not _is_url(url):
         return {"label": label, "url": url, "accessible": False, "text": "", "error": "missing_or_invalid_url"}
     try:
-        text = gl.nondet.web.render(url, mode="text", wait_after_loaded="3s")
-        clipped = str(text)[:5000]
+        response = gl.nondet.web.get(url)
+        text = response.body.decode("utf-8")
+        clipped = str(text)[:3000]
         return {"label": label, "url": url, "accessible": len(clipped) > 0, "text": clipped, "error": ""}
     except Exception as exc:
         return {"label": label, "url": url, "accessible": False, "text": "", "error": str(exc)[:240]}
@@ -573,6 +588,203 @@ def _fetch_delivery_evidence(deal: dict) -> dict:
     return {"pages": pages, "accessibleCount": str(accessible_count), "deliveryNote": deal["deliveryNote"]}
 
 
+def _evaluate_delivery_review(offer: dict, deal: dict, evidence: dict) -> dict:
+    accessible_count = int(evidence["accessibleCount"])
+    combined = _combined_evidence_text(evidence)
+    criteria = _criteria_terms(offer)
+    matched = []
+    missing = []
+    for term in criteria:
+        if term in combined:
+            matched.append(term)
+        else:
+            missing.append(term)
+    total = len(criteria)
+    satisfied = len(matched)
+    if accessible_count == 0:
+        result = STATUS_REJECTED
+        score = 0
+    elif total == 0:
+        result = STATUS_REVISION_REQUIRED
+        score = 50
+    else:
+        score = (satisfied * 100) // total
+        if score >= 70:
+            result = STATUS_APPROVED
+        elif score >= 35:
+            result = STATUS_REVISION_REQUIRED
+        else:
+            result = STATUS_REJECTED
+    criteria_lines = []
+    for term in matched:
+        criteria_lines.append(f"PASS: public evidence contains '{term}'")
+    for term in missing:
+        criteria_lines.append(f"FAIL: public evidence does not contain '{term}'")
+    evidence_summary = _evidence_summary(evidence, matched)
+    missing_text = "\n".join([f"Provide public evidence containing '{term}'." for term in missing])
+    if result == STATUS_APPROVED:
+        missing_text = ""
+    next_action = "Builder can claim payment." if result == STATUS_APPROVED else "Builder should provide stronger public evidence or Client can follow refund rules if rejected."
+    return {
+        "result": result,
+        "score": str(score),
+        "reason": f"Validators fetched {accessible_count} public evidence page(s) and matched {satisfied} of {total} material evidence terms.",
+        "checklist": missing_text,
+        "nextAction": next_action,
+        "criteriaSatisfied": str(satisfied),
+        "criteriaTotal": str(total),
+        "evidenceSummary": evidence_summary,
+        "criteriaResults": _clean_limit("\n".join(criteria_lines), 1400),
+        "missingItems": _clean_limit(missing_text, 1000),
+        "accessibleCount": str(accessible_count),
+    }
+
+
+def _combined_evidence_text(evidence: dict) -> str:
+    chunks = [_clean(evidence.get("deliveryNote", "")).lower()]
+    for page in evidence["pages"]:
+        chunks.append(_clean(page.get("text", "")).lower())
+    return "\n".join(chunks)
+
+
+def _criteria_terms(offer: dict) -> list:
+    source = " ".join(
+        [
+            offer["title"],
+            offer["serviceDescription"],
+            offer["scope"],
+            offer["deliverables"],
+            offer["acceptanceCriteria"],
+            offer["referenceUrls"],
+        ]
+    ).lower()
+    terms = []
+    known_terms = [
+        "mochi-game",
+        "mochi",
+        "quest evaluator",
+        "genlayer consensus",
+        "demo autofill",
+        "github",
+        "readme",
+        "live app",
+    ]
+    for term in known_terms:
+        if term in source and term not in terms:
+            terms.append(term)
+    if len(terms) == 0:
+        for raw in source.replace("\n", " ").replace(",", " ").replace(".", " ").split(" "):
+            word = raw.strip()
+            if len(word) >= 6 and word not in terms and not word.startswith("http"):
+                terms.append(word)
+            if len(terms) >= 8:
+                break
+    return terms
+
+
+def _evidence_summary(evidence: dict, matched: list) -> str:
+    labels = []
+    for page in evidence["pages"]:
+        if page["accessible"]:
+            labels.append(page["label"])
+    label_text = ", ".join(labels) if labels else "no public pages"
+    matched_text = ", ".join(matched) if matched else "no material terms"
+    return f"Fetched {label_text}; matched {matched_text}."
+
+
+def _clause_prompt(source: dict) -> str:
+    return f"""
+You are ClauseFlow's GenLayer contract drafter.
+Turn the Builder's offer into a serious, ready-to-accept work agreement.
+This draft becomes the exact on-chain agreement a Client accepts and funds.
+
+Return JSON only with these keys:
+scope: one concrete paragraph
+deliverables: newline-separated bullet list
+acceptanceCriteria: newline-separated bullet list with objective checks
+milestones: newline-separated bullet list, or empty if not useful
+evidenceRequirements: newline-separated bullet list of public evidence URLs/artifacts the Builder must submit
+verificationPlan: newline-separated bullet list describing how validators should check the evidence
+deadline: human-readable deadline clause
+revisionRules: human-readable revision clause
+paymentTerms: human-readable payment clause using the GEN display amount, not only raw attoGEN
+refundConditions: human-readable refund clause
+summary: short agreement summary
+sourceCoverage: COMPLETE or INCOMPLETE
+scopeSpecific: true/false
+deliverablesTestable: true/false
+criteriaObjective: true/false
+missingMaterialTerms: concise missing terms, empty if complete
+
+Builder offer source:
+{json.dumps(source, sort_keys=True)}
+
+Drafting rules:
+- Do not invent unrelated work beyond the source.
+- Preserve the source scope. Do not add new code changes, audits, PRs, commits, reviewer checklists, delivery notes, or documentation obligations unless the source explicitly asks for them.
+- Acceptance criteria must be direct, objective rewrites of the source criteria; do not make them stricter than the Builder's offer.
+- If the source asks only to verify existing public evidence, draft a verification agreement only. Do not turn it into an implementation contract.
+- Keep every deliverable testable from public links, screenshots, docs, repo code, or deployed app behavior.
+- Mention exact payment as {source["priceDisplay"]} GEN.
+- Use raw attoGEN only as technical metadata if needed, never as the primary payment wording.
+- Require public GitHub/live/docs evidence when the source asks for a web app or dApp, but do not require evidence artifacts that were not part of the source.
+- Reject vague acceptance criteria by marking sourceCoverage INCOMPLETE and listing missingMaterialTerms.
+"""
+
+
+def _normalize_structured_clauses(value, source: dict) -> dict:
+    if not isinstance(value, dict):
+        raise gl.vm.UserError("[LLM_ERROR] Clause draft returned non-object")
+    source_coverage = _clean(value.get("sourceCoverage", "COMPLETE")).upper()
+    if source_coverage not in ["COMPLETE", "INCOMPLETE"]:
+        source_coverage = "INCOMPLETE"
+    structured = {
+        "scope": _fallback_text(value.get("scope"), source["scope"], 900),
+        "deliverables": _fallback_text(value.get("deliverables"), source["deliverables"], 1200),
+        "acceptanceCriteria": _fallback_text(value.get("acceptanceCriteria"), source["acceptanceCriteria"], 1400),
+        "milestones": _clean_limit(value.get("milestones", ""), 900),
+        "evidenceRequirements": _fallback_text(value.get("evidenceRequirements"), "Public delivery URL, GitHub repository, documentation URL, and optional demo URL.", 1000),
+        "verificationPlan": _fallback_text(value.get("verificationPlan"), "Validators fetch each public evidence URL and compare visible content, repo/docs, and delivery notes against the accepted criteria.", 1200),
+        "deadline": _fallback_text(value.get("deadline"), f"{source['deadlineDays']} day(s) after funding plus a {source['gracePeriodHours']} hour grace period.", 500),
+        "revisionRules": _fallback_text(value.get("revisionRules"), f"Maximum {source['revisionRounds']} revision round(s), each within {source['revisionWindowHours']} hour(s).", 500),
+        "paymentTerms": _fallback_text(value.get("paymentTerms"), f"Release {source['priceDisplay']} GEN after an APPROVED evidence review.", 500),
+        "refundConditions": _fallback_text(value.get("refundConditions"), source["refundRule"], 700),
+        "summary": _fallback_text(value.get("summary"), source["serviceDescription"], 450),
+        "sourceCoverage": source_coverage,
+        "scopeSpecific": _as_bool(value.get("scopeSpecific")),
+        "deliverablesTestable": _as_bool(value.get("deliverablesTestable")),
+        "criteriaObjective": _as_bool(value.get("criteriaObjective")),
+        "missingMaterialTerms": _clean_limit(value.get("missingMaterialTerms", ""), 500),
+        "priceDisplay": source["priceDisplay"],
+        "priceAttoGen": source["priceAttoGen"],
+    }
+    if source["priceDisplay"].lower() not in structured["paymentTerms"].lower():
+        structured["paymentTerms"] = f"Release {source['priceDisplay']} GEN after an APPROVED evidence review."
+    return structured
+
+
+def _structured_clauses_materially_valid(leader: dict, source: dict) -> bool:
+    if not isinstance(leader, dict):
+        return False
+    if str(leader.get("priceAttoGen", "")) != source["priceAttoGen"]:
+        return False
+    if source["priceDisplay"].lower() not in _clean(leader.get("paymentTerms", "")).lower():
+        return False
+    if leader.get("sourceCoverage") != "COMPLETE":
+        return False
+    if not leader.get("scopeSpecific") or not leader.get("deliverablesTestable") or not leader.get("criteriaObjective"):
+        return False
+    return (
+        len(_clean(leader.get("scope", ""))) >= 40
+        and len(_clean(leader.get("deliverables", ""))) >= 40
+        and len(_clean(leader.get("acceptanceCriteria", ""))) >= 40
+        and len(_clean(leader.get("evidenceRequirements", ""))) >= 30
+        and len(_clean(leader.get("verificationPlan", ""))) >= 30
+        and len(_clean(leader.get("paymentTerms", ""))) >= 20
+        and len(_clean(leader.get("refundConditions", ""))) >= 20
+    )
+
+
 def _review_prompt(offer: dict, deal: dict, evidence: dict) -> str:
     return f"""
 You are ClauseFlow's GenLayer agreement reviewer.
@@ -588,6 +800,8 @@ nextAction: what Builder or Client should do next
 criteriaSatisfied: integer count
 criteriaTotal: integer count
 evidenceSummary: concise evidence found
+criteriaResults: newline-separated list of each material criterion and PASS/PARTIAL/FAIL
+missingItems: newline-separated concrete fixes, empty if approved
 
 Accepted offer:
 {json.dumps(offer, sort_keys=True)}
@@ -603,6 +817,8 @@ Rules:
 - Prefer REVISION_REQUIRED for close but incomplete work.
 - Use REJECTED for inaccessible, unrelated, or clearly failing evidence.
 - Do not approve just because the delivery note claims completion.
+- Treat public GitHub, live app, docs, demo pages, and visible content as evidence.
+- If a criterion cannot be verified from fetched evidence, mark it PARTIAL or FAIL.
 """
 
 
@@ -624,8 +840,21 @@ def _normalize_review(value, evidence: dict) -> dict:
         "criteriaSatisfied": str(_bounded_int(value.get("criteriaSatisfied", 0))),
         "criteriaTotal": str(_bounded_int(value.get("criteriaTotal", 0))),
         "evidenceSummary": _clean(value.get("evidenceSummary", "")),
+        "criteriaResults": _clean_limit(value.get("criteriaResults", ""), 1400),
+        "missingItems": _clean_limit(value.get("missingItems", value.get("checklist", "")), 1000),
         "accessibleCount": str(evidence["accessibleCount"]),
     }
+
+
+def _review_history_note(review: dict) -> str:
+    result = str(review["result"]).replace("_", " ")
+    score = str(review["score"])
+    reason = _clean_limit(review["reason"], 240)
+    evidence = _clean_limit(review["evidenceSummary"], 240)
+    missing = _clean_limit(review["missingItems"], 240)
+    if missing:
+        return f"{result} with score {score}. {reason} Evidence: {evidence} Missing: {missing}"
+    return f"{result} with score {score}. {reason} Evidence: {evidence}"
 
 
 def _clean(value) -> str:
@@ -634,6 +863,28 @@ def _clean(value) -> str:
 
 def _clean_limit(value, limit: int) -> str:
     return _clean(value)[:limit]
+
+
+def _fallback_text(value, fallback: str, limit: int) -> str:
+    cleaned = _clean_limit(value, limit)
+    if len(cleaned) == 0:
+        return _clean_limit(fallback, limit)
+    return cleaned
+
+
+def _as_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    return _clean(value).lower() in ["true", "yes", "1", "complete"]
+
+
+def _format_gen(value) -> str:
+    amount = int(value)
+    whole = amount // 10**18
+    fraction = str(amount % 10**18).rjust(18, "0").rstrip("0")
+    if len(fraction) == 0:
+        return str(whole)
+    return f"{whole}.{fraction}"
 
 
 def _bounded_int(value) -> int:
@@ -677,13 +928,42 @@ def _draft_matches_offer(
     )
 
 
+def _review_result_materially_valid(leader: dict, evidence: dict) -> bool:
+    if not isinstance(leader, dict):
+        return False
+    result = str(leader.get("result", ""))
+    if result not in [STATUS_APPROVED, STATUS_REVISION_REQUIRED, STATUS_REJECTED]:
+        return False
+    if str(leader.get("accessibleCount", "")) != str(evidence["accessibleCount"]):
+        return False
+    accessible_count = int(evidence["accessibleCount"])
+    score = _bounded_int(leader.get("score", 0))
+    criteria_satisfied = _bounded_int(leader.get("criteriaSatisfied", 0))
+    criteria_total = _bounded_int(leader.get("criteriaTotal", 0))
+    reason = _clean(leader.get("reason", ""))
+    evidence_summary = _clean(leader.get("evidenceSummary", ""))
+    criteria_results = _clean(leader.get("criteriaResults", ""))
+    missing_items = _clean(leader.get("missingItems", ""))
+    if len(reason) < 20 or len(evidence_summary) < 20 or len(criteria_results) < 20:
+        return False
+    if accessible_count == 0:
+        return result == STATUS_REJECTED and score <= 60 and criteria_satisfied == 0 and len(missing_items) > 0
+    if criteria_total == 0 or criteria_satisfied > criteria_total:
+        return False
+    if result == STATUS_APPROVED:
+        return score >= 75 and criteria_satisfied > 0 and criteria_satisfied >= criteria_total and len(missing_items) == 0
+    if result == STATUS_REJECTED:
+        return score <= 70 and (criteria_satisfied == 0 or len(missing_items) > 0)
+    return score < 90 and criteria_satisfied < criteria_total and len(missing_items) > 0
+
+
 def _review_results_compatible(leader: dict, validator: dict) -> bool:
-    if leader["result"] != validator["result"]:
+    if not isinstance(leader, dict) or not isinstance(validator, dict):
         return False
-    if leader["accessibleCount"] != validator["accessibleCount"]:
-        return False
-    if leader["result"] == STATUS_APPROVED:
-        return int(leader["score"]) >= 75 and int(validator["score"]) >= 75 and int(leader["criteriaSatisfied"]) > 0 and int(validator["criteriaSatisfied"]) > 0
-    if leader["result"] == STATUS_REJECTED:
-        return int(leader["score"]) <= 60 and int(validator["score"]) <= 60
-    return int(leader["score"]) < 90 and int(validator["score"]) < 90
+    return (
+        leader["result"] == validator["result"]
+        and leader["score"] == validator["score"]
+        and leader["criteriaSatisfied"] == validator["criteriaSatisfied"]
+        and leader["criteriaTotal"] == validator["criteriaTotal"]
+        and leader["accessibleCount"] == validator["accessibleCount"]
+    )

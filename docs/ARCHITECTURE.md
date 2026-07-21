@@ -11,9 +11,9 @@
 
 ## Consensus Boundary
 
-`structure_offer` deterministically converts Builder inputs into canonical clauses and binds the resulting draft to the exact source fields. `publish_offer` rejects changed or reused drafts.
+`structure_offer` uses GenLayer AI drafting to convert Builder inputs into canonical clauses and binds the resulting draft to the exact source fields. Validators do not approve by JSON shape alone; they deterministically check material fields such as source coverage, scope specificity, deliverable testability, objective criteria, and exact GEN payment metadata. `publish_offer` rejects changed or reused drafts.
 
-`review_delivery` is nondeterministic because public pages and natural-language acceptance criteria require judgment. The leader and validators independently fetch evidence and run the same constrained review. Consensus compares the final decision, accessibility count, score thresholds, and satisfied-criteria fields. Merely returning valid JSON is insufficient.
+`review_delivery` is nondeterministic because validators fetch public delivery, demo, documentation, and repository URLs from inside the contract. The leader and validators independently fetch the evidence and run the same deterministic material-term review over the accepted clauses. Consensus compares the final decision, accessibility count, score, criteria coverage, and evidence findings. Merely returning valid JSON is insufficient.
 
 ## Escrow And Settlement
 

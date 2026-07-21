@@ -1,41 +1,76 @@
-# ClauseFlow Bradbury Deployment Notes
+# ClauseFlow Bradbury Clean Deployment Notes
 
-## Network
+This version is clean-deployed on Bradbury. The real Mochi-Game payment path is verified and visible on the Dashboard; the separate Bradbury refund path still needs final smoke verification before submission.
+
+## Target Network
 
 - Network: GenLayer Testnet Bradbury
 - Chain ID: `4221`
 - Explorer: `https://explorer-bradbury.genlayer.com`
-- Contract: `0xe25eE0393ebd3DE303D1FeFebA6ce00551C68d3D`
-- Deployer: `0xe78def025ce53c9b46ac56cf19f720391119fa5b`
+- Frontend config: `public/config.js`
+- Current tested contract: `0xA851b0D3cD85f5Abc91E459C172bc326d5A41bdf`
+- Deploy tx: `0x08b7d84fc341dbe035b00027eaa62acb7f56f97047e8350e870c955f5e1f3ad2`
+- Deploy result: `ACCEPTED / AGREE / FINISHED_WITH_RETURN`
+- Verified views: `get_offer_ids`, `get_deal_ids`, `get_dashboard_stats`
+- Verified payment smoke: deal `1` reached `PAID`; dashboard totals show `completedDeals=1` and `totalPaidAtto=10000000000000000`.
+
+## Preflight
+
+Run these before deploy:
+
+```powershell
+npm run lint:contract
+pytest tests/direct/ -v
+npm test -- --run
+npm run typecheck
+npm run build
+npm run test:e2e
+npm run preflight:bradbury
+```
+
+`npm run preflight:bradbury` confirms `.env` key names, the derived deployer address, active GenLayer network, active account address, balance, and lock status without printing secret values. Unlock the active account before deploy if it reports `ACTIVE_ACCOUNT_STATUS=locked`.
 
 ## Deploy
 
-- Command: `genlayer deploy --contract contracts/clauseflow.py`
-- Deploy tx: `0x327a4029d7a6a9dc4e2d87b925e545f75091cf918d3ac0bb3cb46d3b0f374c4e`
-- Lifecycle/result: `FINALIZED / AGREE / FINISHED_WITH_RETURN`
-- Schema: 18 public methods, 9 writes and 9 views
-- Basic views verified: `get_deal_ids`, `get_dashboard_stats`
+```powershell
+genlayer network testnet-bradbury
+genlayer config get network
+genlayer account
+genlayer deploy --contract contracts/clauseflow.py
+```
 
-## Payment Smoke
+Only mark deployment verified after recording:
 
-- Offer title: `ClauseFlow verified payment flow`
-- Deal ID: `1`
-- Amount: `0.02 GEN`
-- Fund tx: `0x8dbcb7a1d7a15e8a0f58fd1f6784efb55b227e46750d0c3eb886de61f7f1b8e1`
-- Submit tx: `0x5814c635005058ee0aa08437bfaa9ca2dd81243da230c4ef0ce9c1a4f07e7a60`
-- Review tx: `0xd6a607db2cfed75f4be0f97736fe3842f5d19a66d82491041612f9bb428be80c`
-- Claim tx: `0x7244899ea285fb7843b4c24a8fac0d2939fefa7cc2b8599a72468a9e23dc77df`
-- Finalize EVM tx: `0x6d1a3a1824485660ad6cdd181904dc9ab67d2356bbbb13893274a8d712c2b684`
-- Confirm tx: `0xc397e1c6ebecfe7f2fef4c2cef7de78681ca34b06e2272e7a51e2a945b727968`
-- Final state: `PAID`, with `totalPaidAtto = 20000000000000000`
+- deploy command
+- deployer address
+- deploy transaction hash
+- lifecycle status
+- execution result
+- contract address
+- schema output
+- successful basic view call such as `get_deal_ids`
 
-## Refund Smoke
+## Smoke Scenario
 
-- Target amount: `0.015 GEN`
-- Structured refund draft tx: `0xe3fdc5710b5d0aeaae02360deb2891a8a863cb5f6a47d48bb4333b333025632c`
-- Current state: finalized with `FINISHED_WITH_RETURN`.
-- Current blocker: `publish_offer` for the refund draft reverts in the Bradbury consensus-main EVM transaction before the contract method executes. Last observed EVM tx: `0x6a83f42f1f6c71b6d0870b78f16e5f160cb1d7e6ff679b9a7b65c5fd9cef87f6`.
+Use the real Mochi-Game evidence package:
+
+- GitHub: `https://github.com/tanphung/Mochi-Game`
+- Live app: `https://mochi-game-frontend.vercel.app`
+- Docs: `https://github.com/tanphung/Mochi-Game#readme`
+- Agreement title: `Audit and polish Mochi-Game Quest Evaluator demo flow`
+- Test amount: below `0.5 GEN`
+
+Smoke flow:
+
+1. Builder structures clauses with AI drafting.
+2. Builder publishes the reviewed offer.
+3. Client accepts and locks exact GEN.
+4. Builder submits Mochi-Game evidence URLs.
+5. GenLayer reviews the evidence against accepted clauses.
+6. Approved path claims and confirms payment.
+7. Refund path is tested separately with rejected or unreachable evidence.
+8. Dashboard shows completed contracts and paid/refunded totals from contract views.
 
 ## Safety
 
-Private keys stay only in the local `.env` and GenLayer keystore files. The frontend uses only `public/config.js` with public Bradbury address, chain, and explorer settings.
+Private keys stay only in local `.env` and GenLayer keystore files. Frontend config must contain only public chain, explorer, and verified contract address values.

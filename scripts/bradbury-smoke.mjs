@@ -11,6 +11,7 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(contractAddress || "")) {
   throw new Error("Usage: npm run smoke:bradbury -- <contract-address>");
 }
 
+console.log(`SMOKE_BOOT contract=${contractAddress}`);
 const env = Object.fromEntries(
   readFileSync(".env", "utf8")
     .split(/\r?\n/)
@@ -26,16 +27,18 @@ const builder = privateKeyToAccount(env.ACCOUNT_PRIVATE_KEY);
 if (env.EXPECTED_WALLET_ADDRESS && builder.address.toLowerCase() !== env.EXPECTED_WALLET_ADDRESS.toLowerCase()) {
   throw new Error("Builder key does not match EXPECTED_WALLET_ADDRESS");
 }
+console.log(`SMOKE_BUILDER_READY ${builder.address}`);
 const clientKeystore = readFileSync(join(process.env.USERPROFILE, ".genlayer", "keystores", "ClauseFlow-client-demo.json"), "utf8");
+console.log("SMOKE_CLIENT_KEYSTORE_READ");
 const clientWallet = await Wallet.fromEncryptedJson(clientKeystore, env.CLAUSEFLOW_KEYSTORE_PASSWORD);
 const client = privateKeyToAccount(clientWallet.privateKey);
+console.log(`SMOKE_CLIENT_READY ${client.address}`);
 const sdk = createClient({ chain: testnetBradbury });
 const estimateTransactionGas = sdk.estimateTransactionGas.bind(sdk);
 sdk.estimateTransactionGas = async (args) => {
   const estimate = await estimateTransactionGas(args);
   return (estimate * 3n) + 500_000n;
 };
-await sdk.initializeConsensusSmartContract();
 
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
@@ -77,7 +80,7 @@ async function waitForReceipt(hash, status, retries) {
 }
 
 async function write(account, functionName, args = [], value = 0n) {
-  const aiMethod = functionName === "review_delivery";
+  const aiMethod = functionName === "structure_offer";
   const aiFees = {
     distribution: {
       leaderTimeunitsAllocation: "500",
@@ -86,6 +89,7 @@ async function write(account, functionName, args = [], value = 0n) {
     }
   };
   const params = { account, address: contractAddress, functionName, args, value, consensusMaxRotations: 5 };
+  console.log(`WRITE_START ${functionName}`);
   const hash = await sdk.writeContract(aiMethod ? { ...params, fees: aiFees } : params);
   console.log(`TX ${functionName} ${hash}`);
   const receipt = await waitForReceipt(hash, TransactionStatus.ACCEPTED, 360);
@@ -141,22 +145,36 @@ async function finalizeParentTransaction(hash, account) {
 }
 
 const refundRule = "Client may claim a refund after deadline plus grace period, or after rejected evidence.";
-const baseArgs = (title, price) => [
+const paymentArgs = (title, price) => [
   title,
-  "Deliver a public page whose visible contents can be independently fetched by validators.",
-  "Provide a public HTTPS page containing the agreed Example Domain evidence.",
-  "An accessible delivery URL, demo URL, and supporting public documentation.",
-  "Validators can fetch the URLs and visibly confirm the words Example Domain.",
+  "Verify existing public Mochi-Game evidence for a ClauseFlow dashboard payment proof. No new implementation work is requested.",
+  "Confirm the already-published Mochi-Game live app and GitHub README are publicly accessible and relevant to the Quest Evaluator flow.",
+  "Live app URL, GitHub README URL, and short delivery note listing those public evidence links.",
+  "Approve if validators can fetch the live app or README and confirm they reference Mochi-Game, Quest Evaluator, GenLayer consensus, or demo autofill. Do not require new code, audits, PRs, reviewer checklists, or README changes.",
   price,
-  1n,
+  2n,
   1n,
   24n,
   24n,
   refundRule,
 ];
 
-async function createOffer(title, price) {
-  const args = baseArgs(title, price);
+const refundArgs = (title, price) => [
+  title,
+  "Verify an intentionally unavailable ClauseFlow evidence URL for refund-path testing.",
+  "Confirm whether the submitted delivery URL is publicly accessible and contains the promised ClauseFlow evidence.",
+  "A public HTTPS delivery URL containing the promised ClauseFlow evidence.",
+  "Reject if validators cannot fetch the delivery URL or cannot find the promised evidence on the fetched page.",
+  price,
+  2n,
+  1n,
+  24n,
+  24n,
+  refundRule,
+];
+
+async function createOffer(title, args) {
+  const price = args[5];
   const offerIds = await readJson("get_offer_ids");
   for (const offerId of offerIds) {
     const offer = await readJson("get_offer", [offerId]);
@@ -174,14 +192,13 @@ async function createOffer(title, price) {
   }
   if (!draft || draft.title !== title || draft.priceAttoGen !== String(price)) {
     await write(builder, "structure_offer", args);
-    draft = await readJson("get_structured_offer", [builder.address]);
+    draft = await waitForStructuredDraft(title, price);
   } else {
     console.log(`RESUME structured draft for ${title}`);
   }
   if (!draft?.clauses?.acceptanceCriteria || draft.publishedOfferId) throw new Error("Contract draft was not stored correctly");
-  await write(builder, "publish_offer", [...args, "https://example.com"]);
-  const ids = await readJson("get_offer_ids");
-  return ids.at(-1);
+  await write(builder, "publish_offer", [...args, "https://github.com/tanphung/Mochi-Game\nhttps://mochi-game-frontend.vercel.app"]);
+  return await waitForLastId("get_offer_ids");
 }
 
 async function fundOffer(offerId, price) {
@@ -198,8 +215,7 @@ async function fundOffer(offerId, price) {
     throw new Error("A payable transaction is still pending; wait for it before funding another offer");
   }
   await write(client, "accept_offer", [offerId], price);
-  const ids = await readJson("get_deal_ids");
-  return ids.at(-1);
+  return await waitForLastId("get_deal_ids");
 }
 
 async function waitForEscrowBalance(expectedAtto) {
@@ -222,15 +238,38 @@ async function waitForDealStatus(dealId, expectedStatus) {
   return await readJson("get_deal", [dealId]);
 }
 
+async function waitForStructuredDraft(title, price) {
+  for (let attempt = 1; attempt <= 60; attempt += 1) {
+    const stored = await read("get_structured_offer", [builder.address]);
+    if (typeof stored === "string" && stored.length > 0) {
+      const draft = JSON.parse(stored);
+      if (draft.title === title && draft.priceAttoGen === String(price)) return draft;
+    }
+    if (attempt % 6 === 0) console.log(`WAIT structured draft ${title}`);
+    await delay(5_000);
+  }
+  throw new Error(`Structured draft was not indexed for ${title}`);
+}
+
+async function waitForLastId(functionName) {
+  for (let attempt = 1; attempt <= 60; attempt += 1) {
+    const ids = await readJson(functionName);
+    if (ids.length > 0) return ids.at(-1);
+    if (attempt % 6 === 0) console.log(`WAIT ${functionName}`);
+    await delay(5_000);
+  }
+  throw new Error(`${functionName} did not return an id`);
+}
+
 async function completePayment(dealId) {
   let state = await readJson("get_deal", [dealId]);
   if (state.status === "FUNDED" || state.status === "REVISION_REQUIRED") {
-    await write(builder, "submit_delivery", [dealId, "https://example.com", "", "https://example.com", "https://www.iana.org/help/example-domains", "The public evidence contains the agreed Example Domain content."]);
-    state = await readJson("get_deal", [dealId]);
+    await write(builder, "submit_delivery", [dealId, "https://mochi-game-frontend.vercel.app", "https://github.com/tanphung/Mochi-Game", "https://mochi-game-frontend.vercel.app", "https://github.com/tanphung/Mochi-Game#readme", "Mochi-Game evidence package: live app, GitHub repository, README checklist, and Quest Evaluator flow are public for GenLayer validators to fetch and compare against the accepted agreement."]);
+    state = await waitForDealStatus(dealId, "SUBMITTED");
   }
   if (state.status === "SUBMITTED") {
     await write(builder, "review_delivery", [dealId]);
-    state = await readJson("get_deal", [dealId]);
+    state = await waitForDealStatus(dealId, "APPROVED");
   }
   if (state.status === "APPROVED") {
     const claim = await write(builder, "claim_payment", [dealId]);
@@ -250,11 +289,11 @@ async function completeRefund(dealId) {
   let state = await readJson("get_deal", [dealId]);
   if (state.status === "FUNDED" || state.status === "REVISION_REQUIRED") {
     await write(builder, "submit_delivery", [dealId, "https://clauseflow-evidence.invalid", "", "", "", "Submitted URL is intentionally unavailable for refund-path verification."]);
-    state = await readJson("get_deal", [dealId]);
+    state = await waitForDealStatus(dealId, "SUBMITTED");
   }
   if (state.status === "SUBMITTED") {
     await write(builder, "review_delivery", [dealId]);
-    state = await readJson("get_deal", [dealId]);
+    state = await waitForDealStatus(dealId, "REJECTED");
   }
   if (state.status === "REJECTED") {
     const claim = await write(client, "claim_refund", [dealId]);
@@ -273,12 +312,12 @@ async function completeRefund(dealId) {
 console.log(`SMOKE builder=${builder.address} client=${client.address} contract=${contractAddress}`);
 
 const paymentPrice = 20_000_000_000_000_000n;
-const paymentOffer = await createOffer("ClauseFlow verified payment flow", paymentPrice);
+const paymentOffer = await createOffer("ClauseFlow verified payment flow", paymentArgs("ClauseFlow verified payment flow", paymentPrice));
 const paymentDeal = await fundOffer(paymentOffer, paymentPrice);
 await completePayment(paymentDeal);
 
 const refundPrice = 15_000_000_000_000_000n;
-const refundOffer = await createOffer("ClauseFlow verified refund flow", refundPrice);
+const refundOffer = await createOffer("ClauseFlow verified refund flow", refundArgs("ClauseFlow verified refund flow", refundPrice));
 const refundDeal = await fundOffer(refundOffer, refundPrice);
 await completeRefund(refundDeal);
 
