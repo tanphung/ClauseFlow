@@ -142,31 +142,19 @@ type TxState = {
   childTransactions: string[];
 };
 
-const defaultStats: Stats = {
-  totalOffers: "0",
-  totalDeals: "0",
-  activeDeals: "0",
-  completedDeals: "0",
-  totalFundedAtto: "0",
-  totalPaidAtto: "0",
-  totalRefundedAtto: "0",
-  contractBalanceAtto: "0",
-  accountedEscrowAtto: "0"
-};
-
 export function App() {
   const [view, setView] = useState<"dashboard" | "offers" | "create" | "deal">("dashboard");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [config, setConfig] = useState<ClauseFlowConfig | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
-  const [stats, setStats] = useState<Stats>(defaultStats);
+  const [stats, setStats] = useState<Stats | null>(null);
   const [histories, setHistories] = useState<Record<string, HistoryEvent[]>>({});
   const [selectedDealId, setSelectedDealId] = useState("");
   const [filter, setFilter] = useState("");
   const [builderFilter, setBuilderFilter] = useState("");
   const [clientFilter, setClientFilter] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [walletAddress, setWalletAddress] = useState("");
   const [txState, setTxState] = useState<TxState>({
@@ -206,6 +194,7 @@ export function App() {
     setConfig(cfg);
     if (!hasContractAddress(cfg)) {
       setLoadError("No verified Bradbury contract address is configured. On-chain data is unavailable.");
+      setLoading(false);
       return;
     }
     setLoading(true);
@@ -339,6 +328,7 @@ export function App() {
             openCreate={() => openView("create")}
             openOffers={() => openView("offers")}
             config={config}
+            loading={loading}
           />
         )}
 
@@ -363,7 +353,8 @@ export function App() {
   );
 }
 
-function Dashboard({ stats, deals, filter, setFilter, builderFilter, setBuilderFilter, clientFilter, setClientFilter, selectDeal, openCreate, openOffers, config }: { stats: Stats; deals: Deal[]; filter: string; setFilter: (value: string) => void; builderFilter: string; setBuilderFilter: (value: string) => void; clientFilter: string; setClientFilter: (value: string) => void; selectDeal: (dealId: string) => void; openCreate: () => void; openOffers: () => void; config: ClauseFlowConfig | null }) {
+function Dashboard({ stats, deals, filter, setFilter, builderFilter, setBuilderFilter, clientFilter, setClientFilter, selectDeal, openCreate, openOffers, config, loading }: { stats: Stats | null; deals: Deal[]; filter: string; setFilter: (value: string) => void; builderFilter: string; setBuilderFilter: (value: string) => void; clientFilter: string; setClientFilter: (value: string) => void; selectDeal: (dealId: string) => void; openCreate: () => void; openOffers: () => void; config: ClauseFlowConfig | null; loading: boolean }) {
+  const unavailableValue = loading ? "..." : "Unavailable";
   return (
     <div className="dashboardPage pageStack">
       <section className="protocolHero">
@@ -383,12 +374,12 @@ function Dashboard({ stats, deals, filter, setFilter, builderFilter, setBuilderF
         </div>
       </section>
 
-      <section className="statsBand" aria-label="Protocol summary">
-        <Metric icon={<FileText size={18} />} label="Published offers" value={stats.totalOffers} />
-        <Metric icon={<LockKeyhole size={18} />} label="Funded deals" value={stats.totalDeals} />
-        <Metric icon={<BadgeCheck size={18} />} label="Completed" value={stats.completedDeals} />
-        <Metric icon={<CircleDollarSign size={18} />} label="GEN paid" value={formatGen(stats.totalPaidAtto)} />
-        <Metric icon={<RefreshCcw size={18} />} label="GEN refunded" value={formatGen(stats.totalRefundedAtto)} />
+      <section className="statsBand" aria-label="Protocol summary" aria-busy={loading}>
+        <Metric icon={<FileText size={18} />} label="Published offers" value={stats?.totalOffers ?? unavailableValue} loading={loading && !stats} />
+        <Metric icon={<LockKeyhole size={18} />} label="Funded deals" value={stats?.totalDeals ?? unavailableValue} loading={loading && !stats} />
+        <Metric icon={<BadgeCheck size={18} />} label="Completed" value={stats?.completedDeals ?? unavailableValue} loading={loading && !stats} />
+        <Metric icon={<CircleDollarSign size={18} />} label="GEN paid" value={stats ? formatGen(stats.totalPaidAtto) : unavailableValue} loading={loading && !stats} />
+        <Metric icon={<RefreshCcw size={18} />} label="GEN refunded" value={stats ? formatGen(stats.totalRefundedAtto) : unavailableValue} loading={loading && !stats} />
       </section>
 
       <section className="ledgerSection">
@@ -396,7 +387,7 @@ function Dashboard({ stats, deals, filter, setFilter, builderFilter, setBuilderF
           <div>
             <p className="eyebrow">Agreement history</p>
             <h2>On-chain contracts and payments</h2>
-            <p>{deals.length} agreement{deals.length === 1 ? "" : "s"} match the current view.</p>
+            <p>{loading && deals.length === 0 ? "Reading agreements from Bradbury..." : `${deals.length} agreement${deals.length === 1 ? "" : "s"} match the current view.`}</p>
           </div>
           <div className="filterBox"><Search size={16} /><input aria-label="Search agreements" value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Search title or address" /></div>
         </div>
@@ -416,7 +407,7 @@ function Dashboard({ stats, deals, filter, setFilter, builderFilter, setBuilderF
               <span className="rowArrow"><ChevronRight size={18} /></span>
             </button>
           ))}
-          {deals.length === 0 && <div className="emptyState compact"><span className="emptyIcon"><ClipboardCheck size={22} /></span><h3>No matching agreements</h3><p>Clear the address filters or publish a new offer to begin.</p></div>}
+          {deals.length === 0 && !loading && <div className="emptyState compact"><span className="emptyIcon"><ClipboardCheck size={22} /></span><h3>No matching agreements</h3><p>Clear the address filters or publish a new offer to begin.</p></div>}
         </div>
       </section>
     </div>
@@ -758,8 +749,8 @@ function DealDetail({ deal, offer, history, txState, executeWrite, config, walle
   );
 }
 
-function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
-  return <div className="metric"><span className="metricIcon">{icon}</span><div><span>{label}</span><strong>{value}</strong></div></div>;
+function Metric({ icon, label, value, loading = false }: { icon: ReactNode; label: string; value: string; loading?: boolean }) {
+  return <div className={`metric${loading ? " metricLoading" : ""}`}><span className="metricIcon">{icon}</span><div><span>{label}</span><strong>{value}</strong></div></div>;
 }
 
 function TransactionBanner({ txState, config, onDismiss }: { txState: TxState; config: ClauseFlowConfig | null; onDismiss: () => void }) {
@@ -778,9 +769,13 @@ function ClauseBlock({ title, items }: { title: string; items: string[] }) {
 }
 
 function OfferClauses({ value, expanded = false }: { value: string; expanded?: boolean }) {
+  const [isOpen, setIsOpen] = useState(expanded);
+  useEffect(() => {
+    setIsOpen(expanded);
+  }, [expanded, value]);
   const clauses = parseStructuredClauses(value);
   if (!clauses) return <div className="notice warning"><CircleDotIcon /><span>Structured clauses are unavailable for this offer.</span></div>;
-  return <details className="offerClauses" open={expanded || undefined}>
+  return <details className="offerClauses" open={isOpen} onToggle={(event) => setIsOpen(event.currentTarget.open)}>
     <summary><span>{expanded ? "Full accepted terms" : "Review all clauses"}</span><ChevronRight size={16} /></summary>
     <ClauseBlock title="Scope" items={[clauses.scope]} />
     <ClauseBlock title="Deliverables" items={[clauses.deliverables]} />

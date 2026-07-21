@@ -325,6 +325,12 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
 .metric > div { display: grid; min-width: 0; }
 .metric span:not(.metricIcon) { color: var(--ink-faint); font-size: 11px; }
 .metric strong { color: var(--ink); font-size: 21px; font-variant-numeric: tabular-nums; }
+.metricLoading strong { color: var(--ink-faint); animation: metricPulse 1.2s ease-in-out infinite; }
+
+@keyframes metricPulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
 
 .ledgerSection, .offersMain, .formPanel, .draftPanel, .agreementDocument, .settlementPanel, .evidencePanel, .reviewPanel, .historyPanel, .txPanel {
   min-width: 0;

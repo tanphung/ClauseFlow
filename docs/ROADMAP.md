@@ -6,7 +6,7 @@ ClauseFlow will remain one focused agreement protocol. New work must strengthen 
 
 - Verify a separate refund transaction on Bradbury and show it in public Dashboard totals.
 - Perform the final clean deployment only after product approval, then repeat the paid and refunded smoke paths with real evidence.
-- Host the frontend at a stable public URL and verify wallet flows on desktop and mobile.
+- Keep the production frontend at [clauseflow-two.vercel.app](https://clauseflow-two.vercel.app) and verify wallet flows after the final clean deployment.
 - Record a short end-to-end demo and publish a plain-language project post.
 
 ## Pilot Release

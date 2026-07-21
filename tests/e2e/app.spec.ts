@@ -26,6 +26,8 @@ test("renders dashboard shell without blank screen or fake success", async ({ pa
   await openLocalPreview(page);
   await expect(page.getByRole("heading", { name: "Public on-chain agreement dashboard" })).toBeVisible();
   await expect(page.getByText("No verified Bradbury contract address is configured")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Protocol summary" }).getByText("0", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Protocol summary" }).getByText("Unavailable", { exact: true })).toHaveCount(5);
   await expect(page.getByText("[object Object]")).toHaveCount(0);
 });
 

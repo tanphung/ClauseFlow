@@ -37,7 +37,7 @@ The separate Bradbury refund smoke is not yet claimed as complete. It remains a 
 
 - Source: [github.com/tanphung/ClauseFlow](https://github.com/tanphung/ClauseFlow)
 - Contract explorer: [Bradbury contract](https://explorer-bradbury.genlayer.com/address/0xA851b0D3cD85f5Abc91E459C172bc326d5A41bdf)
-- Live frontend: pending final public hosting
+- Live frontend: [clauseflow-two.vercel.app](https://clauseflow-two.vercel.app)
 - Demo video: pending final clean smoke recording
 
 ## Why This Is A Project

@@ -146,6 +146,8 @@ Official references:
 
 Full source repository: [github.com/tanphung/ClauseFlow](https://github.com/tanphung/ClauseFlow)
 
+Public app: [clauseflow-two.vercel.app](https://clauseflow-two.vercel.app)
+
 ClauseFlow is being developed as one substantial Project rather than a family of template variations. The reviewer package documents the real trust problem, contract-critical use of validator consensus, verified claims, and the exact demo path:
 
 - [Reviewer submission notes](docs/SUBMISSION.md)

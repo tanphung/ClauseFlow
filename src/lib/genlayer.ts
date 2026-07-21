@@ -1,6 +1,6 @@
 import { createClient } from "genlayer-js";
 import { studionet, testnetBradbury } from "genlayer-js/chains";
-import { TransactionStatus, type CalldataEncodable } from "genlayer-js/types";
+import type { CalldataEncodable } from "genlayer-js/types";
 
 export type ClauseFlowConfig = {
   contractAddress: string;
@@ -22,7 +22,8 @@ function addWriteGasMargin<T extends { estimateTransactionGas: (...args: never[]
   const estimateTransactionGas = client.estimateTransactionGas.bind(client);
   client.estimateTransactionGas = (async (...args: never[]) => {
     const estimate = await estimateTransactionGas(...args);
-    return (estimate * 3n) + 500_000n;
+    const buffered = (estimate * 6n) + 1_000_000n;
+    return buffered > 5_000_000n ? buffered : 5_000_000n;
   }) as T["estimateTransactionGas"];
   return client;
 }
@@ -69,6 +70,36 @@ export async function connectWallet(config: ClauseFlowConfig) {
   return { client, address };
 }
 
+type ConnectedClient = Awaited<ReturnType<typeof connectWallet>>["client"];
+type TransactionHash = Parameters<ConnectedClient["getTransaction"]>[0]["hash"];
+
+async function waitForAcceptedExecution(client: ConnectedClient, hash: TransactionHash) {
+  let transientFailures = 0;
+  for (let attempt = 1; attempt <= 360; attempt += 1) {
+    let transaction: Awaited<ReturnType<typeof client.getTransaction>>;
+    try {
+      transaction = await client.getTransaction({ hash });
+      transientFailures = 0;
+    } catch (error) {
+      const message = normalizeError(error);
+      if (!message.includes("Internal error") || transientFailures >= 12) throw error;
+      transientFailures += 1;
+      await new Promise((resolve) => window.setTimeout(resolve, 5_000));
+      continue;
+    }
+    const status = transaction.statusName || String(transaction.status || "UNINITIALIZED");
+    const execution = transaction.txExecutionResultName || "NOT_VOTED";
+    if (["UNDETERMINED", "CANCELED", "VALIDATORS_TIMEOUT", "LEADER_TIMEOUT"].includes(status)) {
+      throw new Error(`${status}: transaction ended before successful execution (${execution}).`);
+    }
+    if (["ACCEPTED", "READY_TO_FINALIZE", "FINALIZED"].includes(status) && execution !== "NOT_VOTED") {
+      return transaction;
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 5_000));
+  }
+  throw new Error("Transaction did not produce an execution result before the wait limit.");
+}
+
 export async function writeAndVerify(
   config: ClauseFlowConfig,
   functionName: string,
@@ -98,25 +129,7 @@ export async function writeAndVerify(
   } : writeParams;
   const hash = await client.writeContract(params as Parameters<typeof client.writeContract>[0]);
   onSubmitted?.(hash);
-  let receipt: Awaited<ReturnType<typeof client.waitForTransactionReceipt>> | undefined;
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= 12; attempt += 1) {
-    try {
-      receipt = await client.waitForTransactionReceipt({
-        hash,
-        status: TransactionStatus.ACCEPTED,
-        interval: 5000,
-        retries: 360
-      });
-      break;
-    } catch (error) {
-      lastError = error;
-      const message = normalizeError(error);
-      if (!message.includes("Internal error") || attempt === 12) throw error;
-      await new Promise((resolve) => window.setTimeout(resolve, 5000));
-    }
-  }
-  if (!receipt) throw lastError instanceof Error ? lastError : new Error(normalizeError(lastError) || "Transaction receipt was unavailable.");
+  const receipt = await waitForAcceptedExecution(client, hash);
   const executionResult = receipt.txExecutionResultName || "NOT_VOTED";
   if (executionResult !== "FINISHED_WITH_RETURN") {
     throw new Error(`${executionResult}: contract execution did not succeed.`);

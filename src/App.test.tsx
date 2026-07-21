@@ -122,6 +122,14 @@ describe("ClauseFlow", () => {
     expect(screen.getByText(/Approved \(100\/100\)\. Fetched live app and README\./i)).toBeTruthy();
     expect(screen.queryByText(/\{legacy-review-payload\}/i)).toBeNull();
   });
+
+  it("opens accepted agreement terms by default in deal detail", async () => {
+    render(<App />);
+    await screen.findByText(/Mochi-Game Quest Evaluator polish/i);
+    fireEvent.click(screen.getByRole("button", { name: /Deal Detail/i }));
+    const summary = screen.getByText("Full accepted terms");
+    expect((summary.closest("details") as HTMLDetailsElement).open).toBe(true);
+  });
 });
 
 declare global {

@@ -1,15 +1,16 @@
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { createClient } from "genlayer-js";
+import { abi, createClient } from "genlayer-js";
 import { testnetBradbury } from "genlayer-js/chains";
 import { TransactionStatus } from "genlayer-js/types";
 import { privateKeyToAccount } from "viem/accounts";
-import { Wallet } from "ethers";
+import { createPublicClient, encodeFunctionData, formatEther, http, parseEventLogs } from "viem";
 
 const contractAddress = process.argv[2];
 if (!/^0x[a-fA-F0-9]{40}$/.test(contractAddress || "")) {
-  throw new Error("Usage: npm run smoke:bradbury -- <contract-address>");
+  throw new Error("Usage: npm run smoke:bradbury -- <contract-address> [preflight|refund-only|full]");
 }
+const mode = process.argv[3] || "full";
+if (!["preflight", "refund-only", "full"].includes(mode)) throw new Error(`Unknown smoke mode: ${mode}`);
 
 console.log(`SMOKE_BOOT contract=${contractAddress}`);
 const env = Object.fromEntries(
@@ -21,26 +22,77 @@ const env = Object.fromEntries(
       return [line.slice(0, index).trim(), line.slice(index + 1).trim().replace(/^['\"]|['\"]$/g, "")];
     })
 );
-if (!env.ACCOUNT_PRIVATE_KEY || !env.CLAUSEFLOW_KEYSTORE_PASSWORD) throw new Error("Missing local smoke-test credentials");
-
-const builder = privateKeyToAccount(env.ACCOUNT_PRIVATE_KEY);
-if (env.EXPECTED_WALLET_ADDRESS && builder.address.toLowerCase() !== env.EXPECTED_WALLET_ADDRESS.toLowerCase()) {
-  throw new Error("Builder key does not match EXPECTED_WALLET_ADDRESS");
+const builderKey = env.CLAUSEFLOW_BUILDER_PRIVATE_KEY || env.ClauseFlow2_PRIVATE_KEY || env.ACCOUNT1_PRIVATE_KEY || env.ACCOUNT_PRIVATE_KEY;
+const clientKey = env.CLAUSEFLOW_CLIENT_PRIVATE_KEY || env.ClauseFlow3_PRIVATE_KEY;
+if (!/^0x[a-fA-F0-9]{64}$/.test(builderKey || "") || !/^0x[a-fA-F0-9]{64}$/.test(clientKey || "")) {
+  throw new Error("Missing valid Builder/Client private keys. Set CLAUSEFLOW_BUILDER_PRIVATE_KEY and CLAUSEFLOW_CLIENT_PRIVATE_KEY, or ClauseFlow2_PRIVATE_KEY and ClauseFlow3_PRIVATE_KEY.");
 }
-console.log(`SMOKE_BUILDER_READY ${builder.address}`);
-const clientKeystore = readFileSync(join(process.env.USERPROFILE, ".genlayer", "keystores", "ClauseFlow-client-demo.json"), "utf8");
-console.log("SMOKE_CLIENT_KEYSTORE_READ");
-const clientWallet = await Wallet.fromEncryptedJson(clientKeystore, env.CLAUSEFLOW_KEYSTORE_PASSWORD);
-const client = privateKeyToAccount(clientWallet.privateKey);
-console.log(`SMOKE_CLIENT_READY ${client.address}`);
+
+const builder = privateKeyToAccount(builderKey);
+const client = privateKeyToAccount(clientKey);
+if (builder.address.toLowerCase() === client.address.toLowerCase()) throw new Error("Builder and Client must use different wallets");
+if (env.ClauseFlow2_ADDRESS && builder.address.toLowerCase() !== env.ClauseFlow2_ADDRESS.toLowerCase()) throw new Error("Builder key does not match ClauseFlow2_ADDRESS");
+if (env.ClauseFlow3_ADDRESS && client.address.toLowerCase() !== env.ClauseFlow3_ADDRESS.toLowerCase()) throw new Error("Client key does not match ClauseFlow3_ADDRESS");
+
+const publicClient = createPublicClient({ chain: testnetBradbury, transport: http() });
+const [builderBalance, clientBalance] = await Promise.all([
+  publicClient.getBalance({ address: builder.address }),
+  publicClient.getBalance({ address: client.address })
+]);
+console.log(`SMOKE_BUILDER_READY address=${builder.address} balance=${formatEther(builderBalance)} GEN`);
+console.log(`SMOKE_CLIENT_READY address=${client.address} balance=${formatEther(clientBalance)} GEN`);
+if (mode === "preflight") {
+  console.log("SMOKE_PREFLIGHT_OK");
+} else {
+  await runSmoke();
+}
+
+async function runSmoke() {
 const sdk = createClient({ chain: testnetBradbury });
-const estimateTransactionGas = sdk.estimateTransactionGas.bind(sdk);
-sdk.estimateTransactionGas = async (args) => {
-  const estimate = await estimateTransactionGas(args);
-  return (estimate * 3n) + 500_000n;
-};
 
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+async function submitContractWrite(account, functionName, args, value) {
+  const consensus = testnetBradbury.consensusMainContract;
+  if (!consensus?.address || !consensus.abi) throw new Error("Bradbury consensus contract configuration is unavailable");
+  const appCalldata = abi.calldata.encode(abi.calldata.makeCalldataObject(functionName, args));
+  const serializedData = abi.transactions.serialize([appCalldata, false]);
+  const encodedData = encodeFunctionData({
+    abi: consensus.abi,
+    functionName: "addTransaction",
+    args: [
+      account.address,
+      contractAddress,
+      testnetBradbury.defaultNumberOfInitialValidators,
+      5,
+      serializedData,
+      BigInt(Math.floor(Date.now() / 1000) + 3600)
+    ]
+  });
+  const [nonce, gasPrice] = await Promise.all([
+    publicClient.getTransactionCount({ address: account.address }),
+    publicClient.getGasPrice()
+  ]);
+  const serializedTransaction = await account.signTransaction({
+    to: consensus.address,
+    data: encodedData,
+    value,
+    gas: 5_000_000n,
+    gasPrice,
+    nonce,
+    chainId: testnetBradbury.id,
+    type: "legacy"
+  });
+  const evmHash = await publicClient.sendRawTransaction({ serializedTransaction });
+  const receipt = await publicClient.waitForTransactionReceipt({ hash: evmHash });
+  if (receipt.status !== "success") throw new Error(`Consensus activation reverted after using ${receipt.gasUsed} gas: ${evmHash}`);
+  const events = parseEventLogs({ abi: consensus.abi, logs: receipt.logs, strict: false });
+  const created = events.find((event) => event.eventName === "NewTransaction" || event.eventName === "CreatedTransaction");
+  const txId = created?.args?.txId;
+  if (typeof txId !== "string") throw new Error(`Consensus activation ${evmHash} did not emit a transaction ID`);
+  console.log(`EVM_ACTIVATION ${functionName} ${evmHash} gasUsed=${receipt.gasUsed}`);
+  return txId;
+}
 
 async function read(functionName, args = []) {
   let lastError;
@@ -63,6 +115,34 @@ const readJson = async (functionName, args = []) => {
   return typeof value === "string" ? JSON.parse(value) : value;
 };
 
+async function waitForAcceptedExecution(hash, retries = 360) {
+  let transientFailures = 0;
+  for (let attempt = 1; attempt <= retries; attempt += 1) {
+    let transaction;
+    try {
+      transaction = await sdk.getTransaction({ hash });
+      transientFailures = 0;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.includes("Internal error") || transientFailures >= 12) throw error;
+      transientFailures += 1;
+      await delay(5_000);
+      continue;
+    }
+    const status = transaction.statusName;
+    const execution = transaction.txExecutionResultName;
+    if (["UNDETERMINED", "CANCELED", "VALIDATORS_TIMEOUT", "LEADER_TIMEOUT"].includes(status)) {
+      throw new Error(`Transaction ${hash} ended with status=${status} execution=${execution}`);
+    }
+    if (["ACCEPTED", "READY_TO_FINALIZE", "FINALIZED"].includes(status) && execution !== "NOT_VOTED") {
+      return transaction;
+    }
+    if (attempt % 12 === 0) console.log(`WAIT execution ${hash} status=${status} execution=${execution}`);
+    await delay(5_000);
+  }
+  throw new Error(`Transaction ${hash} did not produce an execution result`);
+}
+
 async function waitForReceipt(hash, status, retries) {
   let lastError;
   for (let attempt = 1; attempt <= 12; attempt += 1) {
@@ -80,19 +160,10 @@ async function waitForReceipt(hash, status, retries) {
 }
 
 async function write(account, functionName, args = [], value = 0n) {
-  const aiMethod = functionName === "structure_offer";
-  const aiFees = {
-    distribution: {
-      leaderTimeunitsAllocation: "500",
-      validatorTimeunitsAllocation: "500",
-      rotations: ["0", "1", "2", "3", "4"]
-    }
-  };
-  const params = { account, address: contractAddress, functionName, args, value, consensusMaxRotations: 5 };
   console.log(`WRITE_START ${functionName}`);
-  const hash = await sdk.writeContract(aiMethod ? { ...params, fees: aiFees } : params);
+  const hash = await submitContractWrite(account, functionName, args, value);
   console.log(`TX ${functionName} ${hash}`);
-  const receipt = await waitForReceipt(hash, TransactionStatus.ACCEPTED, 360);
+  const receipt = await waitForAcceptedExecution(hash, 360);
   if (receipt.txExecutionResultName !== "FINISHED_WITH_RETURN") {
     throw new Error(`${functionName} execution=${receipt.txExecutionResultName}`);
   }
@@ -161,10 +232,10 @@ const paymentArgs = (title, price) => [
 
 const refundArgs = (title, price) => [
   title,
-  "Verify an intentionally unavailable ClauseFlow evidence URL for refund-path testing.",
-  "Confirm whether the submitted delivery URL is publicly accessible and contains the promised ClauseFlow evidence.",
-  "A public HTTPS delivery URL containing the promised ClauseFlow evidence.",
-  "Reject if validators cannot fetch the delivery URL or cannot find the promised evidence on the fetched page.",
+  "Deliver a public accessibility audit for the Mochi-Game Quest Evaluator interface.",
+  "Document keyboard navigation, focus visibility, contrast findings, and actionable remediation for the public Quest Evaluator flow.",
+  "A public audit report URL, the Mochi-Game live URL, and repository evidence supporting each finding.",
+  "Approve only if validators can fetch a public audit report that contains keyboard, focus, contrast, and remediation findings tied to Mochi-Game. Reject missing or inaccessible reports.",
   price,
   2n,
   1n,
@@ -288,7 +359,7 @@ async function completePayment(dealId) {
 async function completeRefund(dealId) {
   let state = await readJson("get_deal", [dealId]);
   if (state.status === "FUNDED" || state.status === "REVISION_REQUIRED") {
-    await write(builder, "submit_delivery", [dealId, "https://clauseflow-evidence.invalid", "", "", "", "Submitted URL is intentionally unavailable for refund-path verification."]);
+    await write(builder, "submit_delivery", [dealId, "https://github.com/tanphung/Mochi-Game/blob/main/CLAUSEFLOW-ACCESSIBILITY-AUDIT.md", "https://github.com/tanphung/Mochi-Game", "https://mochi-game-frontend.vercel.app", "https://github.com/tanphung/Mochi-Game#readme", "The promised accessibility audit report is submitted at the public repository path for validator retrieval and criteria-level review."]);
     state = await waitForDealStatus(dealId, "SUBMITTED");
   }
   if (state.status === "SUBMITTED") {
@@ -309,20 +380,32 @@ async function completeRefund(dealId) {
   return state;
 }
 
-console.log(`SMOKE builder=${builder.address} client=${client.address} contract=${contractAddress}`);
+console.log(`SMOKE mode=${mode} builder=${builder.address} client=${client.address} contract=${contractAddress}`);
+
+const baselineStats = await readJson("get_dashboard_stats");
+const baselineCompleted = BigInt(baselineStats.completedDeals);
+const baselinePaid = BigInt(baselineStats.totalPaidAtto);
+const baselineRefunded = BigInt(baselineStats.totalRefundedAtto);
 
 const paymentPrice = 20_000_000_000_000_000n;
-const paymentOffer = await createOffer("ClauseFlow verified payment flow", paymentArgs("ClauseFlow verified payment flow", paymentPrice));
-const paymentDeal = await fundOffer(paymentOffer, paymentPrice);
-await completePayment(paymentDeal);
+let paymentDeal = "";
+if (mode === "full") {
+  const paymentOffer = await createOffer("ClauseFlow verified payment flow", paymentArgs("ClauseFlow verified payment flow", paymentPrice));
+  paymentDeal = await fundOffer(paymentOffer, paymentPrice);
+  await completePayment(paymentDeal);
+}
 
 const refundPrice = 15_000_000_000_000_000n;
-const refundOffer = await createOffer("ClauseFlow verified refund flow", refundArgs("ClauseFlow verified refund flow", refundPrice));
+const refundOffer = await createOffer("Mochi-Game accessibility audit agreement", refundArgs("Mochi-Game accessibility audit agreement", refundPrice));
 const refundDeal = await fundOffer(refundOffer, refundPrice);
 await completeRefund(refundDeal);
 
 const stats = await readJson("get_dashboard_stats");
-if (stats.completedDeals !== "2" || stats.totalPaidAtto !== String(paymentPrice) || stats.totalRefundedAtto !== String(refundPrice)) {
+const expectedCompleted = baselineCompleted + (mode === "full" ? 2n : 1n);
+const expectedPaid = baselinePaid + (mode === "full" ? paymentPrice : 0n);
+const expectedRefunded = baselineRefunded + refundPrice;
+if (BigInt(stats.completedDeals) !== expectedCompleted || BigInt(stats.totalPaidAtto) !== expectedPaid || BigInt(stats.totalRefundedAtto) !== expectedRefunded) {
   throw new Error(`Unexpected final stats ${JSON.stringify(stats)}`);
 }
-console.log(`SMOKE_OK paymentDeal=${paymentDeal} refundDeal=${refundDeal} stats=${JSON.stringify(stats)}`);
+console.log(`SMOKE_OK mode=${mode} paymentDeal=${paymentDeal || "skipped"} refundDeal=${refundDeal} stats=${JSON.stringify(stats)}`);
+}
