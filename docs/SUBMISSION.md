@@ -38,7 +38,7 @@ ClauseFlow uses GenLayer only at that boundary. Validators fetch the evidence th
 - Source: [github.com/tanphung/ClauseFlow](https://github.com/tanphung/ClauseFlow)
 - Contract explorer: [Bradbury contract](https://explorer-bradbury.genlayer.com/address/0x993D37D07e31d8e3853B8702919f4d805299B124)
 - Live frontend: [clauseflow-two.vercel.app](https://clauseflow-two.vercel.app)
-- Demo video: ready to record from the verified live flow
+- Demo video: generated and QA-verified locally; public upload URL pending
 
 ## Why This Is A Project
 

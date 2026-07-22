@@ -1,160 +1,157 @@
 # ClauseFlow
 
-ClauseFlow is a two-party service agreement dApp on GenLayer. Builders publish precise work offers, Clients fund them with GEN, and the Intelligent Contract evaluates public delivery evidence before allowing payment or refund. The public Dashboard reads the complete agreement and settlement history from on-chain views.
+**Verifiable service agreements and GEN escrow on GenLayer.**
+
+ClauseFlow lets a Builder publish objective service terms, a Client fund the exact agreement with GEN, and GenLayer validators independently fetch public delivery evidence before the contract allows payment or refund. The public dashboard reads agreement, review, and settlement history directly from Bradbury contract views. There is no private history database or mocked agreement fallback.
+
+[Live dApp](https://clauseflow-two.vercel.app) · [Bradbury contract](https://explorer-bradbury.genlayer.com/address/0x993D37D07e31d8e3853B8702919f4d805299B124) · [Reviewer notes](docs/SUBMISSION.md) · [Demo video package](docs/DEMO_VIDEO.md)
 
 ![ClauseFlow public on-chain agreement dashboard](docs/assets/clauseflow-dashboard.png)
 
-## Why GenLayer
+## The Trust Problem
 
-ClauseFlow does not attach consensus to generic AI output. GenLayer is used at two contract-critical moments:
+Deterministic escrow can enforce roles, amounts, deadlines, and one-time settlement. It cannot determine whether a live application, repository, documentation set, or audit report actually satisfies a funded service agreement.
 
-1. `structure_offer` turns a Builder's rough service scope into a complete, ready-to-accept agreement. Validators check material drafting fields such as specific scope, testable deliverables, objective acceptance criteria, evidence requirements, payment terms, refund terms, and source coverage.
-2. `review_delivery` evaluates public delivery evidence against the exact funded agreement before payment or refund can proceed.
+ClauseFlow uses GenLayer at that boundary:
 
-During `review_delivery`, every validator can independently:
+1. The funded clauses become the immutable review standard.
+2. Validators fetch the submitted delivery, demo, documentation, and repository URLs from the contract.
+3. They compare accessible evidence with the agreed deliverables and acceptance criteria.
+4. Consensus produces criteria-level findings and an `APPROVED`, `REVISION_REQUIRED`, or `REJECTED` decision.
+5. That decision controls whether escrow can move to the Builder or return to the Client.
 
-1. fetch the submitted delivery, demo, documentation, and GitHub URLs;
-2. compare the fetched content with the funded scope, deliverables, and acceptance criteria;
-3. derive `APPROVED`, `REVISION_REQUIRED`, or `REJECTED`;
-4. compare material result fields, evidence accessibility, score thresholds, and criteria coverage.
+This is a settlement decision over real GEN, not an off-chain recommendation or a validator that only checks JSON formatting. `structure_offer` helps normalize draft terms, but it cannot release funds and the Builder must review and publish the clauses explicitly. The contract-critical trust decision is `review_delivery`.
 
-The outcome changes who can receive escrowed GEN, which is why these decisions belong in a GenLayer Intelligent Contract instead of an off-chain AI service.
+Deadline, grace period, revision exhaustion, refund eligibility, escrow accounting, and settlement idempotency remain deterministic contract rules.
+
+## Verified Bradbury State
+
+The following state was read again from the deployed contract on **2026-07-23**.
+
+| Item | Verified value |
+| --- | --- |
+| Network | GenLayer Testnet Bradbury, chain ID `4221` |
+| Contract | `0x993D37D07e31d8e3853B8702919f4d805299B124` |
+| Deploy transaction | `0xeb762c3f00ebf8cc518e1c2a394b57f18b1d17cad0be4b61ad833a7b77f23d02` |
+| Deploy result | `ACCEPTED / AGREE / FINISHED_WITH_RETURN` |
+| Public schema | 18 methods: 9 writes and 9 views |
+| Offers / deals / completed | `2 / 2 / 2` |
+| Total funded | `0.035 GEN` |
+| Total paid | `0.02 GEN` |
+| Total refunded | `0.015 GEN` |
+| Active deals / contract escrow | `0 / 0 GEN` |
+
+| Deal | Validator outcome | Settlement | Evidence |
+| --- | --- | --- | --- |
+| `#1` ClauseFlow verified payment flow | `APPROVED`, score `75/100` | `PAID`, `0.02 GEN` | [Mochi-Game live app](https://mochi-game-frontend.vercel.app/) and [source](https://github.com/tanphung/Mochi-Game) |
+| `#2` Mochi-Game accessibility audit agreement | `REJECTED`, score `50/100` | `REFUNDED`, `0.015 GEN` | Validators fetched the submitted sources and recorded missing funded criteria |
+
+Amounts are displayed in human-readable GEN. The contract stores exact integer attoGEN values internally.
+
+Detailed deployment and settlement transaction IDs are recorded in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+## Reviewer Walkthrough
+
+The live app is public and does not require a wallet for review.
+
+1. Open the [Dashboard](https://clauseflow-two.vercel.app) and verify the totals above.
+2. Open deal `#1`. Its full accepted terms are expanded by default. Review the public evidence, criteria-level findings, and five-event lifecycle ending in `PAID`.
+3. Open deal `#2`. Review the unmet criteria and lifecycle ending in `REFUNDED`.
+4. Filter the ledger by title, Builder address, or Client address.
+5. Open **New offer** to confirm the Builder workspace starts empty and requires explicit scope, evidence, acceptance, payment, deadline, revision, and refund terms.
+6. Use the contract explorer link in the sidebar to inspect the deployed Intelligent Contract.
+
+The polished 1080p reviewer recording, thumbnail, suggested upload copy, and chapter timestamps are described in [docs/DEMO_VIDEO.md](docs/DEMO_VIDEO.md).
 
 ## Lifecycle
 
 ```mermaid
 flowchart LR
-  A[Builder structures offer] --> B[Builder publishes offer]
-  B --> C[Client funds exact GEN amount]
-  C --> D[Builder submits public evidence]
-  D --> E[Validators fetch and review evidence]
-  E -->|Approved| F[Builder claims payment]
-  E -->|Revision required| D
-  E -->|Rejected| G[Client claims refund]
-  F --> H[Transfer finalized and payment confirmed]
-  G --> I[Transfer finalized and refund confirmed]
-  H --> J[Public Dashboard history]
-  I --> J
+  A[Builder reviews and publishes clauses] --> B[Client locks exact GEN]
+  B --> C[Builder submits public evidence]
+  C --> D[Validators fetch and compare sources]
+  D -->|Approved| E[Builder claims payment]
+  D -->|Revision required| C
+  D -->|Rejected or deterministically eligible| F[Client claims refund]
+  E --> G[Transfer finalized and confirmed]
+  F --> G
+  G --> H[Public dashboard history]
 ```
 
-Deadline, grace period, revision exhaustion, refund eligibility, escrow accounting, and idempotency are deterministic contract rules.
+## Architecture
 
-## Bradbury Deployment Status
+| Layer | Responsibility |
+| --- | --- |
+| React frontend | Wallet connection, writes, full transaction lifecycle, public views, filters, explorer links |
+| Intelligent Contract | Accepted terms, GEN escrow, deterministic eligibility, evidence review, settlement, aggregate stats, per-deal history |
+| Bradbury validators | Independent public web fetching and consensus over material evidence findings |
+| Public evidence | Live delivery, demo, documentation, and repository URLs supplied by the Builder |
 
-Clean contract deployment is verified for this version.
+The frontend waits for a real execution result and refreshed contract state. It never treats `ACCEPTED` or `FINALIZED` alone as proof of application success.
 
-- Network: GenLayer Testnet Bradbury, chain ID `4221`
-- Contract: `0x993D37D07e31d8e3853B8702919f4d805299B124`
-- Deploy tx: `0xeb762c3f00ebf8cc518e1c2a394b57f18b1d17cad0be4b61ad833a7b77f23d02`
-- Deploy result: `ACCEPTED / AGREE / FINISHED_WITH_RETURN`
-- Verified schema: 18 public methods, 9 writes and 9 views
-- Verified views: `get_offer_ids`, `get_deal_ids`, `get_dashboard_stats`
-- Payment proof: deal `1` completed as `PAID` with `0.02 GEN` after validators reviewed public Mochi-Game evidence.
-- Refund proof: deal `2` completed as `REFUNDED` with `0.015 GEN` after the submitted evidence failed the funded accessibility-audit criteria.
-- Final escrow balance: `0 GEN`; aggregate funded value: `0.035 GEN`.
+Payment and refund use two-step settlement. A claim emits the external GEN transfer and records a pending state. Confirmation marks the deal `PAID` or `REFUNDED` only after the contract balance proves escrow left the contract. Repeated settlement is rejected.
 
-The intended smoke scenario now uses the user's real Mochi-Game evidence:
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [contracts/clauseflow.py](contracts/clauseflow.py) for the complete design and implementation.
 
-- GitHub: [tanphung/Mochi-Game](https://github.com/tanphung/Mochi-Game)
-- Live app: [mochi-game-frontend.vercel.app](https://mochi-game-frontend.vercel.app/)
-- Agreement: audit and polish the Mochi-Game Quest Evaluator reviewer path
-- Test value: below `0.5 GEN`
+## Repository
 
-## Contract API
+```text
+contracts/clauseflow.py       Intelligent Contract
+src/                          React dApp and GenLayer integration
+tests/direct/                 Direct contract tests
+tests/e2e/                    Desktop and mobile browser tests
+scripts/                      Bradbury deploy, smoke, settlement, and demo tooling
+docs/                         Architecture, deployment, demo, roadmap, and reviewer notes
+public/config.js              Public Bradbury runtime configuration
+```
 
-Contract source: [`contracts/clauseflow.py`](contracts/clauseflow.py)
+## Run Locally
 
-Writes:
-
-- `structure_offer`
-- `publish_offer`
-- `accept_offer` (payable, exact amount)
-- `submit_delivery`
-- `review_delivery`
-- `claim_payment` / `confirm_payment`
-- `claim_refund` / `confirm_refund`
-
-Views:
-
-- `get_offer_ids` / `get_offer`
-- `get_deal_ids` / `get_deal`
-- `get_completed_deal_ids`
-- `get_deals_for_address`
-- `get_deal_history`
-- `get_dashboard_stats`
-- `get_structured_offer`
-
-The two-step settlement state reflects GenLayer external-message semantics: a claim emits the GEN transfer and records a pending state; confirmation marks `PAID` or `REFUNDED` only after the contract balance proves that escrow left the contract. Repeated settlement is rejected.
-
-## Dashboard
-
-The React app has no mock agreement fallback. It reads canonical offers, deals, aggregate totals, and per-deal timelines from the configured Bradbury contract.
-
-`public/config.js` points to the verified clean Bradbury contract above.
-
-- Public totals for offers, funded/active/completed deals, paid GEN, and refunded GEN
-- Builder, Client, and title/address filters
-- Full agreement detail with accepted clauses and delivery evidence
-- Lifecycle timeline from funding through review and settlement
-- Transaction hash, explorer link, consensus result, execution result, and child transfer IDs
-- Explicit loading, empty, indexing-delay, and failure states
-
-Runtime public configuration is in [`public/config.js`](public/config.js). Private keys must stay only in local `.env` or encrypted GenLayer keystores.
-
-## Local Development
-
-Requires Node.js 22+, Python 3.13 for direct tests on Windows, GenLayer CLI, `genvm-lint`, and `gltest`.
+Node.js 22 or newer is required for the frontend.
 
 ```powershell
-npm install
+npm ci
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173` while the dev server is running.
+Then open `http://127.0.0.1:5173`. Optional contract tooling requires Python 3.13, GenLayer CLI, `genvm-lint`, and `gltest`.
 
 ## Verification
 
 ```powershell
-npm audit
-npm test
+npm audit --omit=dev
+npm test -- --run
 npm run typecheck
 npm run build
-genvm-lint check contracts/clauseflow.py --json
-py -3.13 -m pytest tests/direct/ -q
 npm run test:e2e
+npm run lint:contract
+py -3.13 -m pytest tests/direct -q
 ```
 
-Current local verification:
+Verified release gate:
 
-- GenVM lint: 18 methods validated
-- Direct contract tests: 5 passed
-- Frontend unit tests: 6 passed
-- TypeScript typecheck and production build: passed
-- Browser E2E suite: desktop and mobile coverage
+- npm audit: 0 known production dependency vulnerabilities
+- frontend component tests: 6 passed
+- direct contract tests: 5 passed
+- desktop/mobile browser tests: 6 passed
+- TypeScript, production build, GenVM lint, Bradbury payment smoke, and Bradbury refund smoke: passed
+- latest GitHub Actions workflow: passed
 
-The direct-test fixture includes a Windows-only stdin cleanup workaround for a `gltest` temporary-file lock; it does not change contract behavior.
+## Security
 
-## Deployment Safety
+- Private keys remain only in local `.env` or encrypted GenLayer keystores.
+- `.env`, build output, test artifacts, generated video, and caches are ignored by Git.
+- The browser receives only public chain, explorer, and contract configuration.
+- Deployment preflight derives and checks the deployer address without printing secret values.
+- Every smoke agreement uses separate Builder and Client wallets and less than `0.5 GEN`.
 
-`.env`, keystores, private keys, build artifacts, test output, and caches are excluded by `.gitignore`. The frontend receives only public chain configuration. Before any deployment, the local deployer address is checked against `EXPECTED_WALLET_ADDRESS` without printing secret values.
+## Project Direction
 
-Official references:
+ClauseFlow is one continuing product, not a set of template variations. The next milestones are reusable agreement templates, richer evidence policies, optional event indexing for larger histories, community pilot agreements, and mainnet readiness.
 
-- [GenLayer value transfers](https://docs.genlayer.com/developers/intelligent-contracts/features/value-transfers)
-- [GenLayer messages](https://docs.genlayer.com/developers/intelligent-contracts/features/messages)
-- [genlayer-js contract API](https://docs.genlayer.com/api-references/genlayer-js/contracts)
-
-## Submission
-
-Full source repository: [github.com/tanphung/ClauseFlow](https://github.com/tanphung/ClauseFlow)
-
-Public app: [clauseflow-two.vercel.app](https://clauseflow-two.vercel.app)
-
-ClauseFlow is being developed as one substantial Project rather than a family of template variations. The reviewer package documents the real trust problem, contract-critical use of validator consensus, verified claims, and the exact demo path:
-
-- [Reviewer submission notes](docs/SUBMISSION.md)
-- [Three-minute demo script](docs/DEMO_SCRIPT.md)
-- [Focused product roadmap](docs/ROADMAP.md)
+- [Roadmap](docs/ROADMAP.md)
 - [Contribution and pilot guide](CONTRIBUTING.md)
+- [Submission notes](docs/SUBMISSION.md)
+- [Demo video and upload copy](docs/DEMO_VIDEO.md)
 
-The public app and repository now point to the final verified Bradbury contract. Deal `1` and deal `2` provide reviewer-visible payment and refund paths backed by real public Mochi-Game evidence.
+Official GenLayer references: [value transfers](https://docs.genlayer.com/developers/intelligent-contracts/features/value-transfers), [messages](https://docs.genlayer.com/developers/intelligent-contracts/features/messages), and [genlayer-js contracts](https://docs.genlayer.com/api-references/genlayer-js/contracts).
