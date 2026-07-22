@@ -1,5 +1,7 @@
 # ClauseFlow Three-Minute Demo
 
+The produced reviewer video and upload copy are documented in [`DEMO_VIDEO.md`](DEMO_VIDEO.md). Run `npm run demo:video` to regenerate it from the current production app without creating new transactions.
+
 ## Before Recording
 
 - Open the public ClauseFlow URL and the Bradbury explorer.

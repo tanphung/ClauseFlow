@@ -10,7 +10,8 @@
     "preflight:bradbury": "node scripts/preflight-bradbury.mjs",
     "deploy:bradbury": "node scripts/deploy-bradbury.mjs",
     "smoke:bradbury": "node scripts/bradbury-smoke.mjs",
-    "resume:settlement": "node scripts/resume-settlement.mjs"
+    "resume:settlement": "node scripts/resume-settlement.mjs",
+    "demo:video": "powershell -ExecutionPolicy Bypass -File scripts/build-demo-video.ps1"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.4",

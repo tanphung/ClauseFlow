@@ -7,6 +7,7 @@ dist/
 artifacts/
 test-results/
 playwright-report/
+demo-video/
 
 .pytest_cache/
 __pycache__/

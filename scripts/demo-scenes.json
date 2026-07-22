@@ -1,0 +1,44 @@
+[
+  {
+    "id": "intro",
+    "caption": "Verifiable service agreements settled by GenLayer consensus",
+    "narration": "",
+    "durationSeconds": 4
+  },
+  {
+    "id": "dashboard",
+    "caption": "Canonical agreement and settlement history from Bradbury",
+    "narration": "ClauseFlow is a two-party service agreement application on GenLayer. This public dashboard reads directly from the Bradbury contract. It shows two funded agreements, two completed outcomes, point zero two GEN paid, and point zero one five GEN refunded.",
+    "durationSeconds": 0
+  },
+  {
+    "id": "payment",
+    "caption": "Approved evidence releases escrow to the Builder",
+    "narration": "The first agreement proves the payment path. Its accepted clauses are immutable after funding and define scope, public deliverables, objective acceptance criteria, revisions, payment, and refund rules. Validators fetched the live Mochi Game application and repository, reported criteria-level findings, and approved the evidence. The on-chain timeline then records the payment transfer and verified paid state.",
+    "durationSeconds": 0
+  },
+  {
+    "id": "refund",
+    "caption": "Missing evidence produces a verifiable refund outcome",
+    "narration": "The second agreement proves the refund path. It required a public accessibility audit with keyboard, focus, contrast, and remediation findings. Validators fetched the submitted sources, found that the funded evidence criteria were not satisfied, listed the missing items, and rejected delivery. The Client refund was finalized and the contract escrow balance returned to zero.",
+    "durationSeconds": 0
+  },
+  {
+    "id": "discovery",
+    "caption": "Public filters connect every agreement to both parties",
+    "narration": "Anyone can search the ledger by project title, Builder address, or Client address without connecting a wallet. Each record stays linked to its parties, accepted value, validator decision, and final settlement state.",
+    "durationSeconds": 0
+  },
+  {
+    "id": "workspace",
+    "caption": "Builders start with explicit, reviewable terms",
+    "narration": "The Builder workspace starts empty. It asks for concrete scope, public evidence, objective acceptance criteria, commercial terms, deadlines, revisions, and deterministic refund rules. Published offers expose the complete clause set before a Client locks the exact GEN amount.",
+    "durationSeconds": 0
+  },
+  {
+    "id": "close",
+    "caption": "One agreement. Public evidence. Verifiable settlement.",
+    "narration": "ClauseFlow uses validator consensus for a genuine trust decision that controls real escrow, not for generic advice. The live application, complete source repository, and verified Bradbury contract are ready for review.",
+    "durationSeconds": 0
+  }
+]
