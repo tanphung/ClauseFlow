@@ -26,11 +26,13 @@ const env = readEnv();
 const keys = Object.keys(env).sort();
 console.log(`ENV_KEYS=${keys.join(",")}`);
 
-for (const key of ["ACCOUNT_PRIVATE_KEY", "EXPECTED_WALLET_ADDRESS", "CLAUSEFLOW_ACCOUNT_NAME", "CLAUSEFLOW_KEYSTORE_PASSWORD"]) {
+for (const key of ["EXPECTED_WALLET_ADDRESS"]) {
   requireEnv(env, key);
 }
 
-const deployer = privateKeyToAccount(env.ACCOUNT_PRIVATE_KEY);
+const deployerKey = env.ACCOUNT1_PRIVATE_KEY || env.ACCOUNT_PRIVATE_KEY;
+if (!deployerKey) throw new Error("Missing .env key: ACCOUNT1_PRIVATE_KEY");
+const deployer = privateKeyToAccount(deployerKey);
 if (deployer.address.toLowerCase() !== env.EXPECTED_WALLET_ADDRESS.toLowerCase()) {
   throw new Error(`ACCOUNT_PRIVATE_KEY derives ${deployer.address}, expected ${env.EXPECTED_WALLET_ADDRESS}`);
 }
@@ -47,14 +49,10 @@ const accountOutput = runGenLayer(["account"]);
 const activeAddress = accountOutput.match(/address:\s*'([^']+)'/)?.[1] || "";
 const balance = accountOutput.match(/balance:\s*'([^']+)'/)?.[1] || "unknown";
 const status = accountOutput.match(/status:\s*'([^']+)'/)?.[1] || "unknown";
-if (activeAddress.toLowerCase() !== deployer.address.toLowerCase()) {
-  throw new Error(`Active GenLayer account ${activeAddress || "unknown"} does not match deployer ${deployer.address}`);
-}
 console.log(`ACTIVE_ACCOUNT_ADDRESS=${activeAddress}`);
 console.log(`ACTIVE_ACCOUNT_BALANCE=${balance}`);
 console.log(`ACTIVE_ACCOUNT_STATUS=${status}`);
-if (status !== "unlocked") {
-  console.log("ACTION_REQUIRED=unlock active GenLayer account before deploy");
-}
+console.log(`CLI_ACTIVE_MATCHES_DIRECT_DEPLOYER=${activeAddress.toLowerCase() === deployer.address.toLowerCase()}`);
+if (status !== "unlocked") console.log("CLI_KEYSTORE_LOCKED=true; direct deployment can still use ACCOUNT1_PRIVATE_KEY without changing the OS keychain");
 
 console.log("PREFLIGHT_OK=true");

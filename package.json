@@ -8,6 +8,7 @@
     "test:e2e": "playwright test",
     "lint:contract": "genvm-lint check contracts/clauseflow.py --json",
     "preflight:bradbury": "node scripts/preflight-bradbury.mjs",
+    "deploy:bradbury": "node scripts/deploy-bradbury.mjs",
     "smoke:bradbury": "node scripts/bradbury-smoke.mjs"
   },
   "dependencies": {
