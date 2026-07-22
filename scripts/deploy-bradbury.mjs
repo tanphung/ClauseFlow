@@ -45,15 +45,19 @@ const encodedData = encodeFunctionData({
     BigInt(Math.floor(Date.now() / 1000) + 3600)
   ]
 });
-const [nonce, gasPrice] = await Promise.all([
+const [nonce, gasPrice, estimatedGas] = await Promise.all([
   publicClient.getTransactionCount({ address: deployer.address }),
-  publicClient.getGasPrice()
+  publicClient.getGasPrice(),
+  publicClient.estimateGas({ account: deployer.address, to: consensus.address, data: encodedData, value: 0n })
 ]);
+const deploymentGas = estimatedGas + (estimatedGas / 4n) + 1_000_000n;
+console.log(`DEPLOY_GAS_ESTIMATE=${estimatedGas}`);
+console.log(`DEPLOY_GAS_LIMIT=${deploymentGas}`);
 const signed = await deployer.signTransaction({
   to: consensus.address,
   data: encodedData,
   value: 0n,
-  gas: 5_000_000n,
+  gas: deploymentGas,
   gasPrice,
   nonce,
   chainId: testnetBradbury.id,
