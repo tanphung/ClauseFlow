@@ -47,6 +47,13 @@ const deal = {
   reviewEvidenceSummary: "Fetched live app and README.",
   reviewCriteriaResults: "Live app: PASS\nGitHub README: PASS",
   reviewMissingItems: "",
+  reviewExecutiveSummary: "Independent validators confirmed that the public application and repository prove the accepted reviewer workflow.",
+  reviewCriterionAssessments: JSON.stringify([{ id: "C1", criterion: "Validators can fetch the live app and README evidence.", status: "SATISFIED", finding: "The live interface exposes the contracted reviewer workflow.", reasoning: "The fetched app and README independently corroborate the expected behavior.", evidenceUrls: ["https://mochi-game-frontend.vercel.app"] }]),
+  reviewDeliverableAssessments: JSON.stringify([{ id: "D1", criterion: "Live app URL and repository evidence.", status: "SATISFIED", finding: "Both public artifacts are present.", reasoning: "Validators fetched both artifacts and found them mutually consistent.", evidenceUrls: ["https://github.com/tanphung/Mochi-Game"] }]),
+  reviewSourceAssessments: JSON.stringify([{ label: "delivery", url: "https://mochi-game-frontend.vercel.app", accessible: true, finding: "Live application fetched successfully.", relevance: "Directly demonstrates the accepted workflow." }]),
+  reviewStrengths: JSON.stringify(["Public artifacts are independently retrievable."]),
+  reviewRisks: JSON.stringify([]),
+  reviewConsensusBasis: "Leader and validators independently fetched submitted sources and agreed on every material status.",
   nextAction: "Completed", paymentTxType: "EXTERNAL_GEN_TRANSFER_TO_BUILDER", paid: "true", refunded: "false"
 };
 const stats = { totalOffers: "1", totalDeals: "1", activeDeals: "0", completedDeals: "1", totalFundedAtto: offer.priceAttoGen, totalPaidAtto: offer.priceAttoGen, totalRefundedAtto: "0", contractBalanceAtto: "0", accountedEscrowAtto: "0" };
@@ -129,6 +136,19 @@ describe("ClauseFlow", () => {
     fireEvent.click(screen.getByRole("button", { name: /Deal Detail/i }));
     const summary = screen.getByText("Full accepted terms");
     expect((summary.closest("details") as HTMLDetailsElement).open).toBe(true);
+  });
+
+  it("renders substantive validator reasoning and linked evidence", async () => {
+    render(<App />);
+    await screen.findByText(/Mochi-Game Quest Evaluator polish/i);
+    fireEvent.click(screen.getByRole("button", { name: /Deal Detail/i }));
+    fireEvent.click(screen.getByRole("tab", { name: /Evidence & review/i }));
+    expect(screen.getByText("Consensus basis")).toBeTruthy();
+    expect(screen.getByText("Acceptance criteria")).toBeTruthy();
+    expect(screen.getAllByText("Validator reasoning")).toHaveLength(2);
+    expect(screen.getByText(/independently corroborate/i)).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: /mochi-game-frontend.vercel.app/i }).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/public evidence contains/i)).toBeNull();
   });
 });
 

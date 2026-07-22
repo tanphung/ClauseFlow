@@ -62,6 +62,30 @@ type Deal = {
   reviewEvidenceSummary?: string;
   reviewCriteriaResults?: string;
   reviewMissingItems?: string;
+  reviewExecutiveSummary?: string;
+  reviewCriterionAssessments?: string;
+  reviewDeliverableAssessments?: string;
+  reviewSourceAssessments?: string;
+  reviewStrengths?: string;
+  reviewRisks?: string;
+  reviewConsensusBasis?: string;
+};
+
+type ReviewAssessment = {
+  id: string;
+  criterion: string;
+  status: "SATISFIED" | "PARTIAL" | "NOT_SATISFIED" | "UNVERIFIABLE";
+  finding: string;
+  reasoning: string;
+  evidenceUrls: string[];
+};
+
+type ReviewSource = {
+  label: string;
+  url: string;
+  accessible: boolean;
+  finding: string;
+  relevance: string;
 };
 
 type Offer = {
@@ -632,6 +656,12 @@ function DealDetail({ deal, offer, history, txState, executeWrite, config, walle
   const isBuilder = walletAddress.toLowerCase() === deal.builder.toLowerCase();
   const isClient = walletAddress.toLowerCase() === deal.client.toLowerCase();
   const deliveryError = validateDeliveryForm(delivery);
+  const criterionAssessments = parseStoredList<ReviewAssessment>(deal.reviewCriterionAssessments);
+  const deliverableAssessments = parseStoredList<ReviewAssessment>(deal.reviewDeliverableAssessments);
+  const sourceAssessments = parseStoredList<ReviewSource>(deal.reviewSourceAssessments);
+  const reviewStrengths = parseStoredList<string>(deal.reviewStrengths);
+  const reviewRisks = parseStoredList<string>(deal.reviewRisks);
+  const hasDetailedReview = criterionAssessments.length > 0 || deliverableAssessments.length > 0;
   const loadMochiEvidence = () => setDelivery({
     deliveryUrl: "https://mochi-game-frontend.vercel.app",
     githubUrl: "https://github.com/tanphung/Mochi-Game",
@@ -716,9 +746,16 @@ function DealDetail({ deal, offer, history, txState, executeWrite, config, walle
         </section>
         <section className={`reviewPanel ${deal.reviewResult.toLowerCase()}`}>
           <div className="reviewHeading"><span className="reviewSeal"><ShieldCheck size={23} /></span><div><p className="eyebrow">Validator outcome</p><h3>{humanReviewResult(deal.reviewResult)}</h3></div><strong className="reviewScore">{deal.reviewScore || "0"}<small>/100</small></strong></div>
-          <p className="reviewReason">{deal.reviewReason || "Evidence has not been reviewed yet."}</p>
-          {deal.reviewEvidenceSummary && <div className="reviewBox"><h4>Evidence checked</h4><p>{deal.reviewEvidenceSummary}</p></div>}
-          {deal.reviewCriteriaResults && <ClauseBlock title="Criteria results" items={splitLines(deal.reviewCriteriaResults)} />}
+          <p className="reviewReason">{deal.reviewExecutiveSummary || deal.reviewReason || "Evidence has not been reviewed yet."}</p>
+          {deal.reviewConsensusBasis && <div className="consensusNote"><ShieldCheck size={16} /><span><strong>Consensus basis</strong>{deal.reviewConsensusBasis}</span></div>}
+          {sourceAssessments.length > 0 ? <ReviewSources sources={sourceAssessments} /> : deal.reviewEvidenceSummary && <div className="reviewBox"><h4>Evidence checked</h4><p>{deal.reviewEvidenceSummary}</p></div>}
+          {criterionAssessments.length > 0 && <ReviewAssessments title="Acceptance criteria" assessments={criterionAssessments} />}
+          {deliverableAssessments.length > 0 && <ReviewAssessments title="Deliverables" assessments={deliverableAssessments} />}
+          {!hasDetailedReview && deal.reviewCriteriaResults && <ClauseBlock title="Criteria results" items={splitLines(deal.reviewCriteriaResults)} />}
+          {(reviewStrengths.length > 0 || reviewRisks.length > 0) && <div className="reviewSignals">
+            {reviewStrengths.length > 0 && <ClauseBlock title="Verified strengths" items={reviewStrengths} />}
+            {reviewRisks.length > 0 && <ClauseBlock title="Risks and gaps" items={reviewRisks} />}
+          </div>}
           {deal.reviewMissingItems && <ClauseBlock title="Missing items" items={splitLines(deal.reviewMissingItems)} />}
           {deal.revisionChecklist && <ClauseBlock title="Revision checklist" items={[deal.revisionChecklist]} />}
           <button className="primary wide" onClick={() => void executeWrite("Run Review", "review_delivery", [deal.id]).catch(() => undefined)} disabled={deal.status !== "SUBMITTED"}><Sparkles size={16} /> Run validator review</button>
@@ -747,6 +784,32 @@ function DealDetail({ deal, offer, history, txState, executeWrite, config, walle
       </div>}
     </section>
   );
+}
+
+function ReviewAssessments({ title, assessments }: { title: string; assessments: ReviewAssessment[] }) {
+  return <section className="assessmentSection">
+    <div className="assessmentSectionTitle"><h4>{title}</h4><span>{assessments.length} assessed</span></div>
+    <div className="assessmentList">
+      {assessments.map((assessment) => <article className="assessmentCard" key={assessment.id}>
+        <header><span className="assessmentId">{assessment.id}</span><strong>{assessment.criterion}</strong><span className={`assessmentStatus ${assessment.status.toLowerCase()}`}>{assessment.status.replaceAll("_", " ")}</span></header>
+        <div className="assessmentBody"><p><b>Finding</b>{assessment.finding}</p><p><b>Validator reasoning</b>{assessment.reasoning}</p></div>
+        {(assessment.evidenceUrls || []).length > 0 && <footer>{assessment.evidenceUrls.map((url) => <a href={url} target="_blank" rel="noreferrer" key={url}>{sourceLabel(url)}<ExternalLink size={12} /></a>)}</footer>}
+      </article>)}
+    </div>
+  </section>;
+}
+
+function ReviewSources({ sources }: { sources: ReviewSource[] }) {
+  return <section className="sourceReview">
+    <div className="assessmentSectionTitle"><h4>Evidence sources</h4><span>{sources.filter((source) => source.accessible).length}/{sources.length} accessible</span></div>
+    <div className="sourceReviewGrid">
+      {sources.map((source) => <article key={`${source.label}-${source.url}`} className={source.accessible ? "accessible" : "unavailable"}>
+        <header><strong>{source.label}</strong><span>{source.accessible ? "Fetched" : "Unavailable"}</span></header>
+        <p>{source.finding}</p><small>{source.relevance}</small>
+        {source.url && <a href={source.url} target="_blank" rel="noreferrer">Open source <ExternalLink size={11} /></a>}
+      </article>)}
+    </div>
+  </section>;
 }
 
 function Metric({ icon, label, value, loading = false }: { icon: ReactNode; label: string; value: string; loading?: boolean }) {
@@ -873,6 +936,24 @@ function isHttpUrl(value: string) {
 
 function splitLines(value: string) {
   return value.split(/\n|;|•/).map((item) => item.trim()).filter(Boolean);
+}
+
+function parseStoredList<T>(value?: string): T[] {
+  if (!value) return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed as T[] : [];
+  } catch {
+    return [];
+  }
+}
+
+function sourceLabel(url: string) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "Evidence source";
+  }
 }
 
 function friendlyHistoryNote(event: HistoryEvent, deal?: Deal) {

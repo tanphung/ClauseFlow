@@ -1,5 +1,7 @@
 # ClauseFlow Project Submission Notes
 
+> Submission is intentionally on hold. The repository contains a richer validator-review release that has not yet replaced the documented Bradbury contract. Update the contract address, transaction proof, two-party histories, screenshots, and video only after owner-approved clean deployment and verification.
+
 ## What ClauseFlow Does
 
 ClauseFlow lets a Builder publish a precise service agreement and lets a Client fund it with GEN. The funded clauses become the immutable review standard. After delivery, GenLayer validators fetch the submitted public evidence, compare it with those exact clauses, and decide whether the Builder may receive payment, must revise the work, or the Client may receive a refund.

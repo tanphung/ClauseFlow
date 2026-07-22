@@ -249,6 +249,13 @@ class ClauseFlow(gl.Contract):
             "reviewEvidenceSummary": "",
             "reviewCriteriaResults": "",
             "reviewMissingItems": "",
+            "reviewExecutiveSummary": "",
+            "reviewCriterionAssessments": "[]",
+            "reviewDeliverableAssessments": "[]",
+            "reviewSourceAssessments": "[]",
+            "reviewStrengths": "[]",
+            "reviewRisks": "[]",
+            "reviewConsensusBasis": "",
             "nextAction": "Builder should submit delivery evidence before the deadline.",
             "paymentTxType": "",
             "settlementBalanceBeforeAtto": "0",
@@ -283,7 +290,7 @@ class ClauseFlow(gl.Contract):
             raise gl.vm.UserError("Delivery URL must be http(s)")
         if int(deal["refundAvailableAtUnix"]) < _now_unix():
             raise gl.vm.UserError("Submission window has expired")
-        if deal["status"] == STATUS_REVISION_REQUIRED and int(deal["revisionCount"]) >= int(deal["maxRevisions"]):
+        if deal["status"] == STATUS_REVISION_REQUIRED and int(deal["revisionCount"]) > int(deal["maxRevisions"]):
             raise gl.vm.UserError("Revision rounds are exhausted")
 
         now = _now_iso()
@@ -315,7 +322,7 @@ class ClauseFlow(gl.Contract):
             validator_evidence = _fetch_delivery_evidence(deal)
             leader = leaders_res.calldata
             validator = _evaluate_delivery_review(offer, deal, validator_evidence)
-            return _review_results_compatible(leader, validator)
+            return _review_results_compatible(leader, validator, validator_evidence)
 
         review = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
         result = str(review["result"])
@@ -329,7 +336,7 @@ class ClauseFlow(gl.Contract):
         else:
             next_revision_count = int(deal["revisionCount"]) + 1
             deal["revisionCount"] = str(next_revision_count)
-            if next_revision_count >= int(deal["maxRevisions"]):
+            if next_revision_count > int(deal["maxRevisions"]):
                 deal["status"] = STATUS_REJECTED
                 deal["nextAction"] = "Revision rounds are exhausted. Client can claim refund."
                 result = STATUS_REJECTED
@@ -346,6 +353,13 @@ class ClauseFlow(gl.Contract):
         deal["reviewEvidenceSummary"] = str(review["evidenceSummary"])
         deal["reviewCriteriaResults"] = str(review["criteriaResults"])
         deal["reviewMissingItems"] = str(review["missingItems"])
+        deal["reviewExecutiveSummary"] = str(review["executiveSummary"])
+        deal["reviewCriterionAssessments"] = json.dumps(review["criterionAssessments"], sort_keys=True)
+        deal["reviewDeliverableAssessments"] = json.dumps(review["deliverableAssessments"], sort_keys=True)
+        deal["reviewSourceAssessments"] = json.dumps(review["sourceAssessments"], sort_keys=True)
+        deal["reviewStrengths"] = json.dumps(review["strengths"], sort_keys=True)
+        deal["reviewRisks"] = json.dumps(review["risks"], sort_keys=True)
+        deal["reviewConsensusBasis"] = str(review["consensusBasis"])
         self.deals[deal_id] = json.dumps(deal, sort_keys=True)
         self._append_history(deal_id, EVENT_REVIEWED, _review_history_note(review), now)
         return json.dumps(review, sort_keys=True)
@@ -589,107 +603,27 @@ def _fetch_delivery_evidence(deal: dict) -> dict:
 
 
 def _evaluate_delivery_review(offer: dict, deal: dict, evidence: dict) -> dict:
-    accessible_count = int(evidence["accessibleCount"])
-    combined = _combined_evidence_text(evidence)
-    criteria = _criteria_terms(offer)
-    matched = []
-    missing = []
-    for term in criteria:
-        if term in combined:
-            matched.append(term)
-        else:
-            missing.append(term)
-    total = len(criteria)
-    satisfied = len(matched)
-    if accessible_count == 0:
-        result = STATUS_REJECTED
-        score = 0
-    elif total == 0:
-        result = STATUS_REVISION_REQUIRED
-        score = 50
-    else:
-        score = (satisfied * 100) // total
-        if score >= 70:
-            result = STATUS_APPROVED
-        elif score >= 35:
-            result = STATUS_REVISION_REQUIRED
-        else:
-            result = STATUS_REJECTED
-    criteria_lines = []
-    for term in matched:
-        criteria_lines.append(f"PASS: public evidence contains '{term}'")
-    for term in missing:
-        criteria_lines.append(f"FAIL: public evidence does not contain '{term}'")
-    evidence_summary = _evidence_summary(evidence, matched)
-    missing_text = "\n".join([f"Provide public evidence containing '{term}'." for term in missing])
-    if result == STATUS_APPROVED:
-        missing_text = ""
-    next_action = "Builder can claim payment." if result == STATUS_APPROVED else "Builder should provide stronger public evidence or Client can follow refund rules if rejected."
-    return {
-        "result": result,
-        "score": str(score),
-        "reason": f"Validators fetched {accessible_count} public evidence page(s) and matched {satisfied} of {total} material evidence terms.",
-        "checklist": missing_text,
-        "nextAction": next_action,
-        "criteriaSatisfied": str(satisfied),
-        "criteriaTotal": str(total),
-        "evidenceSummary": evidence_summary,
-        "criteriaResults": _clean_limit("\n".join(criteria_lines), 1400),
-        "missingItems": _clean_limit(missing_text, 1000),
-        "accessibleCount": str(accessible_count),
-    }
+    criteria = _material_items(offer["acceptanceCriteria"], 8)
+    deliverables = _material_items(offer["deliverables"], 8)
+    raw = gl.nondet.exec_prompt(
+        _review_prompt(offer, deal, evidence, criteria, deliverables),
+        response_format="json",
+    )
+    return _normalize_review(raw, evidence, criteria, deliverables)
 
 
-def _combined_evidence_text(evidence: dict) -> str:
-    chunks = [_clean(evidence.get("deliveryNote", "")).lower()]
-    for page in evidence["pages"]:
-        chunks.append(_clean(page.get("text", "")).lower())
-    return "\n".join(chunks)
-
-
-def _criteria_terms(offer: dict) -> list:
-    source = " ".join(
-        [
-            offer["title"],
-            offer["serviceDescription"],
-            offer["scope"],
-            offer["deliverables"],
-            offer["acceptanceCriteria"],
-            offer["referenceUrls"],
-        ]
-    ).lower()
-    terms = []
-    known_terms = [
-        "mochi-game",
-        "mochi",
-        "quest evaluator",
-        "genlayer consensus",
-        "demo autofill",
-        "github",
-        "readme",
-        "live app",
-    ]
-    for term in known_terms:
-        if term in source and term not in terms:
-            terms.append(term)
-    if len(terms) == 0:
-        for raw in source.replace("\n", " ").replace(",", " ").replace(".", " ").split(" "):
-            word = raw.strip()
-            if len(word) >= 6 and word not in terms and not word.startswith("http"):
-                terms.append(word)
-            if len(terms) >= 8:
-                break
-    return terms
-
-
-def _evidence_summary(evidence: dict, matched: list) -> str:
-    labels = []
-    for page in evidence["pages"]:
-        if page["accessible"]:
-            labels.append(page["label"])
-    label_text = ", ".join(labels) if labels else "no public pages"
-    matched_text = ", ".join(matched) if matched else "no material terms"
-    return f"Fetched {label_text}; matched {matched_text}."
+def _material_items(value: str, maximum: int) -> list:
+    items = []
+    normalized = str(value).replace("\r", "\n")
+    for raw in normalized.split("\n"):
+        item = raw.strip().lstrip("-*0123456789. )").strip()
+        if len(item) >= 8 and item not in items:
+            items.append(_clean_limit(item, 500))
+        if len(items) >= maximum:
+            break
+    if len(items) == 0 and len(_clean(value)) > 0:
+        items.append(_clean_limit(value, 500))
+    return items
 
 
 def _clause_prompt(source: dict) -> str:
@@ -785,23 +719,31 @@ def _structured_clauses_materially_valid(leader: dict, source: dict) -> bool:
     )
 
 
-def _review_prompt(offer: dict, deal: dict, evidence: dict) -> str:
+def _review_prompt(offer: dict, deal: dict, evidence: dict, criteria: list, deliverables: list) -> str:
+    criterion_rows = [{"id": f"C{index + 1}", "text": text} for index, text in enumerate(criteria)]
+    deliverable_rows = [{"id": f"D{index + 1}", "text": text} for index, text in enumerate(deliverables)]
     return f"""
-You are ClauseFlow's GenLayer agreement reviewer.
-Evaluate the Builder delivery against the exact accepted offer clauses and fetched evidence.
-This is settlement-critical: approval releases escrowed GEN, rejection/refund returns value.
+You are an independent GenLayer settlement validator for ClauseFlow.
+Perform a substantive evidence review of the Builder's public delivery against every immutable accepted criterion and deliverable.
+Your assessment controls escrow. Do not use keyword presence as proof and do not trust the Builder's delivery note without corroboration.
 
 Return JSON only with these keys:
-result: APPROVED, REVISION_REQUIRED, or REJECTED
-score: integer 0-100
-reason: concise reason grounded in evidence
-checklist: concise missing/fix items, empty if approved
-nextAction: what Builder or Client should do next
-criteriaSatisfied: integer count
-criteriaTotal: integer count
-evidenceSummary: concise evidence found
-criteriaResults: newline-separated list of each material criterion and PASS/PARTIAL/FAIL
-missingItems: newline-separated concrete fixes, empty if approved
+executiveSummary: 2-4 sentences explaining the material outcome
+criterionAssessments: array with exactly one object per supplied criterion, in order, using keys id, status, finding, reasoning, evidenceUrls
+deliverableAssessments: array with exactly one object per supplied deliverable, in order, using keys id, status, finding, reasoning, evidenceUrls
+sourceAssessments: array with exactly one object per fetched source, in order, using keys label, finding, relevance
+strengths: array of up to 4 concrete strengths supported by fetched evidence
+risks: array of up to 4 concrete gaps, ambiguities, or unverifiable claims
+missingItems: array of concrete corrective actions, empty only when all accepted obligations are satisfied
+nextAction: one concise action for the Builder or Client
+
+Allowed assessment statuses: SATISFIED, PARTIAL, NOT_SATISFIED, UNVERIFIABLE.
+
+Immutable criteria with stable IDs:
+{json.dumps(criterion_rows, sort_keys=True)}
+
+Immutable deliverables with stable IDs:
+{json.dumps(deliverable_rows, sort_keys=True)}
 
 Accepted offer:
 {json.dumps(offer, sort_keys=True)}
@@ -813,37 +755,154 @@ Fetched evidence:
 {json.dumps(evidence, sort_keys=True)}
 
 Rules:
-- Approve only if fetched evidence materially supports the accepted scope, deliverables, and acceptance criteria.
-- Prefer REVISION_REQUIRED for close but incomplete work.
-- Use REJECTED for inaccessible, unrelated, or clearly failing evidence.
-- Do not approve just because the delivery note claims completion.
-- Treat public GitHub, live app, docs, demo pages, and visible content as evidence.
-- If a criterion cannot be verified from fetched evidence, mark it PARTIAL or FAIL.
+- Judge whether the fetched content proves the substance of each obligation, not whether it repeats words from the agreement.
+- Explain what observable behavior, artifact, documentation, or repository content supports each finding.
+- Use only URLs present in fetched evidence. evidenceUrls must be an array.
+- SATISFIED requires direct, relevant evidence. PARTIAL means some material part is proven but a named part remains.
+- NOT_SATISFIED means the evidence contradicts or clearly fails the obligation. UNVERIFIABLE means the submitted sources cannot prove it.
+- A source being accessible does not prove that any criterion is satisfied.
+- Keep reasoning concise but specific enough that Builder and Client can understand the decision.
+- Do not decide the final result or score. The contract derives both deterministically from your normalized criterion and deliverable statuses.
 """
 
 
-def _normalize_review(value, evidence: dict) -> dict:
+def _normalize_review(value, evidence: dict, criteria: list, deliverables: list) -> dict:
     if not isinstance(value, dict):
         raise gl.vm.UserError("[LLM_ERROR] Review returned non-object")
-    raw = _clean(value.get("result", "REVISION_REQUIRED")).upper()
-    if raw not in [STATUS_APPROVED, STATUS_REVISION_REQUIRED, STATUS_REJECTED]:
-        raw = STATUS_REVISION_REQUIRED
-    if int(evidence["accessibleCount"]) == 0:
-        raw = STATUS_REJECTED
-    score = _bounded_int(value.get("score", 0))
+    criterion_assessments = _normalize_assessments(value.get("criterionAssessments", []), criteria, "C", evidence)
+    deliverable_assessments = _normalize_assessments(value.get("deliverableAssessments", []), deliverables, "D", evidence)
+    all_assessments = criterion_assessments + deliverable_assessments
+    satisfied = len([item for item in criterion_assessments if item["status"] == "SATISFIED"])
+    points = 0
+    for item in all_assessments:
+        if item["status"] == "SATISFIED":
+            points += 100
+        elif item["status"] == "PARTIAL":
+            points += 50
+    score = points // len(all_assessments) if len(all_assessments) > 0 else 0
+    accessible_count = int(evidence["accessibleCount"])
+    statuses = [item["status"] for item in all_assessments]
+    if accessible_count == 0 or len(statuses) == 0 or all(status in ["NOT_SATISFIED", "UNVERIFIABLE"] for status in statuses):
+        result = STATUS_REJECTED
+    elif all(status == "SATISFIED" for status in statuses):
+        result = STATUS_APPROVED
+    else:
+        result = STATUS_REVISION_REQUIRED if score >= 35 else STATUS_REJECTED
+    source_assessments = _normalize_source_assessments(value.get("sourceAssessments", []), evidence)
+    strengths = _normalize_text_list(value.get("strengths", []), 4, 360)
+    risks = _normalize_text_list(value.get("risks", []), 4, 360)
+    missing = _normalize_text_list(value.get("missingItems", []), 8, 400)
+    if result != STATUS_APPROVED and len(missing) == 0:
+        for item in all_assessments:
+            if item["status"] != "SATISFIED":
+                missing.append(_clean_limit(f"Resolve {item['id']}: {item['criterion']}", 400))
+    if result == STATUS_APPROVED:
+        missing = []
+    executive = _clean_limit(value.get("executiveSummary", ""), 1200)
+    if len(executive) < 40:
+        executive = f"Independent validators reviewed {len(all_assessments)} material obligations across {accessible_count} accessible public source(s). The normalized outcome is {result.replace('_', ' ').lower()}."
+    criteria_lines = []
+    for item in criterion_assessments:
+        criteria_lines.append(f"{item['id']} | {item['status']} | {item['finding']} | {item['reasoning']}")
+    evidence_summary = _source_summary(source_assessments)
+    missing_text = "\n".join(missing)
+    next_action = _clean_limit(value.get("nextAction", ""), 500)
+    if len(next_action) == 0:
+        next_action = "Builder can claim payment." if result == STATUS_APPROVED else "Builder should address the documented gaps before settlement."
     return {
-        "result": raw,
+        "result": result,
         "score": str(score),
-        "reason": _clean(value.get("reason", "")),
-        "checklist": _clean(value.get("checklist", "")),
-        "nextAction": _clean(value.get("nextAction", "")),
-        "criteriaSatisfied": str(_bounded_int(value.get("criteriaSatisfied", 0))),
-        "criteriaTotal": str(_bounded_int(value.get("criteriaTotal", 0))),
-        "evidenceSummary": _clean(value.get("evidenceSummary", "")),
-        "criteriaResults": _clean_limit(value.get("criteriaResults", ""), 1400),
-        "missingItems": _clean_limit(value.get("missingItems", value.get("checklist", "")), 1000),
+        "reason": executive,
+        "checklist": _clean_limit(missing_text, 1600),
+        "nextAction": next_action,
+        "criteriaSatisfied": str(satisfied),
+        "criteriaTotal": str(len(criteria)),
+        "evidenceSummary": evidence_summary,
+        "criteriaResults": _clean_limit("\n".join(criteria_lines), 3000),
+        "missingItems": _clean_limit(missing_text, 1600),
         "accessibleCount": str(evidence["accessibleCount"]),
+        "executiveSummary": executive,
+        "criterionAssessments": criterion_assessments,
+        "deliverableAssessments": deliverable_assessments,
+        "sourceAssessments": source_assessments,
+        "strengths": strengths,
+        "risks": risks,
+        "consensusBasis": "Leader and validators independently fetched submitted sources, assessed every immutable obligation, and agreed on the normalized material outcome.",
     }
+
+
+def _normalize_assessments(value, expected: list, prefix: str, evidence: dict) -> list:
+    rows = value if isinstance(value, list) else []
+    allowed_urls = []
+    for page in evidence["pages"]:
+        if page["accessible"] and _is_url(page["url"]):
+            allowed_urls.append(page["url"])
+    normalized = []
+    for index, criterion in enumerate(expected):
+        raw = rows[index] if index < len(rows) and isinstance(rows[index], dict) else {}
+        status = _clean(raw.get("status", "UNVERIFIABLE")).upper().replace(" ", "_")
+        if status not in ["SATISFIED", "PARTIAL", "NOT_SATISFIED", "UNVERIFIABLE"]:
+            status = "UNVERIFIABLE"
+        urls = []
+        raw_urls = raw.get("evidenceUrls", [])
+        if isinstance(raw_urls, list):
+            for raw_url in raw_urls:
+                url = _clean(raw_url)
+                if url in allowed_urls and url not in urls:
+                    urls.append(url)
+                if len(urls) >= 4:
+                    break
+        finding = _clean_limit(raw.get("finding", ""), 500)
+        reasoning = _clean_limit(raw.get("reasoning", ""), 700)
+        if status in ["SATISFIED", "PARTIAL"] and (len(finding) < 15 or len(reasoning) < 20 or len(urls) == 0):
+            status = "UNVERIFIABLE"
+        normalized.append({
+            "id": f"{prefix}{index + 1}",
+            "criterion": criterion,
+            "status": status,
+            "finding": finding if len(finding) > 0 else "No direct evidence finding was supplied.",
+            "reasoning": reasoning if len(reasoning) > 0 else "The submitted public evidence does not establish this obligation.",
+            "evidenceUrls": urls,
+        })
+    return normalized
+
+
+def _normalize_source_assessments(value, evidence: dict) -> list:
+    rows = value if isinstance(value, list) else []
+    normalized = []
+    for index, page in enumerate(evidence["pages"]):
+        raw = rows[index] if index < len(rows) and isinstance(rows[index], dict) else {}
+        normalized.append({
+            "label": page["label"],
+            "url": page["url"],
+            "accessible": bool(page["accessible"]),
+            "finding": _fallback_text(raw.get("finding"), "Source was fetched successfully." if page["accessible"] else "Source could not be fetched.", 500),
+            "relevance": _fallback_text(raw.get("relevance"), "Relevance was not established." if page["accessible"] else "Unavailable for assessment.", 500),
+        })
+    return normalized
+
+
+def _normalize_text_list(value, maximum: int, limit: int) -> list:
+    rows = value if isinstance(value, list) else []
+    normalized = []
+    for raw in rows:
+        text = _clean_limit(raw, limit)
+        if len(text) > 0 and text not in normalized:
+            normalized.append(text)
+        if len(normalized) >= maximum:
+            break
+    return normalized
+
+
+def _source_summary(sources: list) -> str:
+    accessible = [item["label"] for item in sources if item["accessible"]]
+    unavailable = [item["label"] for item in sources if not item["accessible"]]
+    summary = f"Fetched {len(accessible)} of {len(sources)} submitted source(s)"
+    if len(accessible) > 0:
+        summary += f": {', '.join(accessible)}"
+    if len(unavailable) > 0:
+        summary += f". Unavailable: {', '.join(unavailable)}"
+    return summary + "."
 
 
 def _review_history_note(review: dict) -> str:
@@ -944,26 +1003,50 @@ def _review_result_materially_valid(leader: dict, evidence: dict) -> bool:
     evidence_summary = _clean(leader.get("evidenceSummary", ""))
     criteria_results = _clean(leader.get("criteriaResults", ""))
     missing_items = _clean(leader.get("missingItems", ""))
-    if len(reason) < 20 or len(evidence_summary) < 20 or len(criteria_results) < 20:
+    criterion_assessments = leader.get("criterionAssessments", [])
+    deliverable_assessments = leader.get("deliverableAssessments", [])
+    source_assessments = leader.get("sourceAssessments", [])
+    if len(reason) < 40 or len(evidence_summary) < 20 or len(criteria_results) < 20:
         return False
+    if not isinstance(criterion_assessments, list) or not isinstance(deliverable_assessments, list) or not isinstance(source_assessments, list):
+        return False
+    if len(criterion_assessments) != criteria_total or len(source_assessments) != 4:
+        return False
+    for assessment in criterion_assessments + deliverable_assessments:
+        if assessment.get("status") not in ["SATISFIED", "PARTIAL", "NOT_SATISFIED", "UNVERIFIABLE"]:
+            return False
+        if len(_clean(assessment.get("finding", ""))) < 15 or len(_clean(assessment.get("reasoning", ""))) < 20:
+            return False
     if accessible_count == 0:
-        return result == STATUS_REJECTED and score <= 60 and criteria_satisfied == 0 and len(missing_items) > 0
+        return result == STATUS_REJECTED and score == 0 and criteria_satisfied == 0 and len(missing_items) > 0
     if criteria_total == 0 or criteria_satisfied > criteria_total:
         return False
     if result == STATUS_APPROVED:
-        return score >= 75 and criteria_satisfied > 0 and criteria_satisfied >= criteria_total and len(missing_items) == 0
+        return score == 100 and criteria_satisfied > 0 and criteria_satisfied >= criteria_total and len(missing_items) == 0
     if result == STATUS_REJECTED:
-        return score <= 70 and (criteria_satisfied == 0 or len(missing_items) > 0)
-    return score < 90 and criteria_satisfied < criteria_total and len(missing_items) > 0
+        return score < 35 and len(missing_items) > 0
+    assessment_statuses = [item["status"] for item in criterion_assessments + deliverable_assessments]
+    return score < 100 and any(status in ["SATISFIED", "PARTIAL"] for status in assessment_statuses) and len(missing_items) > 0
 
 
-def _review_results_compatible(leader: dict, validator: dict) -> bool:
+def _review_results_compatible(leader: dict, validator: dict, validator_evidence: dict) -> bool:
     if not isinstance(leader, dict) or not isinstance(validator, dict):
         return False
+    if not _review_result_materially_valid(leader, validator_evidence) or not _review_result_materially_valid(validator, validator_evidence):
+        return False
+    if leader["result"] != validator["result"] or leader["accessibleCount"] != validator["accessibleCount"]:
+        return False
+    if leader["criteriaTotal"] != validator["criteriaTotal"]:
+        return False
+    leader_criteria = [item["status"] for item in leader.get("criterionAssessments", [])]
+    validator_criteria = [item["status"] for item in validator.get("criterionAssessments", [])]
+    leader_deliverables = [item["status"] for item in leader.get("deliverableAssessments", [])]
+    validator_deliverables = [item["status"] for item in validator.get("deliverableAssessments", [])]
+    leader_sources = [str(item["accessible"]) for item in leader.get("sourceAssessments", [])]
+    validator_sources = [str(item["accessible"]) for item in validator.get("sourceAssessments", [])]
     return (
-        leader["result"] == validator["result"]
-        and leader["score"] == validator["score"]
-        and leader["criteriaSatisfied"] == validator["criteriaSatisfied"]
-        and leader["criteriaTotal"] == validator["criteriaTotal"]
-        and leader["accessibleCount"] == validator["accessibleCount"]
+        leader_criteria == validator_criteria
+        and leader_deliverables == validator_deliverables
+        and leader_sources == validator_sources
+        and abs(int(leader["score"]) - int(validator["score"])) <= 10
     )

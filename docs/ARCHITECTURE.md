@@ -13,7 +13,9 @@
 
 `structure_offer` uses GenLayer AI drafting to convert Builder inputs into canonical clauses and binds the resulting draft to the exact source fields. Validators do not approve by JSON shape alone; they deterministically check material fields such as source coverage, scope specificity, deliverable testability, objective criteria, and exact GEN payment metadata. `publish_offer` rejects changed or reused drafts.
 
-`review_delivery` is nondeterministic because validators fetch public delivery, demo, documentation, and repository URLs from inside the contract. The leader and validators independently fetch the evidence and run the same deterministic material-term review over the accepted clauses. Consensus compares the final decision, accessibility count, score, criteria coverage, and evidence findings. Merely returning valid JSON is insufficient.
+`review_delivery` is nondeterministic because validators fetch public delivery, demo, documentation, and repository URLs from inside the contract. The leader and validators independently fetch those sources and use an LLM to assess each immutable criterion and deliverable semantically. The contract normalizes assessment statuses and deterministically derives the score and settlement decision. Consensus requires agreement on the decision, per-obligation statuses, source accessibility, and score range; it does not trust valid JSON or compare free-form prose exactly.
+
+Each stored review includes an executive summary, criterion and deliverable assessments, source findings, evidence URLs, reasoning, strengths, risks, missing items, and a concise consensus basis. The currently published Bradbury address predates this richer review schema and remains documented as historical proof until the owner approves a clean redeploy.
 
 ## Escrow And Settlement
 

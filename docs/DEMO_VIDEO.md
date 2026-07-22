@@ -9,7 +9,7 @@
 - Voice-over: English, male
 - Build command: `npm run demo:video`
 
-The generated media directory is intentionally ignored by Git. Upload the final MP4 to YouTube, Google Drive, or the submission platform, then place the public video URL in `docs/SUBMISSION.md`.
+The generated media directory is intentionally ignored by Git. The existing MP4 documents the previous deployed review release. Regenerate and visually review the video after the richer validator contract is clean-deployed and new two-party history exists; only that new recording should be uploaded for submission.
 
 ## Suggested Title
 
@@ -19,7 +19,7 @@ ClauseFlow: Verifiable Service Agreements and GEN Escrow on GenLayer
 
 ClauseFlow is a two-party service agreement dApp on GenLayer Bradbury. Builders publish objective terms, Clients lock exact GEN escrow, and validators fetch public delivery evidence before the contract permits payment or refund.
 
-This demo uses the live production app and the final deployed contract. It shows a verified `PAID` agreement for `0.02 GEN`, a verified `REFUNDED` agreement for `0.015 GEN`, criteria-level validator findings, canonical lifecycle history, public party filters, and the empty Builder workspace.
+After the approved redeploy, the final demo must show a real `PAID` agreement, a real `REFUNDED` agreement, detailed per-criterion validator reasoning with evidence links, canonical lifecycle history, public party filters, and the empty Builder workspace.
 
 - Live app: https://clauseflow-two.vercel.app
 - Source: https://github.com/tanphung/ClauseFlow

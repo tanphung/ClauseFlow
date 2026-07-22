@@ -6,6 +6,8 @@ ClauseFlow lets a Builder publish objective service terms, a Client fund the exa
 
 [Live dApp](https://clauseflow-two.vercel.app) · [Bradbury contract](https://explorer-bradbury.genlayer.com/address/0x993D37D07e31d8e3853B8702919f4d805299B124) · [Reviewer notes](docs/SUBMISSION.md) · [Demo video package](docs/DEMO_VIDEO.md)
 
+> **Release status:** the repository now contains the next contract release with substantive per-criterion AI reasoning, evidence links, source accessibility, deliverable findings, risks, corrective actions, and independent material-field comparison. The Bradbury address and historical deals below still run the previous review implementation. A clean redeploy and new two-party smoke history will happen only after explicit owner approval; the current video must then be regenerated.
+
 ![ClauseFlow public on-chain agreement dashboard](docs/assets/clauseflow-dashboard.png)
 
 ## The Trust Problem
@@ -17,7 +19,7 @@ ClauseFlow uses GenLayer at that boundary:
 1. The funded clauses become the immutable review standard.
 2. Validators fetch the submitted delivery, demo, documentation, and repository URLs from the contract.
 3. They compare accessible evidence with the agreed deliverables and acceptance criteria.
-4. Consensus produces criteria-level findings and an `APPROVED`, `REVISION_REQUIRED`, or `REJECTED` decision.
+4. The leader and validators independently assess every criterion and deliverable. Consensus compares the normalized decision, per-obligation statuses, source accessibility, and derived score rather than exact free-form prose.
 5. That decision controls whether escrow can move to the Builder or return to the Client.
 
 This is a settlement decision over real GEN, not an off-chain recommendation or a validator that only checks JSON formatting. `structure_offer` helps normalize draft terms, but it cannot release funds and the Builder must review and publish the clauses explicitly. The contract-critical trust decision is `review_delivery`.
@@ -43,8 +45,8 @@ The following state was read again from the deployed contract on **2026-07-23**.
 
 | Deal | Validator outcome | Settlement | Evidence |
 | --- | --- | --- | --- |
-| `#1` ClauseFlow verified payment flow | `APPROVED`, score `75/100` | `PAID`, `0.02 GEN` | [Mochi-Game live app](https://mochi-game-frontend.vercel.app/) and [source](https://github.com/tanphung/Mochi-Game) |
-| `#2` Mochi-Game accessibility audit agreement | `REJECTED`, score `50/100` | `REFUNDED`, `0.015 GEN` | Validators fetched the submitted sources and recorded missing funded criteria |
+| `#1` ClauseFlow verified payment flow | Previous review release: `APPROVED`, score `75/100` | `PAID`, `0.02 GEN` | [Mochi-Game live app](https://mochi-game-frontend.vercel.app/) and [source](https://github.com/tanphung/Mochi-Game) |
+| `#2` Mochi-Game accessibility audit agreement | Previous review release: `REJECTED`, score `50/100` | `REFUNDED`, `0.015 GEN` | Validators fetched the submitted sources and recorded missing funded terms |
 
 Amounts are displayed in human-readable GEN. The contract stores exact integer attoGEN values internally.
 
@@ -55,7 +57,7 @@ Detailed deployment and settlement transaction IDs are recorded in [docs/DEPLOYM
 The live app is public and does not require a wallet for review.
 
 1. Open the [Dashboard](https://clauseflow-two.vercel.app) and verify the totals above.
-2. Open deal `#1`. Its full accepted terms are expanded by default. Review the public evidence, criteria-level findings, and five-event lifecycle ending in `PAID`.
+2. Open deal `#1`. Its full accepted terms are expanded by default. Review the previous-release evidence findings and five-event lifecycle ending in `PAID`.
 3. Open deal `#2`. Review the unmet criteria and lifecycle ending in `REFUNDED`.
 4. Filter the ledger by title, Builder address, or Client address.
 5. Open **New offer** to confirm the Builder workspace starts empty and requires explicit scope, evidence, acceptance, payment, deadline, revision, and refund terms.
@@ -131,8 +133,8 @@ py -3.13 -m pytest tests/direct -q
 Verified release gate:
 
 - npm audit: 0 known production dependency vulnerabilities
-- frontend component tests: 6 passed
-- direct contract tests: 5 passed
+- frontend component tests: 7 passed
+- direct contract tests: 6 passed
 - desktop/mobile browser tests: 6 passed
 - TypeScript, production build, GenVM lint, Bradbury payment smoke, and Bradbury refund smoke: passed
 - latest GitHub Actions workflow: passed
