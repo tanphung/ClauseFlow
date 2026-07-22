@@ -23,6 +23,8 @@ The final source was clean-deployed on Bradbury on 2026-07-22. Its schema, canon
 - Refund confirmation tx: `0xfda4b3b10ec345aec82205d986ca3eb5e75fc4ba56acca54b6b282e54d3c23e1`
 - Final dashboard totals: 2 offers, 2 deals, 2 completed, `0.02 GEN` paid, `0.015 GEN` refunded
 - Final contract balance and accounted escrow: `0 GEN`
+- Production deployment: `dpl_2UchNpr3qUn7QVu5PRncyf53TA9k`
+- Production alias: `https://clauseflow-two.vercel.app`
 
 The previous integration contract `0xA851b0D3cD85f5Abc91E459C172bc326d5A41bdf` is retained only as development history. The frontend and submission materials use the final contract above.
 

@@ -18,16 +18,16 @@ Use this checklist when the user says: `Lam theo ke hoach tiep theo`.
 - Verified refund: deal `2`, `REFUNDED`, `0.015 GEN`
 - Dashboard totals: 2 offers, 2 deals, 2 completed, `0.02 GEN` paid, `0.015 GEN` refunded
 - Contract balance and accounted escrow: `0 GEN`
-- Production frontend: pending promotion to the final contract at the start of this checklist update
+- Production frontend: `https://clauseflow-two.vercel.app`, verified against the final contract
 
-## Remaining Order
+## Completed Release Gate
 
-1. Run the full local gate: npm audit, component tests, typecheck, build, GenVM lint, direct contract tests, and desktop/mobile E2E.
-2. Deploy the frontend with `public/config.js` pointing to the final contract.
-3. Inspect the production app on desktop and mobile: Dashboard, filters, Offers, Create, Deal Detail, agreement clauses, evidence review, history, explorer links, loading/error states, and no console or overflow errors.
-4. Refresh the production screenshot and submission documentation if visible output differs.
-5. Commit and push the completed production checkpoint, then verify GitHub CI.
+1. Full local gate passed: audit, component tests, typecheck, build, GenVM lint, direct contract tests, and desktop/mobile E2E.
+2. Vercel production points to the final Bradbury contract.
+3. Production QA passed for Dashboard, filters, Offers, Create, Deal Detail, accepted clauses, evidence review, history, links, loading/error states, and responsive layout.
+4. The README production screenshot shows the final paid and refunded histories.
+5. Final source and release checkpoints are pushed to `main`.
 
 ## Final Submission Gate
 
-ClauseFlow is ready to submit only when the final contract has both `PAID` and `REFUNDED` histories visible on the public Dashboard, production points to that contract, all checks pass, GitHub is current, and documentation claims only verified facts.
+ClauseFlow satisfies this gate. Record the demo video from production and submit the full repository, live app, contract explorer, and reviewer notes together.
