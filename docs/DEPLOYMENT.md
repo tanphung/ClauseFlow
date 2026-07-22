@@ -1,6 +1,6 @@
 # ClauseFlow Bradbury Clean Deployment Notes
 
-This version is clean-deployed on Bradbury. The real Mochi-Game payment path is verified and visible on the Dashboard; the separate Bradbury refund path still needs final smoke verification before submission.
+The final candidate source was clean-deployed on Bradbury on 2026-07-22. Its schema and first canonical view are verified; paid and refunded smoke histories are the remaining gate before frontend promotion.
 
 ## Target Network
 
@@ -8,11 +8,15 @@ This version is clean-deployed on Bradbury. The real Mochi-Game payment path is 
 - Chain ID: `4221`
 - Explorer: `https://explorer-bradbury.genlayer.com`
 - Frontend config: `public/config.js`
-- Current tested contract: `0xA851b0D3cD85f5Abc91E459C172bc326d5A41bdf`
-- Deploy tx: `0x08b7d84fc341dbe035b00027eaa62acb7f56f97047e8350e870c955f5e1f3ad2`
+- Final candidate contract: `0x993D37D07e31d8e3853B8702919f4d805299B124`
+- Deploy activation tx: `0x6cc64c3d775401a0d57b0225f480d7b52dea34efdf13933c8753afd09e90c478`
+- Deploy GenLayer tx: `0xeb762c3f00ebf8cc518e1c2a394b57f18b1d17cad0be4b61ad833a7b77f23d02`
 - Deploy result: `ACCEPTED / AGREE / FINISHED_WITH_RETURN`
-- Verified views: `get_offer_ids`, `get_deal_ids`, `get_dashboard_stats`
-- Verified payment smoke: deal `1` reached `PAID`; dashboard totals show `completedDeals=1` and `totalPaidAtto=10000000000000000`.
+- Verified schema: 18 methods
+- Verified clean view: `get_offer_ids=[]`
+- Smoke status: payment and refund histories pending on this final candidate.
+
+The previous integration contract `0xA851b0D3cD85f5Abc91E459C172bc326d5A41bdf` remains useful proof that deal `1` reached `PAID` with `0.01 GEN` and deal `2` reached `REFUNDED` with `0.015 GEN` before the final clean deployment.
 
 ## Preflight
 
