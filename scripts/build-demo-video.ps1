@@ -17,7 +17,7 @@ New-Item -ItemType Directory -Force $raw | Out-Null
 $scenes = Get-Content $sceneFile -Raw | ConvertFrom-Json
 Add-Type -AssemblyName System.Speech
 $voice = New-Object System.Speech.Synthesis.SpeechSynthesizer
-$voice.SelectVoice("Microsoft Zira Desktop")
+$voice.SelectVoice("Microsoft David Desktop")
 $voice.Rate = -1
 $voice.Volume = 100
 

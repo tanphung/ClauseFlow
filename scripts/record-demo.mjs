@@ -53,11 +53,10 @@ async function installRecordingOverlay(target) {
     style.textContent = `
       #cf-demo-caption { position: fixed; left: 50%; bottom: 34px; z-index: 2147483646; transform: translateX(-50%) translateY(16px); width: min(920px, calc(100vw - 96px)); padding: 16px 22px; color: #f7fbf8; background: rgba(9, 48, 40, .94); border: 1px solid rgba(255,255,255,.18); border-radius: 8px; box-shadow: 0 16px 44px rgba(6,28,23,.25); font: 700 22px/1.35 Arial, sans-serif; letter-spacing: 0; text-align: center; opacity: 0; transition: opacity .28s ease, transform .28s ease; pointer-events: none; }
       #cf-demo-caption.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
-      #cf-demo-cursor { position: fixed; left: -100px; top: -100px; z-index: 2147483647; width: 20px; height: 20px; margin: -10px 0 0 -10px; border: 2px solid #fff; border-radius: 50%; background: #f25e4f; box-shadow: 0 2px 12px rgba(0,0,0,.35); pointer-events: none; transition: transform .12s ease; }
+      #cf-demo-cursor { position: fixed; left: -100px; top: -100px; z-index: 2147483647; width: 28px; height: 36px; background: no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='36' viewBox='0 0 28 36'%3E%3Cpath d='M3 2.5v25.1l6.5-6.1 4.9 11.1 5-2.2-4.8-10.8h9.1L3 2.5Z' fill='%23fff' stroke='%23071916' stroke-width='2.2' stroke-linejoin='round'/%3E%3C/svg%3E"); filter: drop-shadow(0 3px 3px rgba(0,0,0,.38)); pointer-events: none; transform-origin: 3px 3px; transition: transform .12s ease, opacity .2s ease; }
       #cf-demo-intro { position: fixed; inset: 0; z-index: 2147483645; display: grid; place-items: center; color: #fff; background: rgba(7,38,32,.86); backdrop-filter: blur(6px); opacity: 0; transition: opacity .35s ease; pointer-events: none; }
       #cf-demo-intro.visible { opacity: 1; }
       #cf-demo-intro .inner { width: min(1040px, calc(100vw - 160px)); text-align: center; }
-      #cf-demo-intro .mark { display: inline-grid; place-items: center; width: 68px; height: 68px; margin-bottom: 25px; border-radius: 12px; color: #0b483c; background: #fff; font: 800 34px/1 Arial, sans-serif; }
       #cf-demo-intro h2 { margin: 0 0 20px; color: #fff; font: 800 68px/1.05 Arial, sans-serif; letter-spacing: 0; }
       #cf-demo-intro p { margin: 0 auto; max-width: 940px; color: #d9ebe4; font: 500 30px/1.4 Arial, sans-serif; letter-spacing: 0; }
       #cf-demo-intro .proof { margin-top: 30px; color: #9ed8c7; font: 700 18px/1.4 Arial, sans-serif; text-transform: uppercase; }
@@ -69,7 +68,7 @@ async function installRecordingOverlay(target) {
     cursor.id = "cf-demo-cursor";
     const intro = document.createElement("div");
     intro.id = "cf-demo-intro";
-    intro.innerHTML = '<div class="inner"><div class="mark">C</div><h2>ClauseFlow</h2><p></p><div class="proof">Live on GenLayer Bradbury</div></div>';
+    intro.innerHTML = '<div class="inner"><h2>ClauseFlow</h2><p></p><div class="proof">Live on GenLayer Bradbury</div></div>';
     document.body.append(captionNode, cursor, intro);
     document.addEventListener("mousemove", (event) => {
       cursor.style.left = `${event.clientX}px`;

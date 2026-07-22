@@ -4,8 +4,9 @@
 
 - Video: `demo-video/ClauseFlow-GenLayer-Demo.mp4`
 - Thumbnail: `demo-video/ClauseFlow-Demo-Thumbnail.png`
-- Duration: 2 minutes 25 seconds
+- Duration: 2 minutes 27 seconds
 - Format: H.264 MP4, 1920x1080, 30 fps, AAC stereo
+- Voice-over: English, male
 - Build command: `npm run demo:video`
 
 The generated media directory is intentionally ignored by Git. Upload the final MP4 to YouTube, Google Drive, or the submission platform, then place the public video URL in `docs/SUBMISSION.md`.
@@ -28,11 +29,11 @@ This demo uses the live production app and the final deployed contract. It shows
 
 - `0:00` ClauseFlow and the trust problem
 - `0:04` Public Bradbury dashboard
-- `0:26` Approved evidence and Builder payment
+- `0:25` Approved evidence and Builder payment
 - `0:58` Rejected evidence and Client refund
 - `1:28` Public agreement and party filters
-- `1:45` Empty Builder workspace and published clauses
-- `2:08` Review links and closing summary
+- `1:46` Empty Builder workspace and published clauses
+- `2:09` Review links and closing summary
 
 ## Recording Integrity
 
