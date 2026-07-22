@@ -1,128 +1,191 @@
 # ClauseFlow
 
-**Verifiable service agreements and GEN escrow on GenLayer.**
+**Service agreements whose payment is decided from public delivery evidence by GenLayer consensus.**
 
-ClauseFlow lets a Builder publish objective service terms, a Client fund the exact agreement with GEN, and GenLayer validators independently fetch public delivery evidence before the contract allows payment or refund. The public dashboard reads agreement, review, and settlement history directly from Bradbury contract views. There is no private history database or mocked agreement fallback.
+A Builder publishes objective terms. A Client locks the exact GEN price. After delivery, GenLayer validators independently fetch the submitted live app, repository, demo, and documentation, assess every accepted obligation, and reach consensus on whether escrow can be paid, revised, or refunded.
 
-[Live dApp](https://clauseflow-two.vercel.app) · [Bradbury contract](https://explorer-bradbury.genlayer.com/address/0x993D37D07e31d8e3853B8702919f4d805299B124) · [Reviewer notes](docs/SUBMISSION.md) · [Demo video package](docs/DEMO_VIDEO.md)
+ClauseFlow is not an AI advice interface. The validator decision changes on-chain settlement rights.
 
-> **Release status:** the repository now contains the next contract release with substantive per-criterion AI reasoning, evidence links, source accessibility, deliverable findings, risks, corrective actions, and independent material-field comparison. The Bradbury address and historical deals below still run the previous review implementation. A clean redeploy and new two-party smoke history will happen only after explicit owner approval; the current video must then be regenerated.
+| Surface | Link |
+| --- | --- |
+| Live dApp | [clauseflow-two.vercel.app](https://clauseflow-two.vercel.app) |
+| Source | [github.com/tanphung/ClauseFlow](https://github.com/tanphung/ClauseFlow) |
+| Current Bradbury contract | [0x993D...B124](https://explorer-bradbury.genlayer.com/address/0x993D37D07e31d8e3853B8702919f4d805299B124) |
+| Deployment proof | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
+| Reviewer notes | [docs/SUBMISSION.md](docs/SUBMISSION.md) |
+| CI | [GitHub Actions](https://github.com/tanphung/ClauseFlow/actions) |
+
+> **Deployment note:** the current address proves the complete escrow lifecycle but predates the richer validator review now on `main`. See [Release Status](#release-status) before evaluating the live review output.
 
 ![ClauseFlow public on-chain agreement dashboard](docs/assets/clauseflow-dashboard.png)
 
-## The Trust Problem
+## Why This Needs GenLayer
 
-Deterministic escrow can enforce roles, amounts, deadlines, and one-time settlement. It cannot determine whether a live application, repository, documentation set, or audit report actually satisfies a funded service agreement.
+A deterministic contract can enforce addresses, exact amounts, deadlines, revision limits, and one-time settlement. It cannot determine whether a delivered application actually implements an agreed workflow, whether repository and documentation evidence support the claim, or whether several public artifacts jointly satisfy natural-language acceptance criteria.
 
-ClauseFlow uses GenLayer at that boundary:
+ClauseFlow uses GenLayer only at that trust boundary:
 
-1. The funded clauses become the immutable review standard.
-2. Validators fetch the submitted delivery, demo, documentation, and repository URLs from the contract.
-3. They compare accessible evidence with the agreed deliverables and acceptance criteria.
-4. The leader and validators independently assess every criterion and deliverable. Consensus compares the normalized decision, per-obligation statuses, source accessibility, and derived score rather than exact free-form prose.
-5. That decision controls whether escrow can move to the Builder or return to the Client.
+1. The funded clauses become the immutable review rubric.
+2. Validators fetch the submitted public sources from inside the contract.
+3. Each validator independently reasons over every accepted criterion and deliverable.
+4. Consensus compares normalized material outcomes, not formatting or identical prose.
+5. The agreed result changes who can claim the locked GEN.
 
-This is a settlement decision over real GEN, not an off-chain recommendation or a validator that only checks JSON formatting. `structure_offer` helps normalize draft terms, but it cannot release funds and the Builder must review and publish the clauses explicitly. The contract-critical trust decision is `review_delivery`.
+Remove GenLayer and ClauseFlow can still store offers, but it cannot make the evidence-based settlement decision that defines the product.
 
-Deadline, grace period, revision exhaustion, refund eligibility, escrow accounting, and settlement idempotency remain deterministic contract rules.
+## Agreement Lifecycle
 
-## Verified Bradbury State
+```mermaid
+flowchart LR
+  A[Builder structures and publishes terms] --> B[Client funds exact GEN]
+  B --> C[Builder submits public evidence]
+  C --> D[Validators fetch and assess sources]
+  D -->|Approved| E[Builder claims payment]
+  D -->|Revision required| C
+  D -->|Rejected or deadline eligible| F[Client claims refund]
+  E --> G[Contract verifies transfer]
+  F --> G
+  G --> H[Public on-chain history]
+```
 
-The following state was read again from the deployed contract on **2026-07-23**.
+Every deal keeps its accepted terms, parties, escrow amount, evidence package, review, timestamps, settlement state, and lifecycle events together. The public Dashboard reads this state directly from contract views and can filter agreements by Builder or Client address. There is no private history database and no seeded payment ledger.
+
+## Validator Review
+
+The current source release replaces keyword matching with a settlement-oriented evidence review:
+
+- The leader and validators independently refetch all submitted sources.
+- The LLM assesses every immutable criterion and deliverable semantically.
+- Each assessment records `SATISFIED`, `PARTIAL`, `NOT_SATISFIED`, or `UNVERIFIABLE`.
+- A positive assessment requires an accessible submitted URL, a concrete finding, and validator reasoning.
+- The contract normalizes the assessments and deterministically derives the score and final result.
+- Consensus requires agreement on the final decision, each obligation status, source accessibility, and score range.
+- Free-form explanations may differ; settlement-critical fields may not.
+
+The on-chain review record includes:
+
+```text
+executive summary
+source accessibility and relevance
+criterion-by-criterion findings and reasoning
+deliverable-by-deliverable findings and reasoning
+evidence URLs
+verified strengths
+risks and missing items
+revision checklist and next action
+consensus basis
+```
+
+Valid JSON alone proves nothing. An accessible page alone proves nothing. The fetched content must substantively support the accepted agreement.
+
+## Settlement Safety
+
+- `accept_offer` requires the exact integer attoGEN price.
+- Approval, revision, rejection, deadlines, and exhausted revisions control eligible actions.
+- Payment and refund are idempotent; a deal cannot settle twice.
+- Claims first enter a pending state and emit the GEN transfer.
+- Confirmation marks `PAID` or `REFUNDED` only after the contract balance proves escrow left the contract.
+- The frontend requires both a successful transaction lifecycle and `FINISHED_WITH_RETURN`; `ACCEPTED` or `FINALIZED` alone is never shown as application success.
+
+## Release Status
+
+`main` contains the richer validator-review release described above. It has passed local contract and frontend gates and GitHub CI, but it has **not yet replaced the current Bradbury contract**. The owner will approve a clean deployment before new two-party payment and refund histories are created.
+
+Until that deployment:
+
+- the live address below remains valid proof of the original end-to-end escrow lifecycle;
+- its two historical reviews use the previous, less detailed review implementation;
+- the existing video documents that previous deployment and must be regenerated;
+- the new review implementation must not be claimed as deployed production behavior.
+
+This explicit boundary keeps the repository, live evidence, and submission claims consistent.
+
+## Verified Bradbury History
+
+State below was read from the current contract on **2026-07-23**.
 
 | Item | Verified value |
 | --- | --- |
 | Network | GenLayer Testnet Bradbury, chain ID `4221` |
 | Contract | `0x993D37D07e31d8e3853B8702919f4d805299B124` |
-| Deploy transaction | `0xeb762c3f00ebf8cc518e1c2a394b57f18b1d17cad0be4b61ad833a7b77f23d02` |
+| Deploy transaction | [`0xeb762c...3d02`](https://explorer-bradbury.genlayer.com/tx/0xeb762c3f00ebf8cc518e1c2a394b57f18b1d17cad0be4b61ad833a7b77f23d02) |
 | Deploy result | `ACCEPTED / AGREE / FINISHED_WITH_RETURN` |
 | Public schema | 18 methods: 9 writes and 9 views |
 | Offers / deals / completed | `2 / 2 / 2` |
 | Total funded | `0.035 GEN` |
 | Total paid | `0.02 GEN` |
 | Total refunded | `0.015 GEN` |
-| Active deals / contract escrow | `0 / 0 GEN` |
+| Active deals / accounted escrow | `0 / 0 GEN` |
 
-| Deal | Validator outcome | Settlement | Evidence |
+| Deal | Previous validator outcome | Settlement | Public evidence |
 | --- | --- | --- | --- |
-| `#1` ClauseFlow verified payment flow | Previous review release: `APPROVED`, score `75/100` | `PAID`, `0.02 GEN` | [Mochi-Game live app](https://mochi-game-frontend.vercel.app/) and [source](https://github.com/tanphung/Mochi-Game) |
-| `#2` Mochi-Game accessibility audit agreement | Previous review release: `REJECTED`, score `50/100` | `REFUNDED`, `0.015 GEN` | Validators fetched the submitted sources and recorded missing funded terms |
+| `#1` ClauseFlow verified payment flow | `APPROVED`, `75/100` | `PAID`, `0.02 GEN` | [Live app](https://mochi-game-frontend.vercel.app/) and [repository](https://github.com/tanphung/Mochi-Game) |
+| `#2` Mochi-Game accessibility audit | `REJECTED`, `50/100` | `REFUNDED`, `0.015 GEN` | Submitted sources plus recorded missing terms |
 
-Amounts are displayed in human-readable GEN. The contract stores exact integer attoGEN values internally.
+Exact deployment, review, payment, refund, child-transfer, and confirmation transaction IDs are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-Detailed deployment and settlement transaction IDs are recorded in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+## Reviewer Path
 
-## Reviewer Walkthrough
+The public read experience requires no wallet:
 
-The live app is public and does not require a wallet for review.
-
-1. Open the [Dashboard](https://clauseflow-two.vercel.app) and verify the totals above.
-2. Open deal `#1`. Its full accepted terms are expanded by default. Review the previous-release evidence findings and five-event lifecycle ending in `PAID`.
-3. Open deal `#2`. Review the unmet criteria and lifecycle ending in `REFUNDED`.
+1. Open the [Dashboard](https://clauseflow-two.vercel.app) and compare its totals with the verified table above.
+2. Open deal `#1`, inspect the expanded accepted agreement, evidence package, five-event lifecycle, and paid settlement.
+3. Open deal `#2`, inspect the rejected review, refund path, and terminal history.
 4. Filter the ledger by title, Builder address, or Client address.
-5. Open **New offer** to confirm the Builder workspace starts empty and requires explicit scope, evidence, acceptance, payment, deadline, revision, and refund terms.
-6. Use the contract explorer link in the sidebar to inspect the deployed Intelligent Contract.
+5. Open **New offer** and confirm that the Builder workspace starts empty rather than presenting a fabricated contract.
+6. Follow the contract and transaction links to verify state independently in the Bradbury explorer.
 
-The polished 1080p reviewer recording, thumbnail, suggested upload copy, and chapter timestamps are described in [docs/DEMO_VIDEO.md](docs/DEMO_VIDEO.md).
-
-## Lifecycle
-
-```mermaid
-flowchart LR
-  A[Builder reviews and publishes clauses] --> B[Client locks exact GEN]
-  B --> C[Builder submits public evidence]
-  C --> D[Validators fetch and compare sources]
-  D -->|Approved| E[Builder claims payment]
-  D -->|Revision required| C
-  D -->|Rejected or deterministically eligible| F[Client claims refund]
-  E --> G[Transfer finalized and confirmed]
-  F --> G
-  G --> H[Public dashboard history]
-```
+After the clean redeploy, this path will be updated with the new contract address, detailed review records, fresh two-wallet transactions, screenshots, and video.
 
 ## Architecture
 
 | Layer | Responsibility |
 | --- | --- |
-| React frontend | Wallet connection, writes, full transaction lifecycle, public views, filters, explorer links |
-| Intelligent Contract | Accepted terms, GEN escrow, deterministic eligibility, evidence review, settlement, aggregate stats, per-deal history |
-| Bradbury validators | Independent public web fetching and consensus over material evidence findings |
-| Public evidence | Live delivery, demo, documentation, and repository URLs supplied by the Builder |
+| React dApp | Public dashboard, wallet roles, writes, transaction lifecycle, filters, and explorer proof |
+| Intelligent Contract | Immutable terms, GEN escrow, evidence review, eligibility, settlement, statistics, and history |
+| Bradbury validators | Independent web fetching and semantic assessment of settlement-critical obligations |
+| Public evidence | Builder-supplied delivery, demo, documentation, and repository URLs |
 
-The frontend waits for a real execution result and refreshed contract state. It never treats `ACCEPTED` or `FINALIZED` alone as proof of application success.
+Key contract methods:
 
-Payment and refund use two-step settlement. A claim emits the external GEN transfer and records a pending state. Confirmation marks the deal `PAID` or `REFUNDED` only after the contract balance proves escrow left the contract. Repeated settlement is rejected.
+| Stage | Methods |
+| --- | --- |
+| Draft and publish | `structure_offer`, `publish_offer`, `get_structured_offer`, `get_offer` |
+| Fund and deliver | `accept_offer`, `submit_delivery` |
+| Review | `review_delivery` |
+| Settle | `claim_payment`, `confirm_payment`, `claim_refund`, `confirm_refund` |
+| Public history | `get_deal`, `get_deal_ids`, `get_completed_deal_ids`, `get_deals_for_address`, `get_deal_history`, `get_dashboard_stats` |
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [contracts/clauseflow.py](contracts/clauseflow.py) for the complete design and implementation.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [contracts/clauseflow.py](contracts/clauseflow.py) for the full implementation.
 
-## Repository
+## Repository Map
 
 ```text
-contracts/clauseflow.py       Intelligent Contract
+contracts/clauseflow.py       GenLayer Intelligent Contract
 src/                          React dApp and GenLayer integration
-tests/direct/                 Direct contract tests
+tests/direct/                 Contract state and settlement tests
 tests/e2e/                    Desktop and mobile browser tests
 scripts/                      Bradbury deploy, smoke, settlement, and demo tooling
-docs/                         Architecture, deployment, demo, roadmap, and reviewer notes
+docs/                         Architecture, proof, roadmap, and reviewer notes
 public/config.js              Public Bradbury runtime configuration
 ```
 
 ## Run Locally
 
-Node.js 22 or newer is required for the frontend.
+Frontend prerequisites: Node.js 22 or newer.
 
 ```powershell
 npm ci
 npm run dev
 ```
 
-Then open `http://127.0.0.1:5173`. Optional contract tooling requires Python 3.13, GenLayer CLI, `genvm-lint`, and `gltest`.
+Open `http://127.0.0.1:5173`.
 
-## Verification
+Contract tests additionally require Python 3.13, `genvm-lint`, and `gltest`.
 
 ```powershell
 npm audit --omit=dev
-npm test -- --run
+npm test
 npm run typecheck
 npm run build
 npm run test:e2e
@@ -130,30 +193,26 @@ npm run lint:contract
 py -3.13 -m pytest tests/direct -q
 ```
 
-Verified release gate:
+Current verified gates:
 
-- npm audit: 0 known production dependency vulnerabilities
-- frontend component tests: 7 passed
-- direct contract tests: 6 passed
-- desktop/mobile browser tests: 6 passed
-- TypeScript, production build, GenVM lint, Bradbury payment smoke, and Bradbury refund smoke: passed
-- latest GitHub Actions workflow: passed
+- `0` known production dependency vulnerabilities
+- `7/7` frontend component tests
+- `6/6` direct contract tests
+- desktop and mobile browser tests passed
+- TypeScript, production build, GenVM lint, and GitHub CI passed
 
 ## Security
 
-- Private keys remain only in local `.env` or encrypted GenLayer keystores.
-- `.env`, build output, test artifacts, generated video, and caches are ignored by Git.
-- The browser receives only public chain, explorer, and contract configuration.
-- Deployment preflight derives and checks the deployer address without printing secret values.
-- Every smoke agreement uses separate Builder and Client wallets and less than `0.5 GEN`.
+- Private keys remain only in local `.env` files or encrypted GenLayer keystores.
+- `.env`, build output, test artifacts, generated media, and caches are ignored by Git.
+- No private key is exposed through `VITE_*`, source, screenshots, logs, or documentation.
+- Deployment preflight derives and verifies wallet addresses without printing secret values.
+- Real smoke agreements use separate Builder and Client wallets and stay below `0.5 GEN`.
 
-## Project Direction
+## Path Forward
 
-ClauseFlow is one continuing product, not a set of template variations. The next milestones are reusable agreement templates, richer evidence policies, optional event indexing for larger histories, community pilot agreements, and mainnet readiness.
+ClauseFlow is one continuing product, not a family of template variations. The next release gate is a clean Bradbury deployment of the richer validator review, followed by fresh two-party payment and refund histories and a new reviewer video. Longer-term work includes reusable agreement templates, evidence policies, larger-history indexing, community pilot agreements, and mainnet readiness.
 
-- [Roadmap](docs/ROADMAP.md)
-- [Contribution and pilot guide](CONTRIBUTING.md)
-- [Submission notes](docs/SUBMISSION.md)
-- [Demo video and upload copy](docs/DEMO_VIDEO.md)
+[Roadmap](docs/ROADMAP.md) | [Contribution and pilot guide](CONTRIBUTING.md) | [Submission notes](docs/SUBMISSION.md) | [Demo requirements](docs/DEMO_VIDEO.md)
 
-Official GenLayer references: [value transfers](https://docs.genlayer.com/developers/intelligent-contracts/features/value-transfers), [messages](https://docs.genlayer.com/developers/intelligent-contracts/features/messages), and [genlayer-js contracts](https://docs.genlayer.com/api-references/genlayer-js/contracts).
+Official GenLayer references: [Equivalence Principle](https://docs.genlayer.com/developers/intelligent-contracts/equivalence-principle), [value transfers](https://docs.genlayer.com/developers/intelligent-contracts/features/value-transfers), and [GenLayerJS contracts](https://docs.genlayer.com/api-references/genlayer-js/contracts).
