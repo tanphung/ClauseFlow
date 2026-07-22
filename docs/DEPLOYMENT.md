@@ -1,6 +1,6 @@
 # ClauseFlow Bradbury Clean Deployment Notes
 
-The final candidate source was clean-deployed on Bradbury on 2026-07-22. Its schema and first canonical view are verified; paid and refunded smoke histories are the remaining gate before frontend promotion.
+The final source was clean-deployed on Bradbury on 2026-07-22. Its schema, canonical views, payment path, refund path, and zero remaining escrow balance are verified.
 
 ## Target Network
 
@@ -14,9 +14,17 @@ The final candidate source was clean-deployed on Bradbury on 2026-07-22. Its sch
 - Deploy result: `ACCEPTED / AGREE / FINISHED_WITH_RETURN`
 - Verified schema: 18 methods
 - Verified clean view: `get_offer_ids=[]`
-- Smoke status: payment and refund histories pending on this final candidate.
+- Payment deal: `1`, `PAID`, `0.02 GEN`
+- Payment claim tx: `0xda2dac1efbf088119b7088fbd698626ec9634d9e8f8b19ebb13187351f0682b7`
+- Payment confirmation tx: `0x8286ae6293cb60c59a90ee80f3ada87de69bbd4a747155a28d6b13e32e38f5b7`
+- Refund deal: `2`, `REFUNDED`, `0.015 GEN`
+- Refund review tx: `0x53e8f2894cd74696df30af351d6c8d0a004a3a8a00b35ef347b6eb0ac6df3453`
+- Refund claim tx: `0xcf6c8b5615924a70bd899ce09f81975d1571cada3779d067606652b35dffc1a7`
+- Refund confirmation tx: `0xfda4b3b10ec345aec82205d986ca3eb5e75fc4ba56acca54b6b282e54d3c23e1`
+- Final dashboard totals: 2 offers, 2 deals, 2 completed, `0.02 GEN` paid, `0.015 GEN` refunded
+- Final contract balance and accounted escrow: `0 GEN`
 
-The previous integration contract `0xA851b0D3cD85f5Abc91E459C172bc326d5A41bdf` remains useful proof that deal `1` reached `PAID` with `0.01 GEN` and deal `2` reached `REFUNDED` with `0.015 GEN` before the final clean deployment.
+The previous integration contract `0xA851b0D3cD85f5Abc91E459C172bc326d5A41bdf` is retained only as development history. The frontend and submission materials use the final contract above.
 
 ## Preflight
 

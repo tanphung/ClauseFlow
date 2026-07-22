@@ -24,21 +24,21 @@ ClauseFlow uses GenLayer only at that boundary. Validators fetch the evidence th
 ## Verified Build
 
 - Network: GenLayer Testnet Bradbury, chain ID `4221`
-- Contract: `0xA851b0D3cD85f5Abc91E459C172bc326d5A41bdf`
-- Deploy transaction: `0x08b7d84fc341dbe035b00027eaa62acb7f56f97047e8350e870c955f5e1f3ad2`
+- Contract: `0x993D37D07e31d8e3853B8702919f4d805299B124`
+- Deploy transaction: `0xeb762c3f00ebf8cc518e1c2a394b57f18b1d17cad0be4b61ad833a7b77f23d02`
 - Contract result: `ACCEPTED / AGREE / FINISHED_WITH_RETURN`
-- Payment smoke: deal `1` reached `PAID` with `0.01 GEN`
+- Payment smoke: deal `1` reached `PAID` with `0.02 GEN`
+- Refund smoke: deal `2` reached `REFUNDED` with `0.015 GEN`
+- Final contract balance: `0 GEN`
 - Real evidence: [Mochi-Game source](https://github.com/tanphung/Mochi-Game) and [live app](https://mochi-game-frontend.vercel.app/)
-- Automated checks: GenVM lint, five direct contract tests, five frontend component tests, TypeScript, production build, and desktop/mobile browser flows
-
-The separate Bradbury refund smoke is not yet claimed as complete. It remains a final submission gate alongside public frontend hosting.
+- Automated checks: GenVM lint, five direct contract tests, six frontend component tests, TypeScript, production build, and desktop/mobile browser flows
 
 ## Reviewer Links
 
 - Source: [github.com/tanphung/ClauseFlow](https://github.com/tanphung/ClauseFlow)
-- Contract explorer: [Bradbury contract](https://explorer-bradbury.genlayer.com/address/0xA851b0D3cD85f5Abc91E459C172bc326d5A41bdf)
+- Contract explorer: [Bradbury contract](https://explorer-bradbury.genlayer.com/address/0x993D37D07e31d8e3853B8702919f4d805299B124)
 - Live frontend: [clauseflow-two.vercel.app](https://clauseflow-two.vercel.app)
-- Demo video: pending final clean smoke recording
+- Demo video: ready to record from the verified live flow
 
 ## Why This Is A Project
 

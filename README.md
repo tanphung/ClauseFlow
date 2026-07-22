@@ -44,12 +44,14 @@ Deadline, grace period, revision exhaustion, refund eligibility, escrow accounti
 Clean contract deployment is verified for this version.
 
 - Network: GenLayer Testnet Bradbury, chain ID `4221`
-- Contract: `0xA851b0D3cD85f5Abc91E459C172bc326d5A41bdf`
-- Deploy tx: `0x08b7d84fc341dbe035b00027eaa62acb7f56f97047e8350e870c955f5e1f3ad2`
+- Contract: `0x993D37D07e31d8e3853B8702919f4d805299B124`
+- Deploy tx: `0xeb762c3f00ebf8cc518e1c2a394b57f18b1d17cad0be4b61ad833a7b77f23d02`
 - Deploy result: `ACCEPTED / AGREE / FINISHED_WITH_RETURN`
 - Verified schema: 18 public methods, 9 writes and 9 views
 - Verified views: `get_offer_ids`, `get_deal_ids`, `get_dashboard_stats`
-- Verified smoke: deal `1` completed as `PAID` with `0.01 GEN` paid from escrow after public Mochi-Game evidence review.
+- Payment proof: deal `1` completed as `PAID` with `0.02 GEN` after validators reviewed public Mochi-Game evidence.
+- Refund proof: deal `2` completed as `REFUNDED` with `0.015 GEN` after the submitted evidence failed the funded accessibility-audit criteria.
+- Final escrow balance: `0 GEN`; aggregate funded value: `0.035 GEN`.
 
 The intended smoke scenario now uses the user's real Mochi-Game evidence:
 
@@ -126,7 +128,7 @@ Current local verification:
 
 - GenVM lint: 18 methods validated
 - Direct contract tests: 5 passed
-- Frontend unit tests: 5 passed
+- Frontend unit tests: 6 passed
 - TypeScript typecheck and production build: passed
 - Browser E2E suite: desktop and mobile coverage
 
@@ -155,4 +157,4 @@ ClauseFlow is being developed as one substantial Project rather than a family of
 - [Focused product roadmap](docs/ROADMAP.md)
 - [Contribution and pilot guide](CONTRIBUTING.md)
 
-Do not submit the final Project until the public app is hosted and the clean-deployment refund smoke is verified. The current paid Mochi-Game agreement is already visible through the Bradbury-backed Dashboard.
+The public app and repository now point to the final verified Bradbury contract. Deal `1` and deal `2` provide reviewer-visible payment and refund paths backed by real public Mochi-Game evidence.
