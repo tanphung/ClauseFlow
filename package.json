@@ -9,7 +9,8 @@
     "lint:contract": "genvm-lint check contracts/clauseflow.py --json",
     "preflight:bradbury": "node scripts/preflight-bradbury.mjs",
     "deploy:bradbury": "node scripts/deploy-bradbury.mjs",
-    "smoke:bradbury": "node scripts/bradbury-smoke.mjs"
+    "smoke:bradbury": "node scripts/bradbury-smoke.mjs",
+    "resume:settlement": "node scripts/resume-settlement.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.4",
