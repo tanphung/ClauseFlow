@@ -10,12 +10,12 @@ ClauseFlow is not an AI advice interface. The validator decision changes on-chai
 | --- | --- |
 | Live dApp | [clauseflow-two.vercel.app](https://clauseflow-two.vercel.app) |
 | Source | [github.com/tanphung/ClauseFlow](https://github.com/tanphung/ClauseFlow) |
-| Current Bradbury contract | [0x993D...B124](https://explorer-bradbury.genlayer.com/address/0x993D37D07e31d8e3853B8702919f4d805299B124) |
+| Current Bradbury contract | [0x0CfB...6Afe](https://explorer-bradbury.genlayer.com/address/0x0CfB5ba1505549c77Aa5854C523451a41C596Afe) |
 | Deployment proof | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
 | Reviewer notes | [docs/SUBMISSION.md](docs/SUBMISSION.md) |
 | CI | [GitHub Actions](https://github.com/tanphung/ClauseFlow/actions) |
 
-> **Deployment note:** the current address proves the complete escrow lifecycle but predates the richer validator review now on `main`. See [Release Status](#release-status) before evaluating the live review output.
+> **Deployment note:** the current address is the clean Bradbury deployment of the richer validator review. Fresh two-wallet payment and refund histories are being created and verified before this release is submitted.
 
 ![ClauseFlow public on-chain agreement dashboard](docs/assets/clauseflow-dashboard.png)
 
@@ -89,20 +89,20 @@ Valid JSON alone proves nothing. An accessible page alone proves nothing. The fe
 
 ## Release Status
 
-`main` contains the richer validator-review release described above. It has passed local contract and frontend gates and GitHub CI, but it has **not yet replaced the current Bradbury contract**. The owner will approve a clean deployment before new two-party payment and refund histories are created.
+`main` contains the richer validator-review release described above. It was clean-deployed to Bradbury at [`0x0CfB5ba1505549c77Aa5854C523451a41C596Afe`](https://explorer-bradbury.genlayer.com/address/0x0CfB5ba1505549c77Aa5854C523451a41C596Afe) on 2026-07-23 with `ACCEPTED / AGREE / FINISHED_WITH_RETURN`, a valid 18-method schema, and `get_offer_ids=[]`.
 
-Until that deployment:
+Until the final smoke histories and recording are complete:
 
-- the live address below remains valid proof of the original end-to-end escrow lifecycle;
-- its two historical reviews use the previous, less detailed review implementation;
-- the existing video documents that previous deployment and must be regenerated;
-- the new review implementation must not be claimed as deployed production behavior.
+- the live dApp will be repointed to this contract after its Vercel production build completes;
+- the existing two-deal history below remains archived proof of the previous release;
+- the existing video documents the previous release and will be regenerated;
+- this section will be replaced with fresh contract, transaction, and settlement evidence.
 
 This explicit boundary keeps the repository, live evidence, and submission claims consistent.
 
-## Verified Bradbury History
+## Archived Previous Bradbury History
 
-State below was read from the current contract on **2026-07-23**.
+This is retained as historical proof of the previous release. It is not the current vNext contract.
 
 | Item | Verified value |
 | --- | --- |
