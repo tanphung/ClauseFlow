@@ -218,10 +218,10 @@ async function finalizeParentTransaction(hash, account) {
 const refundRule = "Client may claim a refund after deadline plus grace period, or after rejected evidence.";
 const paymentArgs = (title, price) => [
   title,
-  "Verify existing public Mochi-Game evidence for a ClauseFlow dashboard payment proof. No new implementation work is requested.",
-  "Confirm the already-published Mochi-Game live app and GitHub README are publicly accessible and relevant to the Quest Evaluator flow.",
-  "Live app URL, GitHub README URL, and short delivery note listing those public evidence links.",
-  "Approve if validators can fetch the live app or README and confirm they reference Mochi-Game, Quest Evaluator, GenLayer consensus, or demo autofill. Do not require new code, audits, PRs, reviewer checklists, or README changes.",
+  "Publish the ClauseFlow vNext release with detailed GenLayer validator evidence reviews on Bradbury.",
+  "Make the deployed ClauseFlow dashboard, public source repository, and reviewer README available so a Client can independently verify the detailed validator-review and escrow-release workflow.",
+  "A live ClauseFlow dashboard, a public GitHub repository, and a reviewer README that documents the deployed Bradbury release and evidence-review behavior.",
+  "Approve only when validators can fetch the live ClauseFlow dashboard, repository, and README; verify that the release describes detailed evidence review and a GEN escrow settlement lifecycle; and confirm that the submitted sources are mutually consistent.",
   price,
   2n,
   1n,
@@ -232,10 +232,10 @@ const paymentArgs = (title, price) => [
 
 const refundArgs = (title, price) => [
   title,
-  "Deliver a public accessibility audit for the Mochi-Game Quest Evaluator interface.",
-  "Document keyboard navigation, focus visibility, contrast findings, and actionable remediation for the public Quest Evaluator flow.",
-  "A public audit report URL, the Mochi-Game live URL, and repository evidence supporting each finding.",
-  "Approve only if validators can fetch a public audit report that contains keyboard, focus, contrast, and remediation findings tied to Mochi-Game. Reject missing or inaccessible reports.",
+  "Deliver a complete public accessibility audit for the ClauseFlow agreement dashboard.",
+  "Publish an audit that documents keyboard navigation, visible focus, color contrast, and actionable remediation for the public ClauseFlow dashboard.",
+  "A public accessibility audit report, the live ClauseFlow dashboard, and repository evidence supporting each finding.",
+  "Approve only if validators can fetch a dedicated public audit report that contains keyboard navigation, focus visibility, contrast, and remediation findings tied to ClauseFlow. Reject evidence that only links the app or repository without the required audit.",
   price,
   2n,
   1n,
@@ -268,7 +268,7 @@ async function createOffer(title, args) {
     console.log(`RESUME structured draft for ${title}`);
   }
   if (!draft?.clauses?.acceptanceCriteria || draft.publishedOfferId) throw new Error("Contract draft was not stored correctly");
-  await write(builder, "publish_offer", [...args, "https://github.com/tanphung/Mochi-Game\nhttps://mochi-game-frontend.vercel.app"]);
+  await write(builder, "publish_offer", [...args, "https://github.com/tanphung/ClauseFlow\nhttps://clauseflow-two.vercel.app"]);
   return await waitForLastId("get_offer_ids");
 }
 
@@ -335,7 +335,7 @@ async function waitForLastId(functionName) {
 async function completePayment(dealId) {
   let state = await readJson("get_deal", [dealId]);
   if (state.status === "FUNDED" || state.status === "REVISION_REQUIRED") {
-    await write(builder, "submit_delivery", [dealId, "https://mochi-game-frontend.vercel.app", "https://github.com/tanphung/Mochi-Game", "https://mochi-game-frontend.vercel.app", "https://github.com/tanphung/Mochi-Game#readme", "Mochi-Game evidence package: live app, GitHub repository, README checklist, and Quest Evaluator flow are public for GenLayer validators to fetch and compare against the accepted agreement."]);
+    await write(builder, "submit_delivery", [dealId, "https://clauseflow-two.vercel.app", "https://github.com/tanphung/ClauseFlow", "https://clauseflow-two.vercel.app", "https://github.com/tanphung/ClauseFlow#readme", "ClauseFlow vNext evidence package: live Bradbury dashboard, public source repository, and reviewer README are submitted for validators to verify the detailed review and escrow-release lifecycle."]);
     state = await waitForDealStatus(dealId, "SUBMITTED");
   }
   if (state.status === "SUBMITTED") {
@@ -359,7 +359,7 @@ async function completePayment(dealId) {
 async function completeRefund(dealId) {
   let state = await readJson("get_deal", [dealId]);
   if (state.status === "FUNDED" || state.status === "REVISION_REQUIRED") {
-    await write(builder, "submit_delivery", [dealId, "https://github.com/tanphung/Mochi-Game/blob/main/CLAUSEFLOW-ACCESSIBILITY-AUDIT.md", "https://github.com/tanphung/Mochi-Game", "https://mochi-game-frontend.vercel.app", "https://github.com/tanphung/Mochi-Game#readme", "The promised accessibility audit report is submitted at the public repository path for validator retrieval and criteria-level review."]);
+    await write(builder, "submit_delivery", [dealId, "https://clauseflow-two.vercel.app", "https://github.com/tanphung/ClauseFlow", "https://clauseflow-two.vercel.app", "https://github.com/tanphung/ClauseFlow#readme", "The live dashboard and source are public, but no dedicated accessibility audit report has been published. This evidence package is intentionally submitted for the Client's evidence-based refund decision."]);
     state = await waitForDealStatus(dealId, "SUBMITTED");
   }
   if (state.status === "SUBMITTED") {
