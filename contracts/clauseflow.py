@@ -1023,7 +1023,7 @@ def _review_result_materially_valid(leader: dict, evidence: dict) -> bool:
         return False
     if not isinstance(criterion_assessments, list) or not isinstance(deliverable_assessments, list) or not isinstance(source_assessments, list):
         return False
-    if len(criterion_assessments) != criteria_total or len(source_assessments) != 4:
+    if len(criterion_assessments) != criteria_total or len(source_assessments) != len(evidence["pages"]):
         return False
     for assessment in criterion_assessments + deliverable_assessments:
         if assessment.get("status") not in ["SATISFIED", "PARTIAL", "NOT_SATISFIED", "UNVERIFIABLE"]:
