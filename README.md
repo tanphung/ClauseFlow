@@ -12,6 +12,7 @@ ClauseFlow is not an AI advice interface. The validator decision changes on-chai
 | Source | [github.com/tanphung/ClauseFlow](https://github.com/tanphung/ClauseFlow) |
 | Current Bradbury contract | [0xc641...8EEe](https://explorer-bradbury.genlayer.com/address/0xc641d8C83172c6B183896a098C179AeF62478EEe) |
 | Intelligent contract source | [contracts/clauseflow.py](https://raw.githubusercontent.com/tanphung/ClauseFlow/main/contracts/clauseflow.py) |
+| Validator evidence dossier | [docs/RELEASE_EVIDENCE.md](https://raw.githubusercontent.com/tanphung/ClauseFlow/main/docs/RELEASE_EVIDENCE.md) |
 | Deployment proof | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
 | Reviewer notes | [docs/SUBMISSION.md](docs/SUBMISSION.md) |
 | CI | [GitHub Actions](https://github.com/tanphung/ClauseFlow/actions) |

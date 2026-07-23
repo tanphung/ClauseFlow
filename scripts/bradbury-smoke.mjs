@@ -217,10 +217,10 @@ async function finalizeParentTransaction(hash, account) {
 const refundRule = "Client may claim a refund after deadline plus grace period, or after rejected evidence.";
 const paymentArgs = (title, price) => [
   title,
-  "Deliver a public ClauseFlow release-verification package for a Client to inspect before accepting the release.",
-  "Provide direct public access to the deployed ClauseFlow interface, its source repository, and the project README so a Client can independently verify that the release exists, is usable, and is documented.",
-  "A live ClauseFlow dashboard, a public GitHub repository containing the contract and frontend source, and a reviewer README with setup and on-chain workflow documentation.",
-  "Approve only when validators independently fetch a usable live ClauseFlow interface, a public repository containing the intelligent contract and frontend source, and a README that documents setup and the on-chain agreement workflow. The sources must describe the same ClauseFlow release.",
+  "Publish a public ClauseFlow release evidence dossier that a Client can use to independently verify the delivered dApp release.",
+  "Provide a versioned public evidence dossier that maps the live ClauseFlow application, intelligent contract source, frontend source, and reviewer documentation to one coherent on-chain agreement workflow.",
+  "A public release evidence dossier, a usable live ClauseFlow dashboard, direct intelligent contract source, and reviewer documentation.",
+  "Approve only when validators independently fetch the evidence dossier, live ClauseFlow interface, intelligent contract source, and README; confirm that each is publicly accessible; and confirm that the dossier accurately maps the same application, contract behavior, and agreement lifecycle across those sources.",
   price,
   2n,
   1n,
@@ -334,7 +334,7 @@ async function waitForLastId(functionName) {
 async function completePayment(dealId) {
   let state = await readJson("get_deal", [dealId]);
   if (state.status === "FUNDED" || state.status === "REVISION_REQUIRED") {
-    await write(builder, "submit_delivery", [dealId, "https://clauseflow-two.vercel.app", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/contracts/clauseflow.py", "https://clauseflow-two.vercel.app", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/README.md", "ClauseFlow release-verification package: a usable live dashboard, the deployed intelligent contract source, and a reviewer README with setup and on-chain workflow documentation."]);
+    await write(builder, "submit_delivery", [dealId, "https://clauseflow-two.vercel.app", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/contracts/clauseflow.py", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/docs/RELEASE_EVIDENCE.md", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/README.md", "ClauseFlow evidence dossier delivery: the public dossier maps the usable live dashboard, direct intelligent contract source, frontend source, and reviewer workflow documentation for independent validator verification."]);
     state = await waitForDealStatus(dealId, "SUBMITTED");
   }
   if (state.status === "SUBMITTED") {
@@ -389,7 +389,7 @@ const baselineRefunded = BigInt(baselineStats.totalRefundedAtto);
 const paymentPrice = 20_000_000_000_000_000n;
 let paymentDeal = "";
 if (mode === "full") {
-  const paymentOffer = await createOffer("ClauseFlow public release verification", paymentArgs("ClauseFlow public release verification", paymentPrice));
+  const paymentOffer = await createOffer("ClauseFlow release evidence dossier", paymentArgs("ClauseFlow release evidence dossier", paymentPrice));
   paymentDeal = await fundOffer(paymentOffer, paymentPrice);
   await completePayment(paymentDeal);
 }
