@@ -335,7 +335,7 @@ async function waitForLastId(functionName) {
 async function completePayment(dealId) {
   let state = await readJson("get_deal", [dealId]);
   if (state.status === "FUNDED" || state.status === "REVISION_REQUIRED") {
-    await write(builder, "submit_delivery", [dealId, "https://clauseflow-two.vercel.app", "https://github.com/tanphung/ClauseFlow", "https://clauseflow-two.vercel.app", "https://github.com/tanphung/ClauseFlow#readme", "ClauseFlow vNext evidence package: live Bradbury dashboard, public source repository, and reviewer README are submitted for validators to verify the detailed review and escrow-release lifecycle."]);
+    await write(builder, "submit_delivery", [dealId, "https://clauseflow-two.vercel.app", "https://github.com/tanphung/ClauseFlow", "https://clauseflow-two.vercel.app", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/README.md", "ClauseFlow vNext evidence package: live Bradbury dashboard, public source repository, and reviewer README are submitted for validators to verify the detailed review and escrow-release lifecycle."]);
     state = await waitForDealStatus(dealId, "SUBMITTED");
   }
   if (state.status === "SUBMITTED") {
@@ -359,7 +359,7 @@ async function completePayment(dealId) {
 async function completeRefund(dealId) {
   let state = await readJson("get_deal", [dealId]);
   if (state.status === "FUNDED" || state.status === "REVISION_REQUIRED") {
-    await write(builder, "submit_delivery", [dealId, "https://clauseflow-two.vercel.app", "https://github.com/tanphung/ClauseFlow", "https://clauseflow-two.vercel.app", "https://github.com/tanphung/ClauseFlow#readme", "The live dashboard and source are public, but no dedicated accessibility audit report has been published. This evidence package is intentionally submitted for the Client's evidence-based refund decision."]);
+    await write(builder, "submit_delivery", [dealId, "https://clauseflow-two.vercel.app", "https://github.com/tanphung/ClauseFlow", "https://clauseflow-two.vercel.app", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/README.md", "The live dashboard and source are public, but no dedicated accessibility audit report has been published. This evidence package is intentionally submitted for the Client's evidence-based refund decision."]);
     state = await waitForDealStatus(dealId, "SUBMITTED");
   }
   if (state.status === "SUBMITTED") {

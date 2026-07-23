@@ -582,24 +582,37 @@ def _fetch_url_text(url: str, label: str) -> dict:
     try:
         response = gl.nondet.web.get(url)
         text = response.body.decode("utf-8")
-        clipped = str(text)[:3000]
+        # Bound each independently fetched artifact so consensus remains within
+        # Bradbury's execution window while retaining enough primary evidence.
+        clipped = str(text)[:1600]
         return {"label": label, "url": url, "accessible": len(clipped) > 0, "text": clipped, "error": ""}
     except Exception as exc:
         return {"label": label, "url": url, "accessible": False, "text": "", "error": str(exc)[:240]}
 
 
 def _fetch_delivery_evidence(deal: dict) -> dict:
-    pages = [
-        _fetch_url_text(deal["deliveryUrl"], "delivery"),
-        _fetch_url_text(deal["demoUrl"], "demo"),
-        _fetch_url_text(deal["documentationUrl"], "documentation"),
-        _fetch_url_text(deal["githubUrl"], "github"),
-    ]
+    pages = []
+    seen_urls = []
+    for label, url in [
+        ("delivery", deal["deliveryUrl"]),
+        ("demo", deal["demoUrl"]),
+        ("documentation", deal["documentationUrl"]),
+        ("github", deal["githubUrl"]),
+    ]:
+        key = _evidence_url_key(url)
+        if key in seen_urls:
+            continue
+        seen_urls.append(key)
+        pages.append(_fetch_url_text(url, label))
     accessible_count = 0
     for page in pages:
         if page["accessible"]:
             accessible_count += 1
     return {"pages": pages, "accessibleCount": str(accessible_count), "deliveryNote": deal["deliveryNote"]}
+
+
+def _evidence_url_key(url: str) -> str:
+    return _clean(url).split("#", 1)[0].rstrip("/").lower()
 
 
 def _evaluate_delivery_review(offer: dict, deal: dict, evidence: dict) -> dict:
