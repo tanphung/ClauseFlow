@@ -31,7 +31,7 @@ test("renders dashboard shell without blank screen or fake success", async ({ pa
   await expect(page.getByText("[object Object]")).toHaveCount(0);
 });
 
-test("create form starts empty and uses explicit real evidence loading", async ({ page }) => {
+test("create form starts empty without a seeded demo agreement", async ({ page }) => {
   await openLocalPreview(page);
   await openCreateView(page);
   await expect(page.getByRole("button", { name: "Publish Reviewed Offer" })).toBeDisabled();
@@ -39,11 +39,8 @@ test("create form starts empty and uses explicit real evidence loading", async (
   const values = await page.locator("input, textarea").evaluateAll((nodes) => nodes.map((node) => (node as HTMLInputElement | HTMLTextAreaElement).value).join("\n"));
   expect(values).not.toContain("Example Domain");
 
-  await page.getByRole("button", { name: /Load real example/i }).click();
-  await expect(page.getByLabel("Offer title")).toHaveValue(/Mochi-Game Quest Evaluator/i);
-  await expect(page.getByLabel("Revision window hours")).toHaveValue("24");
-  await expect(page.getByLabel("Reference URLs")).toHaveValue(/https:\/\/github\.com\/tanphung\/Mochi-Game/);
-  await expect(page.getByLabel("Reference URLs")).toHaveValue(/https:\/\/mochi-game-frontend\.vercel\.app/);
+  await expect(page.getByRole("button", { name: /Load real example/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Structure clauses" })).toBeDisabled();
 });
 
 test("mobile layout has no horizontal overflow", async ({ page }) => {

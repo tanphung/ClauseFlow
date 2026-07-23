@@ -675,6 +675,9 @@ legend { width: 100%; padding: 0 0 12px; color: var(--ink); font-size: 11px; fon
 .historyList time { margin-left: 8px; color: var(--ink-faint); font-size: 8px; }
 .historyList p { margin: 5px 0 3px; font-size: 10px; overflow-wrap: anywhere; }
 .historyList small { font-family: ui-monospace, monospace; font-size: 8px; }
+.historyProofs { display: flex; flex-wrap: wrap; gap: 6px 10px; margin-top: 6px; }
+.historyProofs a { display: inline-flex; align-items: center; gap: 4px; color: var(--forest-2); font-family: ui-monospace, monospace; font-size: 8px; font-weight: 700; text-decoration: none; }
+.historyProofs a:hover { color: var(--coral-deep); text-decoration: underline; }
 .txPanel { position: sticky; top: 112px; background: #172b26; border-color: #172b26; color: #fff; }
 .txPanel h3 { color: #fff; }
 .txPanel .eyebrow { color: #f08a77; }

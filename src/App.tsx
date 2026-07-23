@@ -166,19 +166,67 @@ type TxState = {
   childTransactions: string[];
 };
 
+type DashboardSnapshot = {
+  contractAddress: string;
+  offers: Offer[];
+  deals: Deal[];
+  stats: Stats;
+  histories: Record<string, HistoryEvent[]>;
+  savedAt: string;
+};
+
+const DASHBOARD_CACHE_PREFIX = "clauseflow:dashboard:";
+
+function runtimeConfig(): ClauseFlowConfig {
+  return (window as unknown as { CLAUSEFLOW_CONFIG?: ClauseFlowConfig }).CLAUSEFLOW_CONFIG || {
+    contractAddress: "",
+    chain: "testnetBradbury",
+    explorerUrl: "https://explorer-bradbury.genlayer.com",
+    stateStatus: "accepted"
+  };
+}
+
+function readDashboardSnapshot(config: ClauseFlowConfig): DashboardSnapshot | null {
+  if (!hasContractAddress(config)) return null;
+  try {
+    const raw = window.localStorage.getItem(`${DASHBOARD_CACHE_PREFIX}${config.contractAddress.toLowerCase()}`);
+    if (!raw) return null;
+    const snapshot = JSON.parse(raw) as DashboardSnapshot;
+    return snapshot.contractAddress.toLowerCase() === config.contractAddress.toLowerCase() ? snapshot : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeDashboardSnapshot(config: ClauseFlowConfig, snapshot: Omit<DashboardSnapshot, "contractAddress" | "savedAt">) {
+  if (!hasContractAddress(config)) return;
+  try {
+    window.localStorage.setItem(`${DASHBOARD_CACHE_PREFIX}${config.contractAddress.toLowerCase()}`, JSON.stringify({
+      ...snapshot,
+      contractAddress: config.contractAddress,
+      savedAt: new Date().toISOString()
+    }));
+  } catch {
+    // A read-only dashboard remains usable when browser storage is unavailable.
+  }
+}
+
 export function App() {
+  const initialConfig = runtimeConfig();
+  const initialSnapshot = readDashboardSnapshot(initialConfig);
   const [view, setView] = useState<"dashboard" | "offers" | "create" | "deal">("dashboard");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [config, setConfig] = useState<ClauseFlowConfig | null>(null);
-  const [offers, setOffers] = useState<Offer[]>([]);
-  const [deals, setDeals] = useState<Deal[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [histories, setHistories] = useState<Record<string, HistoryEvent[]>>({});
-  const [selectedDealId, setSelectedDealId] = useState("");
+  const [config, setConfig] = useState<ClauseFlowConfig | null>(initialConfig);
+  const [offers, setOffers] = useState<Offer[]>(initialSnapshot?.offers || []);
+  const [deals, setDeals] = useState<Deal[]>(initialSnapshot?.deals || []);
+  const [stats, setStats] = useState<Stats | null>(initialSnapshot?.stats || null);
+  const [histories, setHistories] = useState<Record<string, HistoryEvent[]>>(initialSnapshot?.histories || {});
+  const [selectedDealId, setSelectedDealId] = useState(initialSnapshot?.deals[0]?.id || "");
   const [filter, setFilter] = useState("");
   const [builderFilter, setBuilderFilter] = useState("");
   const [clientFilter, setClientFilter] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialSnapshot);
+  const [refreshing, setRefreshing] = useState(Boolean(initialSnapshot));
   const [loadError, setLoadError] = useState("");
   const [walletAddress, setWalletAddress] = useState("");
   const [txState, setTxState] = useState<TxState>({
@@ -209,19 +257,15 @@ export function App() {
   }, []);
 
   async function refreshFromChain() {
-    const cfg = (window as unknown as { CLAUSEFLOW_CONFIG?: ClauseFlowConfig }).CLAUSEFLOW_CONFIG || {
-      contractAddress: "",
-      chain: "testnetBradbury",
-      explorerUrl: "https://explorer-bradbury.genlayer.com",
-      stateStatus: "accepted"
-    };
+    const cfg = runtimeConfig();
     setConfig(cfg);
     if (!hasContractAddress(cfg)) {
       setLoadError("No verified Bradbury contract address is configured. On-chain data is unavailable.");
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (deals.length === 0) setLoading(true);
+    setRefreshing(true);
     setLoadError("");
     try {
       const client = createReadClient(cfg);
@@ -243,10 +287,12 @@ export function App() {
       setStats(chainStats);
       setHistories(chainHistories);
       if (chainDeals[0]) setSelectedDealId(chainDeals[0].id);
+      storeDashboardSnapshot(cfg, { offers: chainOffers, deals: chainDeals, stats: chainStats, histories: chainHistories });
     } catch (error) {
       setLoadError(`Could not read Bradbury contract state: ${normalizeError(error)}`);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }
 
@@ -326,13 +372,13 @@ export function App() {
             </div>
           </div>
           <div className="headerActions">
-            <button className="iconButton" aria-label="Refresh on-chain data" title="Refresh on-chain data" onClick={refreshFromChain}><RefreshCcw size={17} className={loading ? "spin" : ""} /></button>
+            <button className="iconButton" aria-label="Refresh on-chain data" title="Refresh on-chain data" onClick={refreshFromChain}><RefreshCcw size={17} className={refreshing ? "spin" : ""} /></button>
             <button className="walletButton" onClick={handleConnectWallet}><Wallet size={16} /> {walletAddress ? short(walletAddress) : "Connect wallet"}</button>
           </div>
         </header>
 
         {loadError && <div className="notice errorNotice"><ShieldCheck size={17} /><span>{loadError}</span></div>}
-        {loading && <div className="loadingBar" aria-label="Loading Bradbury contract views" />}
+        {refreshing && <div className="loadingBar" aria-label="Updating Bradbury contract views" />}
         {txState.lifecycle !== "idle" && <TransactionBanner txState={txState} config={config} onDismiss={() => setTxState({ hash: "", label: "No transaction submitted in this browser session.", lifecycle: "idle", executionResult: "NOT_SUBMITTED", consensusResult: "IDLE", message: "Read-only dashboard is available without connecting a wallet.", childTransactions: [] })} />}
 
         {view === "dashboard" && (
@@ -455,21 +501,6 @@ const emptyOfferForm = {
   referenceUrls: ""
 };
 
-const mochiAgreementForm = {
-  title: "Audit and polish Mochi-Game Quest Evaluator demo flow",
-  serviceDescription: "Review Mochi-Game and make its Quest Evaluator demo path reviewer-ready.",
-  scope: "Audit the live app and README, then deliver public evidence for the Quest Evaluator flow.",
-  deliverables: "Live app URL, GitHub repo, README/docs URL, and a delivery note for reviewers.",
-  acceptanceCriteria: "Validators can fetch the live app and README and confirm Quest Evaluator, GenLayer consensus, transaction/result UX, and demo checklist.",
-  price: "0.02",
-  deadlineDays: "3",
-  revisionRounds: "1",
-  revisionWindowHours: "24",
-  gracePeriodHours: "24",
-  refundRule: "Client may claim a refund after deadline plus grace period if no valid public evidence is submitted, or after a rejected review.",
-  referenceUrls: "https://github.com/tanphung/Mochi-Game\nhttps://mochi-game-frontend.vercel.app"
-};
-
 function Offers({ offers, executeWrite }: { offers: Offer[]; executeWrite: ExecuteWrite }) {
   return (
     <div className="offersLayout">
@@ -532,11 +563,6 @@ function CreateOffer({ executeWrite, config, walletAddress }: { executeWrite: Ex
     else setDraftError("");
     setDraft(null);
   };
-  const loadMochiScenario = () => {
-    setForm(mochiAgreementForm);
-    setDraft(null);
-    setDraftError("");
-  };
   const structure = async () => {
     if (formError) throw new Error(formError);
     setDraftError("");
@@ -584,7 +610,6 @@ function CreateOffer({ executeWrite, config, walletAddress }: { executeWrite: Ex
       <section className="formPanel">
         <div className="formHeading">
           <div><p className="eyebrow">Builder workspace</p><h2>Define the agreement</h2><p>Write what can be verified. The Client will fund these exact terms.</p></div>
-          <button className="secondary compactButton" type="button" onClick={loadMochiScenario}><Sparkles size={15} /> Load real example</button>
         </div>
         <fieldset>
           <legend>Service</legend>
@@ -662,13 +687,6 @@ function DealDetail({ deal, offer, history, txState, executeWrite, config, walle
   const reviewStrengths = parseStoredList<string>(deal.reviewStrengths);
   const reviewRisks = parseStoredList<string>(deal.reviewRisks);
   const hasDetailedReview = criterionAssessments.length > 0 || deliverableAssessments.length > 0;
-  const loadMochiEvidence = () => setDelivery({
-    deliveryUrl: "https://mochi-game-frontend.vercel.app",
-    githubUrl: "https://github.com/tanphung/Mochi-Game",
-    demoUrl: "https://mochi-game-frontend.vercel.app",
-    documentationUrl: "https://github.com/tanphung/Mochi-Game#readme",
-    deliveryNote: "Mochi-Game evidence package: live app, GitHub repository, README checklist, and Quest Evaluator flow are public for GenLayer validators to fetch and compare against the accepted agreement."
-  });
   return (
     <section className="dealPage">
       <header className="dealHero">
@@ -734,7 +752,7 @@ function DealDetail({ deal, offer, history, txState, executeWrite, config, walle
             <LinkLine label="GitHub" href={deal.githubUrl} />
           </div>
           {deal.status === "FUNDED" || deal.status === "REVISION_REQUIRED" ? <div className="deliveryForm">
-            <div className="deliveryFormHead"><h4>Submit public evidence</h4><button className="secondary compactButton" type="button" onClick={loadMochiEvidence}><Sparkles size={15} /> Load real example</button></div>
+            <div className="deliveryFormHead"><h4>Submit public evidence</h4></div>
             <label className="field"><span>Delivery URL</span><input aria-label="Delivery URL" placeholder="https://your-delivery.app" value={delivery.deliveryUrl} onChange={(event) => setDelivery({ ...delivery, deliveryUrl: event.target.value })} /></label>
             <label className="field"><span>GitHub URL</span><input aria-label="GitHub URL" placeholder="https://github.com/owner/repository" value={delivery.githubUrl} onChange={(event) => setDelivery({ ...delivery, githubUrl: event.target.value })} /></label>
             <label className="field"><span>Demo URL</span><input aria-label="Demo URL" placeholder="https://your-delivery.app/demo" value={delivery.demoUrl} onChange={(event) => setDelivery({ ...delivery, demoUrl: event.target.value })} /></label>
@@ -766,7 +784,10 @@ function DealDetail({ deal, offer, history, txState, executeWrite, config, walle
         <section className="historyPanel">
           <div className="sectionTitle"><div><p className="eyebrow">Canonical record</p><h3>Agreement lifecycle</h3></div><span className="countPill">{history.length} events</span></div>
           <div className="historyList">
-            {history.map((event, index) => <div key={`${event.eventType}-${index}`}><span className="historyNode"><CheckCircle2 size={15} /></span><div><strong>{event.eventType.replaceAll("_", " ")}</strong><time>{formatDate(event.timestamp)}</time><p>{friendlyHistoryNote(event, deal)}</p><small>Actor {short(event.actor)}</small></div></div>)}
+            {history.map((event, index) => <div key={`${event.eventType}-${index}`}><span className="historyNode"><CheckCircle2 size={15} /></span><div><strong>{event.eventType.replaceAll("_", " ")}</strong><time>{formatDate(event.timestamp)}</time><p>{friendlyHistoryNote(event, deal)}</p><div className="historyProofs">
+              {config && /^0x[a-fA-F0-9]{40}$/.test(event.actor) && <a href={explorerAddressUrl(config, event.actor)} target="_blank" rel="noreferrer">Actor {short(event.actor)} <ExternalLink size={12} /></a>}
+              {config?.contractAddress && <a href={explorerAddressUrl(config, config.contractAddress)} target="_blank" rel="noreferrer">Contract record <ExternalLink size={12} /></a>}
+            </div></div></div>)}
           </div>
         </section>
         <section className="txPanel">

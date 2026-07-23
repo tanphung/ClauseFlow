@@ -58,9 +58,28 @@ const deal = {
 };
 const stats = { totalOffers: "1", totalDeals: "1", activeDeals: "0", completedDeals: "1", totalFundedAtto: offer.priceAttoGen, totalPaidAtto: offer.priceAttoGen, totalRefundedAtto: "0", contractBalanceAtto: "0", accountedEscrowAtto: "0" };
 
+function fillValidOfferForm() {
+  const values: Record<string, string> = {
+    "Offer title": "Independent delivery verification",
+    "Service description": "Verify a public release package for a client.",
+    "Detailed scope": "Review the public interface, source code, and documentation.",
+    "Deliverables": "Live app, contract source, and reviewer documentation.",
+    "Acceptance criteria": "Validators can independently fetch and compare each public artifact.",
+    "Reference URLs": "https://example.com",
+    "Price in GEN": "0.02",
+    "Deadline days": "3",
+    "Revision rounds": "1",
+    "Revision window hours": "24",
+    "Grace period hours": "24",
+    "Refund rule": "Client may claim a refund after a rejected evidence review."
+  };
+  for (const [label, value] of Object.entries(values)) fireEvent.change(screen.getByLabelText(label), { target: { value } });
+}
+
 describe("ClauseFlow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
     window.CLAUSEFLOW_CONFIG = { contractAddress: "0x3333333333333333333333333333333333333333", chain: "testnetBradbury", explorerUrl: "https://explorer-bradbury.genlayer.com" };
     vi.mocked(genlayer.readJsonView).mockImplementation(async (_client, _config, functionName) => {
       if (functionName === "get_offer_ids") return ["1"];
@@ -97,25 +116,21 @@ describe("ClauseFlow", () => {
     expect(screen.getByText(/Mochi-Game Quest Evaluator polish/i)).toBeTruthy();
   });
 
-  it("keeps publishing locked until a contract draft is read from chain", async () => {
+  it("keeps a real Builder workspace empty until terms are entered", async () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: /^Create$/i }));
     const publish = screen.getByRole("button", { name: /Publish Reviewed Offer/i });
     expect((publish as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByDisplayValue(/Example Domain/i)).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Load real example/i }));
-    expect((screen.getByLabelText("Revision window hours") as HTMLInputElement).value).toBe("24");
-    fireEvent.click(screen.getByRole("button", { name: /Structure Clauses/i }));
-    await waitFor(() => expect(screen.getByText("Stored on-chain")).toBeTruthy());
-    expect((publish as HTMLButtonElement).disabled).toBe(false);
-    expect(screen.getByText(clauses.paymentTerms)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Load real example/i })).toBeNull();
+    expect((screen.getByLabelText("Offer title") as HTMLInputElement).value).toBe("");
   });
 
   it("normalizes execution failures instead of rendering object errors", async () => {
     vi.mocked(genlayer.writeAndVerify).mockRejectedValueOnce({ shortMessage: "FINISHED_WITH_ERROR: contract execution did not succeed." });
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: /^Create$/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Load real example/i }));
+    fillValidOfferForm();
     fireEvent.click(screen.getByRole("button", { name: /Structure Clauses/i }));
     expect(await screen.findByText(/FINISHED_WITH_ERROR/i)).toBeTruthy();
     expect(screen.queryByText(/\[object Object\]/i)).toBeNull();
@@ -128,6 +143,8 @@ describe("ClauseFlow", () => {
     fireEvent.click(screen.getByRole("tab", { name: /On-chain history/i }));
     expect(screen.getByText(/Approved \(100\/100\)\. Fetched live app and README\./i)).toBeTruthy();
     expect(screen.queryByText(/\{legacy-review-payload\}/i)).toBeNull();
+    expect(screen.getByRole("link", { name: /Actor 0x2222\.\.\.2222/i }).getAttribute("href")).toBe(`https://explorer-bradbury.genlayer.com/address/${client}`);
+    expect(screen.getAllByRole("link", { name: /Contract record/i })[0].getAttribute("href")).toBe("https://explorer-bradbury.genlayer.com/address/0x3333333333333333333333333333333333333333");
   });
 
   it("opens accepted agreement terms by default in deal detail", async () => {
