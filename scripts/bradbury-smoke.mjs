@@ -217,10 +217,10 @@ async function finalizeParentTransaction(hash, account) {
 const refundRule = "Client may claim a refund after deadline plus grace period, or after rejected evidence.";
 const paymentArgs = (title, price) => [
   title,
-  "Publish the ClauseFlow vNext release with detailed GenLayer validator evidence reviews on Bradbury.",
-  "Make the deployed ClauseFlow dashboard, public source repository, and reviewer README available so a Client can independently verify the detailed validator-review and escrow-release workflow.",
-  "A live ClauseFlow dashboard, a public GitHub repository, and a reviewer README that documents the deployed Bradbury release and evidence-review behavior.",
-  "Approve only when validators can fetch the live ClauseFlow dashboard, repository, and README; verify that the release describes detailed evidence review and a GEN escrow settlement lifecycle; and confirm that the submitted sources are mutually consistent.",
+  "Deliver a public ClauseFlow release-verification package for a Client to inspect before accepting the release.",
+  "Provide direct public access to the deployed ClauseFlow interface, its source repository, and the project README so a Client can independently verify that the release exists, is usable, and is documented.",
+  "A live ClauseFlow dashboard, a public GitHub repository containing the contract and frontend source, and a reviewer README with setup and on-chain workflow documentation.",
+  "Approve only when validators independently fetch a usable live ClauseFlow interface, a public repository containing the intelligent contract and frontend source, and a README that documents setup and the on-chain agreement workflow. The sources must describe the same ClauseFlow release.",
   price,
   2n,
   1n,
@@ -389,7 +389,7 @@ const baselineRefunded = BigInt(baselineStats.totalRefundedAtto);
 const paymentPrice = 20_000_000_000_000_000n;
 let paymentDeal = "";
 if (mode === "full") {
-  const paymentOffer = await createOffer("ClauseFlow verified payment flow", paymentArgs("ClauseFlow verified payment flow", paymentPrice));
+  const paymentOffer = await createOffer("ClauseFlow public release verification", paymentArgs("ClauseFlow public release verification", paymentPrice));
   paymentDeal = await fundOffer(paymentOffer, paymentPrice);
   await completePayment(paymentDeal);
 }
