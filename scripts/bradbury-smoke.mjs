@@ -396,7 +396,7 @@ if (mode === "full") {
 }
 
 const refundPrice = 15_000_000_000_000_000n;
-const refundOffer = await createOffer("Mochi-Game accessibility audit agreement", refundArgs("Mochi-Game accessibility audit agreement", refundPrice));
+const refundOffer = await createOffer("ClauseFlow accessibility audit agreement", refundArgs("ClauseFlow accessibility audit agreement", refundPrice));
 const refundDeal = await fundOffer(refundOffer, refundPrice);
 await completeRefund(refundDeal);
 
