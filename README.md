@@ -10,7 +10,7 @@ ClauseFlow is not an AI advice interface. The validator decision changes on-chai
 | --- | --- |
 | Live dApp | [clauseflow-two.vercel.app](https://clauseflow-two.vercel.app) |
 | Source | [github.com/tanphung/ClauseFlow](https://github.com/tanphung/ClauseFlow) |
-| Current Bradbury contract | [0x0CfB...6Afe](https://explorer-bradbury.genlayer.com/address/0x0CfB5ba1505549c77Aa5854C523451a41C596Afe) |
+| Current Bradbury contract | [0x634C...6b22](https://explorer-bradbury.genlayer.com/address/0x634C7628b593C41C26F4Cf19E4fF919310696b22) |
 | Deployment proof | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
 | Reviewer notes | [docs/SUBMISSION.md](docs/SUBMISSION.md) |
 | CI | [GitHub Actions](https://github.com/tanphung/ClauseFlow/actions) |
@@ -89,7 +89,7 @@ Valid JSON alone proves nothing. An accessible page alone proves nothing. The fe
 
 ## Release Status
 
-`main` contains the richer validator-review release described above. It was clean-deployed to Bradbury at [`0x0CfB5ba1505549c77Aa5854C523451a41C596Afe`](https://explorer-bradbury.genlayer.com/address/0x0CfB5ba1505549c77Aa5854C523451a41C596Afe) on 2026-07-23 with `ACCEPTED / AGREE / FINISHED_WITH_RETURN`, a valid 18-method schema, and `get_offer_ids=[]`.
+`main` contains the richer validator-review release described above. It was clean-deployed to Bradbury at [`0x634C7628b593C41C26F4Cf19E4fF919310696b22`](https://explorer-bradbury.genlayer.com/address/0x634C7628b593C41C26F4Cf19E4fF919310696b22) on 2026-07-23 with `ACCEPTED / AGREE / FINISHED_WITH_RETURN`, a valid 18-method schema, and `get_offer_ids=[]`.
 
 Until the final smoke histories and recording are complete:
 

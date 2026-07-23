@@ -5,11 +5,11 @@
 The detailed validator-review release was clean-deployed to Bradbury on 2026-07-23. Its schema and clean public view are verified; the two-wallet payment and refund smoke histories will be appended after their terminal settlement states are confirmed.
 
 - Network: GenLayer Testnet Bradbury, chain ID `4221`
-- Contract: `0x0CfB5ba1505549c77Aa5854C523451a41C596Afe`
-- Explorer: `https://explorer-bradbury.genlayer.com/address/0x0CfB5ba1505549c77Aa5854C523451a41C596Afe`
+- Contract: `0x634C7628b593C41C26F4Cf19E4fF919310696b22`
+- Explorer: `https://explorer-bradbury.genlayer.com/address/0x634C7628b593C41C26F4Cf19E4fF919310696b22`
 - Deployer: `0xe78def025cE53c9b46ac56cF19f720391119fa5b`
-- Deploy activation transaction: `0xfadc9e82f94431634ec2336812320bc82fe02e4058d02988081ef873fa515e63`
-- Deploy GenLayer transaction: `0x69ce90074763b4d6dd55a7470434b5821e5cca8045bba03f2f4a842720bec66c`
+- Deploy activation transaction: `0x7c73a3a2ba07a766af8e3a929ad83d2b6bbc05653bfb371edb25ef608d85f131`
+- Deploy GenLayer transaction: `0xb33ae7c5f26adfc73605043a1df97525130e726f752273b62cd8a1a593d743cd`
 - Result: `ACCEPTED / AGREE / FINISHED_WITH_RETURN`
 - Schema: 18 methods
 - Basic clean view: `get_offer_ids=[]`
