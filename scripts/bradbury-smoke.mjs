@@ -334,7 +334,7 @@ async function waitForLastId(functionName) {
 async function completePayment(dealId) {
   let state = await readJson("get_deal", [dealId]);
   if (state.status === "FUNDED" || state.status === "REVISION_REQUIRED") {
-    await write(builder, "submit_delivery", [dealId, "https://clauseflow-two.vercel.app", "https://github.com/tanphung/ClauseFlow", "https://clauseflow-two.vercel.app", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/README.md", "ClauseFlow vNext evidence package: live Bradbury dashboard, public source repository, and reviewer README are submitted for validators to verify the detailed review and escrow-release lifecycle."]);
+    await write(builder, "submit_delivery", [dealId, "https://clauseflow-two.vercel.app", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/contracts/clauseflow.py", "https://clauseflow-two.vercel.app", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/README.md", "ClauseFlow release-verification package: a usable live dashboard, the deployed intelligent contract source, and a reviewer README with setup and on-chain workflow documentation."]);
     state = await waitForDealStatus(dealId, "SUBMITTED");
   }
   if (state.status === "SUBMITTED") {

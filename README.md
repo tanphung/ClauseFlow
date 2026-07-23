@@ -10,12 +10,13 @@ ClauseFlow is not an AI advice interface. The validator decision changes on-chai
 | --- | --- |
 | Live dApp | [clauseflow-two.vercel.app](https://clauseflow-two.vercel.app) |
 | Source | [github.com/tanphung/ClauseFlow](https://github.com/tanphung/ClauseFlow) |
-| Current Bradbury contract | [0x634C...6b22](https://explorer-bradbury.genlayer.com/address/0x634C7628b593C41C26F4Cf19E4fF919310696b22) |
+| Current Bradbury contract | [0xc641...8EEe](https://explorer-bradbury.genlayer.com/address/0xc641d8C83172c6B183896a098C179AeF62478EEe) |
+| Intelligent contract source | [contracts/clauseflow.py](https://raw.githubusercontent.com/tanphung/ClauseFlow/main/contracts/clauseflow.py) |
 | Deployment proof | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
 | Reviewer notes | [docs/SUBMISSION.md](docs/SUBMISSION.md) |
 | CI | [GitHub Actions](https://github.com/tanphung/ClauseFlow/actions) |
 
-> **Deployment note:** the current address is the clean Bradbury deployment of the richer validator review. Fresh two-wallet payment and refund histories are being created and verified before this release is submitted.
+> **Deployment note:** the current address is the clean Bradbury deployment of the richer validator review. Live two-wallet settlement histories are being verified before submission; prior Bradbury deployments are not the configured dApp contract.
 
 ![ClauseFlow public on-chain agreement dashboard](docs/assets/clauseflow-dashboard.png)
 
@@ -136,6 +137,28 @@ The public read experience requires no wallet:
 6. Follow the contract and transaction links to verify state independently in the Bradbury explorer.
 
 After the clean redeploy, this path will be updated with the new contract address, detailed review records, fresh two-wallet transactions, screenshots, and video.
+
+## Reviewer Setup And On-Chain Workflow
+
+The live Dashboard requires no wallet to inspect public history. A reviewer who wants to exercise writes uses a Bradbury wallet on chain ID `4221` with test GEN; no private key belongs in the browser, repository, or Vercel configuration.
+
+```powershell
+npm ci
+npm run dev
+```
+
+Open `http://127.0.0.1:5173`, then connect a wallet configured for **GenLayer Bradbury Testnet**. The public runtime config points to the verified contract above.
+
+The real agreement path is:
+
+1. Builder enters objective scope, deliverables, acceptance criteria, GEN price, deadline, and refund rule, then uses **Structure clauses** and **Publish reviewed offer**.
+2. Client opens the published offer and funds it with the exact displayed GEN amount. The contract locks escrow and records `FUNDED`.
+3. Builder submits live, source, demo, and documentation URLs. The contract records `SUBMITTED` evidence without treating the Builder note as proof.
+4. A Builder triggers **Run validator review**. Bradbury validators independently fetch the submitted URLs, record criterion and deliverable findings, and derive `APPROVED`, `REVISION_REQUIRED`, or `REJECTED` from the normalized evidence assessment.
+5. For `APPROVED`, the Builder claims payment and confirms `PAID` only after the escrow balance proves GEN left the contract. For `REJECTED` or deterministic refund eligibility, the Client follows the analogous refund path.
+6. The public Dashboard reloads contract views and exposes the immutable terms, evidence URLs, review report, transaction links, and full lifecycle timeline.
+
+For direct source review, validators can fetch the [intelligent contract](https://raw.githubusercontent.com/tanphung/ClauseFlow/main/contracts/clauseflow.py), [React application](https://github.com/tanphung/ClauseFlow/tree/main/src), and this README in addition to the live dApp.
 
 ## Architecture
 
