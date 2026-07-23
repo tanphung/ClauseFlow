@@ -51,7 +51,7 @@ async function runSmoke() {
 const sdk = createClient({ chain: testnetBradbury });
 
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
-const isTransientRpcError = (error) => /internal error|fetch failed|econnreset|etimedout|network error|socket hang up/i.test(
+const isTransientRpcError = (error) => /internal error|fetch failed|econnreset|etimedout|network error|socket hang up|pipeline backpressure|not currently accepting transactions/i.test(
   error instanceof Error ? error.message : String(error)
 );
 
@@ -86,7 +86,20 @@ async function submitContractWrite(account, functionName, args, value) {
     chainId: testnetBradbury.id,
     type: "legacy"
   });
-  const evmHash = await publicClient.sendRawTransaction({ serializedTransaction });
+  let evmHash;
+  let lastError;
+  for (let attempt = 1; attempt <= 12; attempt += 1) {
+    try {
+      evmHash = await publicClient.sendRawTransaction({ serializedTransaction });
+      break;
+    } catch (error) {
+      lastError = error;
+      if (!isTransientRpcError(error) || attempt === 12) throw error;
+      console.log(`RETRY activation ${functionName} after transient RPC backpressure (${attempt}/12)`);
+      await delay(5_000);
+    }
+  }
+  if (!evmHash) throw lastError;
   const receipt = await publicClient.waitForTransactionReceipt({ hash: evmHash });
   if (receipt.status !== "success") throw new Error(`Consensus activation reverted after using ${receipt.gasUsed} gas: ${evmHash}`);
   const events = parseEventLogs({ abi: consensus.abi, logs: receipt.logs, strict: false });

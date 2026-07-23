@@ -45,6 +45,10 @@ export function normalizeError(error: unknown): string {
   return String(error || "Unknown error");
 }
 
+function isTransientBradburyRpcError(error: unknown) {
+  return /internal error|fetch failed|econnreset|etimedout|network error|socket hang up|pipeline backpressure|not currently accepting transactions/i.test(normalizeError(error));
+}
+
 export async function connectWallet(config: ClauseFlowConfig) {
   const provider = getWalletProvider();
   if (!provider) throw new Error("No compatible browser wallet was found.");
@@ -117,7 +121,7 @@ async function waitForAcceptedExecution(client: ConnectedClient, hash: Transacti
       transientFailures = 0;
     } catch (error) {
       const message = normalizeError(error);
-      if (!message.includes("Internal error") || transientFailures >= 12) throw error;
+      if (!isTransientBradburyRpcError(error) || transientFailures >= 12) throw error;
       transientFailures += 1;
       await new Promise((resolve) => window.setTimeout(resolve, 5_000));
       continue;
