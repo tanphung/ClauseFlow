@@ -51,6 +51,9 @@ async function runSmoke() {
 const sdk = createClient({ chain: testnetBradbury });
 
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+const isTransientRpcError = (error) => /internal error|fetch failed|econnreset|etimedout|network error|socket hang up/i.test(
+  error instanceof Error ? error.message : String(error)
+);
 
 async function submitContractWrite(account, functionName, args, value) {
   const consensus = testnetBradbury.consensusMainContract;
@@ -101,8 +104,7 @@ async function read(functionName, args = []) {
       return await sdk.readContract({ address: contractAddress, functionName, args });
     } catch (error) {
       lastError = error;
-      const message = error instanceof Error ? error.message : String(error);
-      if (!message.includes("Internal error") || attempt === 12) throw error;
+      if (!isTransientRpcError(error) || attempt === 12) throw error;
       console.log(`RETRY view ${functionName} after transient RPC error (${attempt}/12)`);
       await delay(5_000);
     }
@@ -123,8 +125,7 @@ async function waitForAcceptedExecution(hash, retries = 360) {
       transaction = await sdk.getTransaction({ hash });
       transientFailures = 0;
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (!message.includes("Internal error") || transientFailures >= 12) throw error;
+      if (!isTransientRpcError(error) || transientFailures >= 12) throw error;
       transientFailures += 1;
       await delay(5_000);
       continue;
@@ -150,8 +151,7 @@ async function waitForReceipt(hash, status, retries) {
       return await sdk.waitForTransactionReceipt({ hash, status, interval: 5_000, retries });
     } catch (error) {
       lastError = error;
-      const message = error instanceof Error ? error.message : String(error);
-      if (!message.includes("Internal error") || attempt === 12) throw error;
+      if (!isTransientRpcError(error) || attempt === 12) throw error;
       console.log(`RETRY receipt ${hash} after transient RPC error (${attempt}/12)`);
       await delay(5_000);
     }
@@ -181,8 +181,7 @@ async function waitForFinalizationReady(hash) {
       transaction = await sdk.getTransaction({ hash });
       transientFailures = 0;
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (!message.includes("Internal error") || transientFailures >= 12) throw error;
+      if (!isTransientRpcError(error) || transientFailures >= 12) throw error;
       transientFailures += 1;
       console.log(`RETRY tx status ${hash} after transient RPC error (${transientFailures}/12)`);
       await delay(5_000);
