@@ -59,7 +59,7 @@ The current source release replaces keyword matching with a settlement-oriented 
 - Each assessment records `SATISFIED`, `PARTIAL`, `NOT_SATISFIED`, or `UNVERIFIABLE`.
 - A positive assessment requires an accessible submitted URL, a concrete finding, and validator reasoning.
 - The contract normalizes the assessments and deterministically derives the score and final result.
-- Consensus requires agreement on the final decision, each obligation status, source accessibility, and score range.
+- Consensus requires agreement on the final decision, source accessibility, material coverage, evidence gaps, and score range. An approved outcome still requires every obligation to be `SATISFIED`.
 - Free-form explanations may differ; settlement-critical fields may not.
 
 The on-chain review record includes:

@@ -827,7 +827,7 @@ def _normalize_review(value, evidence: dict, criteria: list, deliverables: list)
         "sourceAssessments": source_assessments,
         "strengths": strengths,
         "risks": risks,
-        "consensusBasis": "Leader and validators independently fetched submitted sources, assessed every immutable obligation, and agreed on the normalized material outcome.",
+        "consensusBasis": "Leader and validators independently fetched submitted sources and agreed on the settlement decision, source accessibility, material coverage, and normalized evidence gaps.",
     }
 
 
@@ -1038,15 +1038,35 @@ def _review_results_compatible(leader: dict, validator: dict, validator_evidence
         return False
     if leader["criteriaTotal"] != validator["criteriaTotal"]:
         return False
-    leader_criteria = [item["status"] for item in leader.get("criterionAssessments", [])]
-    validator_criteria = [item["status"] for item in validator.get("criterionAssessments", [])]
-    leader_deliverables = [item["status"] for item in leader.get("deliverableAssessments", [])]
-    validator_deliverables = [item["status"] for item in validator.get("deliverableAssessments", [])]
+    leader_criteria = _material_coverage_signature(leader.get("criterionAssessments", []))
+    validator_criteria = _material_coverage_signature(validator.get("criterionAssessments", []))
+    leader_deliverables = _material_coverage_signature(leader.get("deliverableAssessments", []))
+    validator_deliverables = _material_coverage_signature(validator.get("deliverableAssessments", []))
     leader_sources = [str(item["accessible"]) for item in leader.get("sourceAssessments", [])]
     validator_sources = [str(item["accessible"]) for item in validator.get("sourceAssessments", [])]
+    leader_missing = len(_clean(leader.get("missingItems", ""))) > 0
+    validator_missing = len(_clean(validator.get("missingItems", ""))) > 0
+    if leader["result"] == STATUS_APPROVED:
+        leader_criteria = [item["status"] for item in leader.get("criterionAssessments", [])]
+        validator_criteria = [item["status"] for item in validator.get("criterionAssessments", [])]
+        leader_deliverables = [item["status"] for item in leader.get("deliverableAssessments", [])]
+        validator_deliverables = [item["status"] for item in validator.get("deliverableAssessments", [])]
     return (
         leader_criteria == validator_criteria
         and leader_deliverables == validator_deliverables
         and leader_sources == validator_sources
-        and abs(int(leader["score"]) - int(validator["score"])) <= 10
+        and leader_missing == validator_missing
+        and abs(int(leader["criteriaSatisfied"]) - int(validator["criteriaSatisfied"])) <= 1
+        and abs(int(leader["score"]) - int(validator["score"])) <= 25
     )
+
+
+def _material_coverage_signature(assessments: list) -> list:
+    signature = []
+    for assessment in assessments:
+        status = assessment.get("status", "UNVERIFIABLE")
+        if status in ["SATISFIED", "PARTIAL"]:
+            signature.append("SUPPORTED")
+        else:
+            signature.append("UNSUPPORTED")
+    return signature
