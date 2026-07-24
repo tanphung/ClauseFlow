@@ -594,7 +594,7 @@ def _fetch_url_text(url: str, label: str) -> dict:
 
 def _evidence_excerpt(text: str, url: str) -> str:
     if not url.lower().split("?", 1)[0].endswith(".py"):
-        return text[:1600]
+        return text[:900]
     method_names = [
         "publish_offer",
         "accept_offer",
@@ -615,7 +615,7 @@ def _evidence_excerpt(text: str, url: str) -> str:
             if index > 0 and lines[index - 1].strip().startswith("@gl.public"):
                 excerpt.append(lines[index - 1].strip())
             excerpt.append(stripped)
-    return "\n".join(excerpt)[:1600]
+    return "\n".join(excerpt)[:900]
 
 
 def _fetch_delivery_evidence(deal: dict) -> dict:
