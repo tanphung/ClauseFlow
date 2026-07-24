@@ -63,7 +63,20 @@ const signed = await deployer.signTransaction({
   chainId: testnetBradbury.id,
   type: "legacy"
 });
-const evmHash = await publicClient.sendRawTransaction({ serializedTransaction: signed });
+let evmHash;
+for (let attempt = 1; attempt <= 12; attempt += 1) {
+  try {
+    evmHash = await publicClient.sendRawTransaction({ serializedTransaction: signed });
+    break;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const retryable = /pipeline backpressure|not currently accepting transactions/i.test(message);
+    if (!retryable || attempt === 12) throw error;
+    console.log(`RETRY_DEPLOY_SUBMISSION backpressure (${attempt}/12)`);
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
+  }
+}
+if (!evmHash) throw new Error("Deployment transaction was not accepted for submission");
 const activationReceipt = await publicClient.waitForTransactionReceipt({ hash: evmHash });
 if (activationReceipt.status !== "success") throw new Error(`Deployment activation reverted: ${evmHash}`);
 const events = parseEventLogs({ abi: consensus.abi, logs: activationReceipt.logs, strict: false });
