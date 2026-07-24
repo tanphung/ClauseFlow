@@ -262,6 +262,7 @@ export function App() {
     if (!hasContractAddress(cfg)) {
       setLoadError("No verified Bradbury contract address is configured. On-chain data is unavailable.");
       setLoading(false);
+      setRefreshing(false);
       return;
     }
     if (deals.length === 0) setLoading(true);

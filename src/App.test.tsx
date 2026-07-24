@@ -106,6 +106,25 @@ describe("ClauseFlow", () => {
     expect(screen.queryByText(/attoGEN/i)).toBeNull();
   });
 
+  it("renders the cached snapshot immediately while Bradbury refreshes in the background", async () => {
+    window.localStorage.setItem("clauseflow:dashboard:0x3333333333333333333333333333333333333333", JSON.stringify({
+      contractAddress: "0x3333333333333333333333333333333333333333",
+      offers: [offer],
+      deals: [deal],
+      stats,
+      histories: {
+        "1": [
+          { eventType: "PAID", note: "GEN payment verified", timestamp: deal.paidAt, actor: builder }
+        ]
+      },
+      savedAt: "2026-07-24T00:00:00Z"
+    }));
+    render(<App />);
+    expect(screen.getByText(/Mochi-Game Quest Evaluator polish/i)).toBeTruthy();
+    expect(screen.getByText("PAID")).toBeTruthy();
+    await waitFor(() => expect(vi.mocked(genlayer.readJsonView)).toHaveBeenCalled());
+  });
+
   it("filters history by both party addresses", async () => {
     render(<App />);
     await screen.findByText(/Mochi-Game Quest Evaluator polish/i);
