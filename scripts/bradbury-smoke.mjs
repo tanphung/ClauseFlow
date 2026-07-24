@@ -152,7 +152,7 @@ async function waitForAcceptedExecution(hash, retries = 360) {
     if (["UNDETERMINED", "CANCELED", "VALIDATORS_TIMEOUT", "LEADER_TIMEOUT"].includes(status)) {
       throw new Error(`Transaction ${hash} ended with status=${status} execution=${execution}`);
     }
-    if (["ACCEPTED", "READY_TO_FINALIZE", "FINALIZED"].includes(status) && execution !== "NOT_VOTED") {
+    if (["ACCEPTED", "READY_TO_FINALIZE", "FINALIZED"].includes(status) && execution === "FINISHED_WITH_RETURN" && ["AGREE", "MAJORITY_AGREE"].includes(transaction.resultName)) {
       return transaction;
     }
     if (attempt % 12 === 0) console.log(`WAIT execution ${hash} status=${status} execution=${execution}`);
