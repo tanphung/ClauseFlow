@@ -237,7 +237,7 @@ const paymentArgs = (title, price) => [
   "Publish a public ClauseFlow release evidence dossier that a Client can use to independently verify the delivered dApp release.",
   "Provide a versioned public evidence dossier that maps the live ClauseFlow application, intelligent contract source, frontend source, and reviewer documentation to one coherent on-chain agreement workflow.",
   "A public release evidence dossier, a usable live ClauseFlow dashboard, direct intelligent contract source, and reviewer documentation.",
-  "Approve only when validators independently fetch the evidence dossier, live ClauseFlow interface, intelligent contract source, and README; confirm that each is publicly accessible; and confirm that the dossier accurately maps the same application, contract behavior, and agreement lifecycle across those sources.",
+  "Approve only when validators independently fetch the evidence dossier, live ClauseFlow interface, intelligent contract source, and README; confirm that each is publicly accessible; and confirm that the dossier accurately maps the same application lifecycle and the contract's published method surface (publish, exact funding, delivery, review, settlement, and history) across those sources.",
   price,
   2n,
   1n,

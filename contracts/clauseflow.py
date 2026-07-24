@@ -583,11 +583,39 @@ def _fetch_url_text(url: str, label: str) -> dict:
         response = gl.nondet.web.get(url)
         text = response.body.decode("utf-8")
         # Bound each independently fetched artifact so consensus remains within
-        # Bradbury's execution window while retaining enough primary evidence.
-        clipped = str(text)[:1600]
+        # Bradbury's execution window. For a direct Python contract source,
+        # retain public method signatures instead of blindly keeping only the
+        # file header, which cannot prove the delivered lifecycle.
+        clipped = _evidence_excerpt(str(text), url)
         return {"label": label, "url": url, "accessible": len(clipped) > 0, "text": clipped, "error": ""}
     except Exception as exc:
         return {"label": label, "url": url, "accessible": False, "text": "", "error": str(exc)[:240]}
+
+
+def _evidence_excerpt(text: str, url: str) -> str:
+    if not url.lower().split("?", 1)[0].endswith(".py"):
+        return text[:1600]
+    method_names = [
+        "publish_offer",
+        "accept_offer",
+        "submit_delivery",
+        "review_delivery",
+        "claim_payment",
+        "claim_refund",
+        "confirm_payment",
+        "confirm_refund",
+        "get_deal_history",
+        "get_dashboard_stats",
+    ]
+    lines = text.splitlines()
+    excerpt = ["Direct contract source: public lifecycle methods excerpt."]
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("class ") or any(stripped.startswith(f"def {name}(") for name in method_names):
+            if index > 0 and lines[index - 1].strip().startswith("@gl.public"):
+                excerpt.append(lines[index - 1].strip())
+            excerpt.append(stripped)
+    return "\n".join(excerpt)[:1600]
 
 
 def _fetch_delivery_evidence(deal: dict) -> dict:
