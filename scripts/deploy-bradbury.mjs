@@ -50,7 +50,13 @@ const [nonce, gasPrice, estimatedGas] = await Promise.all([
   publicClient.getGasPrice(),
   publicClient.estimateGas({ account: deployer.address, to: consensus.address, data: encodedData, value: 0n })
 ]);
-const deploymentGas = estimatedGas + (estimatedGas / 4n) + 1_000_000n;
+const bradburyBlockGasLimit = 100_000_000n;
+const maximumDeploymentGas = 99_000_000n;
+if (estimatedGas >= maximumDeploymentGas) {
+  throw new Error(`Estimated deployment gas ${estimatedGas} is too close to Bradbury's ${bradburyBlockGasLimit} block limit`);
+}
+const paddedDeploymentGas = estimatedGas + (estimatedGas / 6n) + 1_000_000n;
+const deploymentGas = paddedDeploymentGas > maximumDeploymentGas ? maximumDeploymentGas : paddedDeploymentGas;
 console.log(`DEPLOY_GAS_ESTIMATE=${estimatedGas}`);
 console.log(`DEPLOY_GAS_LIMIT=${deploymentGas}`);
 const signed = await deployer.signTransaction({
