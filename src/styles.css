@@ -721,9 +721,20 @@ legend { width: 100%; padding: 0 0 12px; color: var(--ink); font-size: 11px; fon
 .loadingBar { position: fixed; top: 0; left: 236px; right: 0; z-index: 80; height: 3px; overflow: hidden; background: rgba(231, 91, 69, 0.18); }
 .loadingBar::after { content: ""; display: block; width: 35%; height: 100%; background: var(--coral); animation: load 1.1s ease-in-out infinite; }
 .spin { animation: spin 900ms linear infinite; }
+.ledgerSkeleton { display: grid; }
+.skeletonRow { pointer-events: none; }
+.skeletonBlock { display: block; min-width: 0; height: 12px; border-radius: 4px; background: linear-gradient(90deg, #edf0ed 18%, #f8f9f7 40%, #edf0ed 62%); background-size: 250% 100%; animation: skeletonPulse 1.35s ease-in-out infinite; }
+.skeletonTitle { width: min(88%, 230px); height: 27px; }
+.skeletonParties { width: 88%; }
+.skeletonAmount { width: 62%; justify-self: end; }
+.skeletonStatus { width: 82px; justify-self: start; border-radius: 999px; }
+.skeletonDate { width: 74%; }
+.skeletonArrow { width: 18px; justify-self: end; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 @keyframes load { from { transform: translateX(-110%); } to { transform: translateX(310%); } }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes skeletonPulse { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 
 @media (max-width: 1120px) {
   .workspace { padding-right: 24px; padding-left: 24px; }

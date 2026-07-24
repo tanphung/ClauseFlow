@@ -468,6 +468,7 @@ function Dashboard({ stats, deals, filter, setFilter, builderFilter, setBuilderF
         </div>
         <div className="ledgerTable">
           <div className="ledgerRow ledgerHead"><span>Agreement</span><span>Parties</span><span>Value</span><span>State</span><span>Last settlement</span><span aria-hidden="true" /></div>
+          {loading && deals.length === 0 && <LedgerSkeleton />}
           {deals.map((deal) => (
             <button className="ledgerRow" key={deal.id} onClick={() => selectDeal(deal.id)}>
               <span className="dealIdentity"><small>Deal #{deal.id}</small><strong>{deal.title}</strong></span>
@@ -481,6 +482,24 @@ function Dashboard({ stats, deals, filter, setFilter, builderFilter, setBuilderF
           {deals.length === 0 && !loading && <div className="emptyState compact"><span className="emptyIcon"><ClipboardCheck size={22} /></span><h3>No matching agreements</h3><p>Clear the address filters or publish a new offer to begin.</p></div>}
         </div>
       </section>
+    </div>
+  );
+}
+
+function LedgerSkeleton() {
+  return (
+    <div className="ledgerSkeleton" aria-label="Loading on-chain agreements" aria-busy="true">
+      {[0, 1, 2].map((index) => (
+        <div className="ledgerRow skeletonRow" key={index} aria-hidden="true">
+          <span className="skeletonBlock skeletonTitle" />
+          <span className="skeletonBlock skeletonParties" />
+          <span className="skeletonBlock skeletonAmount" />
+          <span className="skeletonBlock skeletonStatus" />
+          <span className="skeletonBlock skeletonDate" />
+          <span className="skeletonBlock skeletonArrow" />
+        </div>
+      ))}
+      <span className="srOnly">Loading on-chain agreements from Bradbury.</span>
     </div>
   );
 }

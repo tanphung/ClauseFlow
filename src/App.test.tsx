@@ -106,6 +106,13 @@ describe("ClauseFlow", () => {
     expect(screen.queryByText(/attoGEN/i)).toBeNull();
   });
 
+  it("shows structured placeholders during a first Bradbury read", () => {
+    vi.mocked(genlayer.readJsonView).mockImplementation(() => new Promise(() => undefined));
+    render(<App />);
+    expect(screen.getByLabelText("Loading on-chain agreements")).toBeTruthy();
+    expect(screen.getByText(/Reading agreements from Bradbury/i)).toBeTruthy();
+  });
+
   it("renders the cached snapshot immediately while Bradbury refreshes in the background", async () => {
     window.localStorage.setItem("clauseflow:dashboard:0x3333333333333333333333333333333333333333", JSON.stringify({
       contractAddress: "0x3333333333333333333333333333333333333333",
