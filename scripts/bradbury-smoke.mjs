@@ -10,7 +10,11 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(contractAddress || "")) {
   throw new Error("Usage: npm run smoke:bradbury -- <contract-address> [preflight|refund-only|full]");
 }
 const mode = process.argv[3] || "full";
-if (!["preflight", "refund-only", "full"].includes(mode)) throw new Error(`Unknown smoke mode: ${mode}`);
+const resumedPaymentDealId = process.argv[4] || "";
+if (!["preflight", "refund-only", "full", "payment-revision"].includes(mode)) throw new Error(`Unknown smoke mode: ${mode}`);
+if (mode === "payment-revision" && !/^\d+$/.test(resumedPaymentDealId)) {
+  throw new Error("Usage: npm run smoke:bradbury -- <contract-address> payment-revision <deal-id>");
+}
 
 console.log(`SMOKE_BOOT contract=${contractAddress}`);
 const env = Object.fromEntries(
@@ -405,6 +409,16 @@ if (mode === "full") {
   const paymentOffer = await createOffer("ClauseFlow release evidence dossier", paymentArgs("ClauseFlow release evidence dossier", paymentPrice));
   paymentDeal = await fundOffer(paymentOffer, paymentPrice);
   await completePayment(paymentDeal);
+}
+
+if (mode === "payment-revision") {
+  const existing = await readJson("get_deal", [resumedPaymentDealId]);
+  if (existing.status !== "REVISION_REQUIRED") {
+    throw new Error(`Payment revision requires REVISION_REQUIRED, received ${existing.status}`);
+  }
+  const completed = await completePayment(resumedPaymentDealId);
+  console.log(`SMOKE_PAYMENT_REVISION_OK deal=${resumedPaymentDealId} status=${completed.status}`);
+  process.exit(0);
 }
 
 const refundPrice = 15_000_000_000_000_000n;
