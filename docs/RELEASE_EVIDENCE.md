@@ -1,43 +1,29 @@
 # ClauseFlow Release Evidence Dossier
 
-## Purpose
+ClauseFlow is a public Bradbury agreement protocol. This dossier is the Builder's versioned delivery for the on-chain agreement titled **ClauseFlow release evidence dossier**. It deliberately maps each public artifact to the same verifiable lifecycle, so accessibility alone is not treated as acceptance evidence.
 
-This dossier is a public, versioned delivery artifact for ClauseFlow agreements. It gives Bradbury validators a concrete evidence map for evaluating a real release: a usable public application, the deployed intelligent-contract source, and the repository documentation that describes the same product.
+## Four-source Verification Map
 
-## Release Artifacts
-
-| Artifact | Public source | What a validator can verify |
+| Required source | Public URL | What it proves |
 | --- | --- | --- |
-| Live application | https://clauseflow-two.vercel.app | A usable ClauseFlow dashboard with public agreement history, deal detail, evidence review, and settlement states. |
-| Intelligent contract | https://raw.githubusercontent.com/tanphung/ClauseFlow/main/contracts/clauseflow.py | Immutable agreement storage, exact GEN escrow, evidence review, deterministic settlement eligibility, and public history views. |
-| Frontend source | https://github.com/tanphung/ClauseFlow/tree/main/src | The React UI calls Bradbury contract views and shows transaction lifecycle and execution results. |
-| Repository README | https://raw.githubusercontent.com/tanphung/ClauseFlow/main/README.md | Reviewer setup, the two-party on-chain workflow, validation model, and test commands. |
+| Live ClauseFlow application | https://clauseflow-two.vercel.app | The usable Dashboard, Offers, Create, and Deal Detail interface reads Bradbury contract state and presents agreement, review, and settlement history. |
+| Intelligent contract source | https://raw.githubusercontent.com/tanphung/ClauseFlow/main/contracts/clauseflow.py | The `ClauseFlow` contract stores offers and deals, locks the exact GEN value, records evidence reviews, and permits idempotent payment or refund settlement. |
+| Frontend source | https://github.com/tanphung/ClauseFlow/tree/main/src | The React client calls the public contract views, filters public history, and verifies write receipts before showing a completed transaction. |
+| Reviewer documentation | https://raw.githubusercontent.com/tanphung/ClauseFlow/main/README.md | The implementation notes, test commands, Bradbury address, and two-party review workflow are documented for an independent reviewer. |
 
-## Validator Checklist
+## Lifecycle Crosswalk
 
-1. Fetch the live application and confirm that the Dashboard, Offers, Create, and Deal Detail views render.
-2. Fetch `contracts/clauseflow.py` and confirm public methods for offer publication, exact-value funding, delivery submission, evidence review, payment, refund, and public history.
-3. Fetch the README and confirm the same agreement lifecycle: Builder publishes, Client locks exact GEN, Builder submits public evidence, validators decide, and the eligible party settles escrow.
-4. Confirm that the frontend and contract source are linked from the public repository and describe ClauseFlow rather than unrelated work.
-5. Treat an accessible URL as insufficient by itself: the observed UI, contract methods, and written lifecycle must materially match the accepted agreement terms.
+1. The **Builder publishes** an offer with scope, deliverables, acceptance criteria, deadline, revision limit, and an exact GEN price.
+2. The **Client funds** it with that exact GEN amount. The contract records the parties and locks escrow; the Dashboard exposes the resulting `FUNDED` deal.
+3. The **Builder submits public evidence**. This dossier, live app, contract source, and README are the evidence package for this release.
+4. **Bradbury validators independently fetch and compare** those sources against the accepted terms. The contract records accessible sources, deliverable findings, criterion findings, missing items, score, reasoning, and the consensus decision.
+5. An `APPROVED` deal can enter payment settlement for the Builder. A rejected or deterministically refund-eligible deal can enter refund settlement for the Client. Terminal `PAID` and `REFUNDED` states require a settled escrow confirmation and remain in public on-chain history.
 
-## Deterministic Settlement Boundaries
+## Validator Checks
 
-- A Builder cannot claim payment until the validator result is `APPROVED`.
-- A Client cannot refund an active deal except after a rejected review or deterministic deadline/revision eligibility.
-- Payment and refund claims enter pending states, and terminal `PAID` or `REFUNDED` requires escrow-balance confirmation.
-- Public history views retain the accepted terms, submitted evidence, review report, timestamps, parties, and settlement result for each deal.
+- Fetch every URL in the table and confirm it is publicly accessible.
+- Confirm the application, Python contract, frontend source, and README all describe the same ClauseFlow offer -> fund -> submit -> validator review -> settle lifecycle.
+- Confirm the contract exposes material outcome checks and public history, rather than only validating JSON format.
+- Treat a missing source, a broken application, or a lifecycle mismatch as a material evidence gap.
 
-## Local Reproduction
-
-```powershell
-npm ci
-npm test
-npm run typecheck
-npm run build
-npm run test:e2e
-npm run lint:contract
-py -3.13 -m pytest tests/direct -q
-```
-
-The browser uses the public Bradbury address from `public/config.js`; keys remain local in `.env` and are never needed to inspect the public Dashboard.
+The browser reads the public Bradbury address from `public/config.js`. No private key is needed to inspect this dossier or the public Dashboard.
