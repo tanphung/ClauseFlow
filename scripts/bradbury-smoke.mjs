@@ -11,9 +11,12 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(contractAddress || "")) {
 }
 const mode = process.argv[3] || "full";
 const resumedPaymentDealId = process.argv[4] || "";
-if (!["preflight", "refund-only", "full", "payment-revision", "finalize"].includes(mode)) throw new Error(`Unknown smoke mode: ${mode}`);
+if (!["preflight", "refund-only", "full", "payment-revision", "payment-resume", "finalize"].includes(mode)) throw new Error(`Unknown smoke mode: ${mode}`);
 if (mode === "payment-revision" && !/^\d+$/.test(resumedPaymentDealId)) {
   throw new Error("Usage: npm run smoke:bradbury -- <contract-address> payment-revision <deal-id>");
+}
+if (mode === "payment-resume" && !/^\d+$/.test(resumedPaymentDealId)) {
+  throw new Error("Usage: npm run smoke:bradbury -- <contract-address> payment-resume <deal-id>");
 }
 if (mode === "finalize" && !/^0x[a-fA-F0-9]{64}$/.test(resumedPaymentDealId)) {
   throw new Error("Usage: npm run smoke:bradbury -- <contract-address> finalize <transaction-hash>");
@@ -428,6 +431,16 @@ if (mode === "payment-revision") {
   }
   const completed = await completePayment(resumedPaymentDealId);
   console.log(`SMOKE_PAYMENT_REVISION_OK deal=${resumedPaymentDealId} status=${completed.status}`);
+  process.exit(0);
+}
+
+if (mode === "payment-resume") {
+  const existing = await readJson("get_deal", [resumedPaymentDealId]);
+  if (!["FUNDED", "REVISION_REQUIRED", "SUBMITTED", "APPROVED", "PAYMENT_PENDING"].includes(existing.status)) {
+    throw new Error(`Payment resume requires an active payment state, received ${existing.status}`);
+  }
+  const completed = await completePayment(resumedPaymentDealId);
+  console.log(`SMOKE_PAYMENT_RESUME_OK deal=${resumedPaymentDealId} status=${completed.status}`);
   process.exit(0);
 }
 
