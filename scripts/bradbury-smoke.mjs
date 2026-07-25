@@ -11,11 +11,11 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(contractAddress || "")) {
 }
 const mode = process.argv[3] || "full";
 const resumedPaymentDealId = process.argv[4] || "";
-if (!["preflight", "refund-only", "full", "payment-revision", "finalize", "finalize-now"].includes(mode)) throw new Error(`Unknown smoke mode: ${mode}`);
+if (!["preflight", "refund-only", "full", "payment-revision", "finalize"].includes(mode)) throw new Error(`Unknown smoke mode: ${mode}`);
 if (mode === "payment-revision" && !/^\d+$/.test(resumedPaymentDealId)) {
   throw new Error("Usage: npm run smoke:bradbury -- <contract-address> payment-revision <deal-id>");
 }
-if (["finalize", "finalize-now"].includes(mode) && !/^0x[a-fA-F0-9]{64}$/.test(resumedPaymentDealId)) {
+if (mode === "finalize" && !/^0x[a-fA-F0-9]{64}$/.test(resumedPaymentDealId)) {
   throw new Error("Usage: npm run smoke:bradbury -- <contract-address> finalize <transaction-hash>");
 }
 
@@ -403,13 +403,6 @@ console.log(`SMOKE mode=${mode} builder=${builder.address} client=${client.addre
 
 if (mode === "finalize") {
   await finalizeParentTransaction(resumedPaymentDealId, builder);
-  console.log(`SMOKE_FINALIZE_OK tx=${resumedPaymentDealId}`);
-  process.exit(0);
-}
-if (mode === "finalize-now") {
-  const evmHash = await sdk.finalizeTransaction({ account: builder, txId: resumedPaymentDealId });
-  console.log(`SMOKE_FINALIZE_SUBMITTED tx=${resumedPaymentDealId} evm=${evmHash}`);
-  await waitForReceipt(resumedPaymentDealId, TransactionStatus.FINALIZED, 120);
   console.log(`SMOKE_FINALIZE_OK tx=${resumedPaymentDealId}`);
   process.exit(0);
 }
