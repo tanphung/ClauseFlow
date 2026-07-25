@@ -1,16 +1,13 @@
-# ClauseFlow Release Evidence Dossier
+# ClauseFlow Evidence Crosswalk
 
-This public dossier is the Builder delivery for **ClauseFlow release evidence dossier**. It maps four independently fetchable sources to one Bradbury agreement lifecycle: Builder publishes immutable terms and exact GEN price; Client funds that exact amount into contract escrow; Builder submits these public sources; validators compare their actual content with the accepted terms; an approved deal pays the Builder, while a rejected or deterministic refund-eligible deal returns escrow to the Client. The contract retains the terms, evidence report, decision, and terminal settlement in public history.
+Validators fetch the live app, contract source, and README; each proves the same Bradbury escrow lifecycle.
 
-## Required Public Sources
+`publish_offer`: Builder's New offer -> Dashboard.
+`accept_offer`: Client locks exact GEN -> funded deal and parties.
+`submit_delivery`: Builder adds URLs -> Deal Detail.
+`review_delivery`: validators fetch URLs -> criterion, deliverable, source, and reasoning report.
+`claim_payment`/`confirm_payment`: approved -> Builder transfer -> `PAID` after balance proof.
+`claim_refund`/`confirm_refund`: rejected or eligible -> Client return -> `REFUNDED` after balance proof.
+`get_deal_history`/`get_dashboard_stats`: public timeline, totals, and zero active escrow.
 
-- **Live application:** https://clauseflow-two.vercel.app - usable Dashboard, Offers, Create, and Deal Detail views reading Bradbury state.
-- **Intelligent contract:** https://raw.githubusercontent.com/tanphung/ClauseFlow/main/contracts/clauseflow.py - offer, exact funding, delivery, substantive review, payment, refund, and history logic.
-- **Frontend source:** https://github.com/tanphung/ClauseFlow/tree/main/src - React contract reads, filters, lifecycle display, and receipt checks.
-- **Reviewer documentation:** https://raw.githubusercontent.com/tanphung/ClauseFlow/main/README.md - installation, tests, network setup, and the same two-party workflow.
-
-## Validator Checks
-
-Fetch each source. Confirm that all four describe the same application, contract behavior, and lifecycle above. Accessibility alone is insufficient: the visible UI, public code, and documentation must materially support the accepted deliverables and criteria. A missing source, broken application, or mismatch is a material evidence gap.
-
-No private key is needed to inspect this dossier or the public Dashboard.
+Live app: https://clauseflow-two.vercel.app. Source: `contracts/clauseflow.py`. README matches it. UI, source, and docs must materially match this map; access alone is insufficient.
