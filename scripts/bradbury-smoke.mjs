@@ -404,9 +404,10 @@ const baselinePaid = BigInt(baselineStats.totalPaidAtto);
 const baselineRefunded = BigInt(baselineStats.totalRefundedAtto);
 
 const paymentPrice = 20_000_000_000_000_000n;
+const paymentTitle = process.env.CLAUSEFLOW_SMOKE_PAYMENT_TITLE || "ClauseFlow release evidence dossier";
 let paymentDeal = "";
 if (mode === "full") {
-  const paymentOffer = await createOffer("ClauseFlow release evidence dossier", paymentArgs("ClauseFlow release evidence dossier", paymentPrice));
+  const paymentOffer = await createOffer(paymentTitle, paymentArgs(paymentTitle, paymentPrice));
   paymentDeal = await fundOffer(paymentOffer, paymentPrice);
   await completePayment(paymentDeal);
 }
