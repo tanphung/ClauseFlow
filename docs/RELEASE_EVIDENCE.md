@@ -1,13 +1,18 @@
-# ClauseFlow Evidence Crosswalk
+# ClauseFlow Cross-Source Method Matrix
 
-Validators fetch the live app, contract source, and README; each proves the same Bradbury escrow lifecycle.
+This is an explicit Contract -> Live app -> README comparison. All three submitted sources must show the same Bradbury lifecycle.
 
-`publish_offer`: Builder's New offer -> Dashboard.
-`accept_offer`: Client locks exact GEN -> funded deal and parties.
-`submit_delivery`: Builder adds URLs -> Deal Detail.
-`review_delivery`: validators fetch URLs -> criterion, deliverable, source, and reasoning report.
-`claim_payment`/`confirm_payment`: approved -> Builder transfer -> `PAID` after balance proof.
-`claim_refund`/`confirm_refund`: rejected or eligible -> Client return -> `REFUNDED` after balance proof.
-`get_deal_history`/`get_dashboard_stats`: public timeline, totals, and zero active escrow.
+| Contract method | Live app flow | README flow |
+| --- | --- | --- |
+| `publish_offer` | New offer | publish terms |
+| `accept_offer` | Offer funding | exact GEN lock |
+| `submit_delivery` | Deal Detail | evidence submission |
+| `review_delivery` | Deal Detail review | validator decision |
+| `claim_payment` | Deal payment | Builder claim |
+| `confirm_payment` | Deal payment | balance-proved PAID |
+| `claim_refund` | Deal refund | Client claim |
+| `confirm_refund` | Deal refund | balance-proved REFUNDED |
+| `get_deal_history` | timeline | public history |
+| `get_dashboard_stats` | Dashboard totals | public totals |
 
-Live app: https://clauseflow-two.vercel.app. Source: `contracts/clauseflow.py`. README matches it. UI, source, and docs must materially match this map; access alone is insufficient.
+Live app: https://clauseflow-two.vercel.app. Contract source: `contracts/clauseflow.py`. README is the third comparison source. Access alone is insufficient: the three sources must materially match this table.

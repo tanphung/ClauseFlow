@@ -1,5 +1,9 @@
 # ClauseFlow
 
+## Contract-to-Product Crosswalk
+
+The contract source, live UI, and this README describe the same public lifecycle: `publish_offer` (New offer/publish terms), `accept_offer` (Offer/exact GEN lock), `submit_delivery` (Deal Detail/evidence), `review_delivery` (Deal Detail/validator decision), `claim_payment` and `confirm_payment` (Deal payment/Builder claim then balance-proved `PAID`), `claim_refund` and `confirm_refund` (Deal refund/Client claim then balance-proved `REFUNDED`), and `get_deal_history` plus `get_dashboard_stats` (timeline and Dashboard/public history totals).
+
 **Service agreements whose payment is decided from public delivery evidence by GenLayer consensus.**
 
 A Builder publishes objective terms. A Client locks the exact GEN price. After delivery, GenLayer validators independently fetch the submitted live app, repository, demo, and documentation, assess every accepted obligation, and reach consensus on whether escrow can be paid, revised, or refunded.
