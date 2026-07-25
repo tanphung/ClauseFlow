@@ -11,9 +11,12 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(contractAddress || "")) {
 }
 const mode = process.argv[3] || "full";
 const resumedPaymentDealId = process.argv[4] || "";
-if (!["preflight", "refund-only", "full", "payment-revision"].includes(mode)) throw new Error(`Unknown smoke mode: ${mode}`);
+if (!["preflight", "refund-only", "full", "payment-revision", "finalize"].includes(mode)) throw new Error(`Unknown smoke mode: ${mode}`);
 if (mode === "payment-revision" && !/^\d+$/.test(resumedPaymentDealId)) {
   throw new Error("Usage: npm run smoke:bradbury -- <contract-address> payment-revision <deal-id>");
+}
+if (mode === "finalize" && !/^0x[a-fA-F0-9]{64}$/.test(resumedPaymentDealId)) {
+  throw new Error("Usage: npm run smoke:bradbury -- <contract-address> finalize <transaction-hash>");
 }
 
 console.log(`SMOKE_BOOT contract=${contractAddress}`);
@@ -55,7 +58,7 @@ async function runSmoke() {
 const sdk = createClient({ chain: testnetBradbury });
 
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
-const isTransientRpcError = (error) => /internal error|fetch failed|econnreset|etimedout|network error|socket hang up|pipeline backpressure|not currently accepting transactions/i.test(
+const isTransientRpcError = (error) => /internal error|fetch failed|econnreset|etimedout|network error|socket hang up|pipeline backpressure|not currently accepting transactions|failed to get contract state: getting latest accepted transaction/i.test(
   error instanceof Error ? error.message : String(error)
 );
 
@@ -187,6 +190,7 @@ async function write(account, functionName, args = [], value = 0n) {
   if (!["AGREE", "MAJORITY_AGREE"].includes(receipt.resultName)) {
     throw new Error(`${functionName} consensus=${receipt.resultName}`);
   }
+  await finalizeParentTransaction(hash, account);
   return { hash, receipt };
 }
 
@@ -397,6 +401,12 @@ async function completeRefund(dealId) {
 }
 
 console.log(`SMOKE mode=${mode} builder=${builder.address} client=${client.address} contract=${contractAddress}`);
+
+if (mode === "finalize") {
+  await finalizeParentTransaction(resumedPaymentDealId, builder);
+  console.log(`SMOKE_FINALIZE_OK tx=${resumedPaymentDealId}`);
+  process.exit(0);
+}
 
 const baselineStats = await readJson("get_dashboard_stats");
 const baselineCompleted = BigInt(baselineStats.completedDeals);
