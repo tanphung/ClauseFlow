@@ -351,7 +351,7 @@ async function waitForLastId(functionName) {
 async function completePayment(dealId) {
   let state = await readJson("get_deal", [dealId]);
   if (state.status === "FUNDED" || state.status === "REVISION_REQUIRED") {
-    await write(builder, "submit_delivery", [dealId, "https://clauseflow-two.vercel.app", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/contracts/clauseflow.py", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/docs/RELEASE_EVIDENCE.md", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/README.md", "ClauseFlow evidence dossier delivery: the public dossier maps the usable live dashboard, direct intelligent contract source, frontend source, and reviewer workflow documentation for independent validator verification."]);
+    await write(builder, "submit_delivery", [dealId, "https://clauseflow-two.vercel.app", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/contracts/clauseflow.py", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/docs/RELEASE_EVIDENCE.md", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/README.md", "ClauseFlow evidence dossier delivery: the public dossier maps the submitted live dashboard, direct intelligent contract source, and this README. The README is the standalone reviewer documentation for independent validator verification."]);
     state = await waitForDealStatus(dealId, "SUBMITTED");
   }
   if (state.status === "SUBMITTED") {

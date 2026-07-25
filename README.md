@@ -1,5 +1,9 @@
 # ClauseFlow
 
+## Reviewer Documentation
+
+This README is the submitted reviewer documentation. It identifies the public evidence, explains the two-wallet workflow, and tells reviewers how to inspect the validator report, settlement proof, and public history without a private database.
+
 ## Contract-to-Product Crosswalk
 
 The contract source, live UI, and this README describe the same public lifecycle: `publish_offer` (New offer/publish terms), `accept_offer` (Offer/exact GEN lock), `submit_delivery` (Deal Detail/evidence), `review_delivery` (Deal Detail/validator decision), `claim_payment` and `confirm_payment` (Deal payment/Builder claim then balance-proved `PAID`), `claim_refund` and `confirm_refund` (Deal refund/Client claim then balance-proved `REFUNDED`), and `get_deal_history` plus `get_dashboard_stats` (timeline and Dashboard/public history totals).
