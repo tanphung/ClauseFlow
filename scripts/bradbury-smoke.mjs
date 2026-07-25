@@ -119,13 +119,13 @@ async function submitContractWrite(account, functionName, args, value) {
 
 async function read(functionName, args = []) {
   let lastError;
-  for (let attempt = 1; attempt <= 12; attempt += 1) {
+  for (let attempt = 1; attempt <= 60; attempt += 1) {
     try {
       return await sdk.readContract({ address: contractAddress, functionName, args });
     } catch (error) {
       lastError = error;
-      if (!isTransientRpcError(error) || attempt === 12) throw error;
-      console.log(`RETRY view ${functionName} after transient RPC error (${attempt}/12)`);
+      if (!isTransientRpcError(error) || attempt === 60) throw error;
+      console.log(`RETRY view ${functionName} after transient RPC error (${attempt}/60)`);
       await delay(5_000);
     }
   }
@@ -190,7 +190,6 @@ async function write(account, functionName, args = [], value = 0n) {
   if (!["AGREE", "MAJORITY_AGREE"].includes(receipt.resultName)) {
     throw new Error(`${functionName} consensus=${receipt.resultName}`);
   }
-  await finalizeParentTransaction(hash, account);
   return { hash, receipt };
 }
 
