@@ -198,9 +198,12 @@ def test_only_builder_can_submit_and_approved_payment_is_idempotent(direct_vm, d
     assert review["score"] == "100"
     assert review["criterionAssessments"][0]["status"] == "SATISFIED"
     assert "contains '" not in review["criteriaResults"]
+    assert len(json.dumps(review, sort_keys=True)) < 8_000
     stored = json.loads(contract.get_deal(deal_id))
     assert json.loads(stored["reviewCriterionAssessments"])[0]["reasoning"].startswith("The live interface")
     assert "independently fetched" in stored["reviewConsensusBasis"]
+    assert len(stored["reviewExecutiveSummary"]) <= 720
+    assert len(json.loads(stored["reviewSourceAssessments"])[0]["finding"]) <= 260
     direct_vm.sender = direct_alice
     contract.claim_payment(deal_id)
     assert json.loads(contract.get_deal(deal_id))["status"] == "PAYMENT_PENDING"

@@ -593,7 +593,26 @@ def _fetch_url_text(url: str, label: str) -> dict:
 
 
 def _evidence_excerpt(text: str, url: str) -> str:
-    if not url.lower().split("?", 1)[0].endswith(".py"):
+    normalized_url = url.lower().split("?", 1)[0]
+    if normalized_url.endswith(".md"):
+        lines = text.splitlines()
+        excerpt = lines[:18]
+        lifecycle_terms = [
+            "publish_offer",
+            "accept_offer",
+            "submit_delivery",
+            "review_delivery",
+            "claim_payment",
+            "claim_refund",
+            "get_deal_history",
+            "get_dashboard_stats",
+        ]
+        for line in lines[18:]:
+            lowered = line.lower()
+            if any(term in lowered for term in lifecycle_terms):
+                excerpt.append(line)
+        return "\n".join(excerpt)[:1600]
+    if not normalized_url.endswith(".py"):
         return text[:900]
     method_names = [
         "publish_offer",
@@ -644,8 +663,8 @@ def _evidence_url_key(url: str) -> str:
 
 
 def _evaluate_delivery_review(offer: dict, deal: dict, evidence: dict) -> dict:
-    criteria = _material_items(offer["acceptanceCriteria"], 8)
-    deliverables = _material_items(offer["deliverables"], 8)
+    criteria = _material_items(offer["acceptanceCriteria"], 4)
+    deliverables = _material_items(offer["deliverables"], 4)
     raw = gl.nondet.exec_prompt(
         _review_prompt(offer, deal, evidence, criteria, deliverables),
         response_format="json",
@@ -830,16 +849,16 @@ def _normalize_review(value, evidence: dict, criteria: list, deliverables: list)
     else:
         result = STATUS_REVISION_REQUIRED if score >= 35 else STATUS_REJECTED
     source_assessments = _normalize_source_assessments(value.get("sourceAssessments", []), evidence)
-    strengths = _normalize_text_list(value.get("strengths", []), 4, 360)
-    risks = _normalize_text_list(value.get("risks", []), 4, 360)
-    missing = _normalize_text_list(value.get("missingItems", []), 8, 400)
+    strengths = _normalize_text_list(value.get("strengths", []), 3, 240)
+    risks = _normalize_text_list(value.get("risks", []), 3, 240)
+    missing = _normalize_text_list(value.get("missingItems", []), 5, 280)
     if result != STATUS_APPROVED and len(missing) == 0:
         for item in all_assessments:
             if item["status"] != "SATISFIED":
-                missing.append(_clean_limit(f"Resolve {item['id']}: {item['criterion']}", 400))
+                missing.append(_clean_limit(f"Resolve {item['id']}: {item['criterion']}", 280))
     if result == STATUS_APPROVED:
         missing = []
-    executive = _clean_limit(value.get("executiveSummary", ""), 1200)
+    executive = _clean_limit(value.get("executiveSummary", ""), 720)
     if len(executive) < 40:
         executive = f"Independent validators reviewed {len(all_assessments)} material obligations across {accessible_count} accessible public source(s). The normalized outcome is {result.replace('_', ' ').lower()}."
     criteria_lines = []
@@ -847,20 +866,20 @@ def _normalize_review(value, evidence: dict, criteria: list, deliverables: list)
         criteria_lines.append(f"{item['id']} | {item['status']} | {item['finding']} | {item['reasoning']}")
     evidence_summary = _source_summary(source_assessments)
     missing_text = "\n".join(missing)
-    next_action = _clean_limit(value.get("nextAction", ""), 500)
+    next_action = _clean_limit(value.get("nextAction", ""), 320)
     if len(next_action) == 0:
         next_action = "Builder can claim payment." if result == STATUS_APPROVED else "Builder should address the documented gaps before settlement."
     return {
         "result": result,
         "score": str(score),
         "reason": executive,
-        "checklist": _clean_limit(missing_text, 1600),
+        "checklist": _clean_limit(missing_text, 1000),
         "nextAction": next_action,
         "criteriaSatisfied": str(satisfied),
         "criteriaTotal": str(len(criteria)),
         "evidenceSummary": evidence_summary,
-        "criteriaResults": _clean_limit("\n".join(criteria_lines), 3000),
-        "missingItems": _clean_limit(missing_text, 1600),
+        "criteriaResults": _clean_limit("\n".join(criteria_lines), 1800),
+        "missingItems": _clean_limit(missing_text, 1000),
         "accessibleCount": str(evidence["accessibleCount"]),
         "executiveSummary": executive,
         "criterionAssessments": criterion_assessments,
@@ -891,15 +910,15 @@ def _normalize_assessments(value, expected: list, prefix: str, evidence: dict) -
                 url = _clean(raw_url)
                 if url in allowed_urls and url not in urls:
                     urls.append(url)
-                if len(urls) >= 4:
+                if len(urls) >= 2:
                     break
-        finding = _clean_limit(raw.get("finding", ""), 500)
-        reasoning = _clean_limit(raw.get("reasoning", ""), 700)
+        finding = _clean_limit(raw.get("finding", ""), 280)
+        reasoning = _clean_limit(raw.get("reasoning", ""), 380)
         if status in ["SATISFIED", "PARTIAL"] and (len(finding) < 15 or len(reasoning) < 20 or len(urls) == 0):
             status = "UNVERIFIABLE"
         normalized.append({
             "id": f"{prefix}{index + 1}",
-            "criterion": criterion,
+            "criterion": _clean_limit(criterion, 360),
             "status": status,
             "finding": finding if len(finding) > 0 else "No direct evidence finding was supplied.",
             "reasoning": reasoning if len(reasoning) > 0 else "The submitted public evidence does not establish this obligation.",
@@ -917,8 +936,8 @@ def _normalize_source_assessments(value, evidence: dict) -> list:
             "label": page["label"],
             "url": page["url"],
             "accessible": bool(page["accessible"]),
-            "finding": _fallback_text(raw.get("finding"), "Source was fetched successfully." if page["accessible"] else "Source could not be fetched.", 500),
-            "relevance": _fallback_text(raw.get("relevance"), "Relevance was not established." if page["accessible"] else "Unavailable for assessment.", 500),
+            "finding": _fallback_text(raw.get("finding"), "Source was fetched successfully." if page["accessible"] else "Source could not be fetched.", 260),
+            "relevance": _fallback_text(raw.get("relevance"), "Relevance was not established." if page["accessible"] else "Unavailable for assessment.", 260),
         })
     return normalized
 
