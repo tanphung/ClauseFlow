@@ -582,10 +582,6 @@ def _fetch_url_text(url: str, label: str) -> dict:
     try:
         response = gl.nondet.web.get(url)
         text = response.body.decode("utf-8")
-        # Bound each independently fetched artifact so consensus remains within
-        # Bradbury's execution window. For a direct Python contract source,
-        # retain public method signatures instead of blindly keeping only the
-        # file header, which cannot prove the delivered lifecycle.
         clipped = _evidence_excerpt(str(text), url)
         return {"label": label, "url": url, "accessible": len(clipped) > 0, "text": clipped, "error": ""}
     except Exception as exc:
@@ -689,40 +685,29 @@ def _material_items(value: str, maximum: int) -> list:
 def _clause_prompt(source: dict) -> str:
     return f"""
 You are ClauseFlow's GenLayer contract drafter.
-Turn the Builder's offer into a serious, ready-to-accept work agreement.
-This draft becomes the exact on-chain agreement a Client accepts and funds.
+Draft the exact on-chain work agreement a Client will accept and fund.
 
 Return JSON only with these keys:
-scope: one concrete paragraph
-deliverables: newline-separated bullet list
-acceptanceCriteria: newline-separated bullet list with objective checks
-milestones: newline-separated bullet list, or empty if not useful
-evidenceRequirements: newline-separated bullet list of public evidence URLs/artifacts the Builder must submit
-verificationPlan: newline-separated bullet list describing how validators should check the evidence
-deadline: human-readable deadline clause
-revisionRules: human-readable revision clause
-paymentTerms: human-readable payment clause using the GEN display amount, not only raw attoGEN
-refundConditions: human-readable refund clause
-summary: short agreement summary
+scope, deliverables, acceptanceCriteria, milestones, evidenceRequirements,
+verificationPlan, deadline, revisionRules, paymentTerms, refundConditions,
+summary, sourceCoverage, scopeSpecific, deliverablesTestable,
+criteriaObjective, missingMaterialTerms.
+
+Use paragraphs for scope/summary and newline-separated testable items for
+deliverables, criteria, milestones, evidence, and verification.
 sourceCoverage: COMPLETE or INCOMPLETE
-scopeSpecific: true/false
-deliverablesTestable: true/false
-criteriaObjective: true/false
-missingMaterialTerms: concise missing terms, empty if complete
 
 Builder offer source:
 {json.dumps(source, sort_keys=True)}
 
 Drafting rules:
-- Do not invent unrelated work beyond the source.
-- Preserve the source scope. Do not add new code changes, audits, PRs, commits, reviewer checklists, delivery notes, or documentation obligations unless the source explicitly asks for them.
-- Acceptance criteria must be direct, objective rewrites of the source criteria; do not make them stricter than the Builder's offer.
-- If the source asks only to verify existing public evidence, draft a verification agreement only. Do not turn it into an implementation contract.
-- Keep every deliverable testable from public links, screenshots, docs, repo code, or deployed app behavior.
+- Preserve scope. Never invent implementation, audit, PR, commit, or
+  documentation obligations absent from the source.
+- Rewrite criteria objectively without making them stricter.
+- A verification offer remains verification work, not implementation work.
+- Every deliverable must be testable from submitted public evidence.
 - Mention exact payment as {source["priceDisplay"]} GEN.
-- Use raw attoGEN only as technical metadata if needed, never as the primary payment wording.
-- Require public GitHub/live/docs evidence when the source asks for a web app or dApp, but do not require evidence artifacts that were not part of the source.
-- Reject vague acceptance criteria by marking sourceCoverage INCOMPLETE and listing missingMaterialTerms.
+- Mark vague or incomplete terms INCOMPLETE and list the missing terms.
 """
 
 
@@ -784,18 +769,19 @@ def _review_prompt(offer: dict, deal: dict, evidence: dict, criteria: list, deli
     deliverable_rows = [{"id": f"D{index + 1}", "text": text} for index, text in enumerate(deliverables)]
     return f"""
 You are an independent GenLayer settlement validator for ClauseFlow.
-Perform a substantive evidence review of the Builder's public delivery against every immutable accepted criterion and deliverable.
-Your assessment controls escrow. Do not use keyword presence as proof and do not trust the Builder's delivery note without corroboration.
+Review public delivery evidence against every immutable obligation. Your
+assessment controls escrow, so accessibility or keyword matches alone are not
+proof and the Builder's note requires corroboration.
 
 Return JSON only with these keys:
-executiveSummary: 2-4 sentences explaining the material outcome
-criterionAssessments: array with exactly one object per supplied criterion, in order, using keys id, status, finding, reasoning, evidenceUrls
-deliverableAssessments: array with exactly one object per supplied deliverable, in order, using keys id, status, finding, reasoning, evidenceUrls
-sourceAssessments: array with exactly one object per fetched source, in order, using keys label, finding, relevance
-strengths: array of up to 4 concrete strengths supported by fetched evidence
-risks: array of up to 4 concrete gaps, ambiguities, or unverifiable claims
-missingItems: array of concrete corrective actions, empty only when all accepted obligations are satisfied
-nextAction: one concise action for the Builder or Client
+executiveSummary; criterionAssessments; deliverableAssessments;
+sourceAssessments; strengths; risks; missingItems; nextAction.
+
+Each criterion/deliverable assessment must be in supplied order with keys id,
+status, finding, reasoning, evidenceUrls. Each source assessment must be in
+fetched order with keys label, finding, relevance. Keep strengths/risks to
+three concise evidence-based items. missingItems is empty only when all
+obligations are satisfied.
 
 Allowed assessment statuses: SATISFIED, PARTIAL, NOT_SATISFIED, UNVERIFIABLE.
 
@@ -815,14 +801,12 @@ Fetched evidence:
 {json.dumps(evidence, sort_keys=True)}
 
 Rules:
-- Judge whether the fetched content proves the substance of each obligation, not whether it repeats words from the agreement.
-- Explain what observable behavior, artifact, documentation, or repository content supports each finding.
-- Use only URLs present in fetched evidence. evidenceUrls must be an array.
-- SATISFIED requires direct, relevant evidence. PARTIAL means some material part is proven but a named part remains.
-- NOT_SATISFIED means the evidence contradicts or clearly fails the obligation. UNVERIFIABLE means the submitted sources cannot prove it.
-- A source being accessible does not prove that any criterion is satisfied.
-- Keep reasoning concise but specific enough that Builder and Client can understand the decision.
-- Do not decide the final result or score. The contract derives both deterministically from your normalized criterion and deliverable statuses.
+- Judge substance and cite observable behavior or artifacts.
+- Use only fetched URLs in evidenceUrls.
+- SATISFIED needs direct proof; PARTIAL names the remaining material gap;
+  NOT_SATISFIED is contradicted or absent; UNVERIFIABLE lacks proof.
+- Keep reasoning concise and specific.
+- Do not choose result or score; the contract derives them deterministically.
 """
 
 
