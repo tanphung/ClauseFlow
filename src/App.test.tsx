@@ -80,6 +80,7 @@ describe("ClauseFlow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
+    window.history.replaceState({}, "", "/");
     window.CLAUSEFLOW_CONFIG = { contractAddress: "0x3333333333333333333333333333333333333333", chain: "testnetBradbury", explorerUrl: "https://explorer-bradbury.genlayer.com" };
     vi.mocked(genlayer.readJsonView).mockImplementation(async (_client, _config, functionName) => {
       if (functionName === "get_offer_ids") return ["1"];
@@ -104,6 +105,19 @@ describe("ClauseFlow", () => {
     expect(screen.getByText("PAID")).toBeTruthy();
     expect(screen.queryByText(/Example Domain/i)).toBeNull();
     expect(screen.queryByText(/attoGEN/i)).toBeNull();
+  });
+
+  it("allows an explicit contract override only from a local URL", async () => {
+    const stagingContract = "0x4444444444444444444444444444444444444444";
+    window.history.replaceState({}, "", `/?contract=${stagingContract}`);
+    render(<App />);
+    await screen.findByText(/Mochi-Game Quest Evaluator polish/i);
+    expect(vi.mocked(genlayer.readJsonView)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ contractAddress: stagingContract }),
+      "get_offer_ids",
+      []
+    );
   });
 
   it("shows structured placeholders during a first Bradbury read", () => {

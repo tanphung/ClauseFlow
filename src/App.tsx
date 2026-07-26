@@ -178,12 +178,17 @@ type DashboardSnapshot = {
 const DASHBOARD_CACHE_PREFIX = "clauseflow:dashboard:";
 
 function runtimeConfig(): ClauseFlowConfig {
-  return (window as unknown as { CLAUSEFLOW_CONFIG?: ClauseFlowConfig }).CLAUSEFLOW_CONFIG || {
+  const configured = (window as unknown as { CLAUSEFLOW_CONFIG?: ClauseFlowConfig }).CLAUSEFLOW_CONFIG || {
     contractAddress: "",
     chain: "testnetBradbury",
     explorerUrl: "https://explorer-bradbury.genlayer.com",
     stateStatus: "accepted"
   };
+  const isLocal = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+  const localContract = isLocal ? new URLSearchParams(window.location.search).get("contract") : "";
+  return localContract && /^0x[a-fA-F0-9]{40}$/.test(localContract)
+    ? { ...configured, contractAddress: localContract }
+    : configured;
 }
 
 function readDashboardSnapshot(config: ClauseFlowConfig): DashboardSnapshot | null {
