@@ -34,14 +34,12 @@ const env = Object.fromEntries(
 );
 const builderKey = env.CLAUSEFLOW_BUILDER_PRIVATE_KEY || env.ClauseFlow2_PRIVATE_KEY || env.ACCOUNT1_PRIVATE_KEY || env.ACCOUNT_PRIVATE_KEY;
 const clientKey = env.CLAUSEFLOW_CLIENT_PRIVATE_KEY || env.ClauseFlow3_PRIVATE_KEY;
-const deployerKey = env.ACCOUNT1_PRIVATE_KEY || env.ACCOUNT_PRIVATE_KEY;
 if (!/^0x[a-fA-F0-9]{64}$/.test(builderKey || "") || !/^0x[a-fA-F0-9]{64}$/.test(clientKey || "")) {
   throw new Error("Missing valid Builder/Client private keys. Set CLAUSEFLOW_BUILDER_PRIVATE_KEY and CLAUSEFLOW_CLIENT_PRIVATE_KEY, or ClauseFlow2_PRIVATE_KEY and ClauseFlow3_PRIVATE_KEY.");
 }
 
 const builder = privateKeyToAccount(builderKey);
 const client = privateKeyToAccount(clientKey);
-const deployer = /^0x[a-fA-F0-9]{64}$/.test(deployerKey || "") ? privateKeyToAccount(deployerKey) : null;
 if (builder.address.toLowerCase() === client.address.toLowerCase()) throw new Error("Builder and Client must use different wallets");
 if (env.ClauseFlow2_ADDRESS && builder.address.toLowerCase() !== env.ClauseFlow2_ADDRESS.toLowerCase()) throw new Error("Builder key does not match ClauseFlow2_ADDRESS");
 if (env.ClauseFlow3_ADDRESS && client.address.toLowerCase() !== env.ClauseFlow3_ADDRESS.toLowerCase()) throw new Error("Client key does not match ClauseFlow3_ADDRESS");
@@ -224,19 +222,17 @@ async function finalizeParentTransaction(hash, account) {
   const readiness = await waitForFinalizationReady(hash);
   if (readiness === "already_finalized") return;
   let evmHash;
-  const finalizers = [account, deployer, client].filter((candidate, index, all) => candidate && all.findIndex((other) => other.address.toLowerCase() === candidate.address.toLowerCase()) === index);
-  let lastError;
-  for (const finalizer of finalizers) {
+  for (let attempt = 1; attempt <= 12; attempt += 1) {
     try {
-      evmHash = await sdk.finalizeTransaction({ account: finalizer, txId: hash });
-      console.log(`FINALIZE_CALLER ${hash} ${finalizer.address}`);
+      evmHash = await sdk.finalizeTransaction({ account, txId: hash });
       break;
     } catch (error) {
-      lastError = error;
-      console.log(`FINALIZE_REJECTED ${hash} caller=${finalizer.address}`);
+      const message = error instanceof Error ? error.message : String(error);
+      if (!isTransientRpcError(error) || attempt === 12) throw error;
+      console.log(`RETRY finalize ${hash} after transient RPC error (${attempt}/12)`);
+      await delay(5_000);
     }
   }
-  if (!evmHash) throw lastError;
   console.log(`FINALIZE ${hash} evm=${evmHash}`);
   await waitForReceipt(hash, TransactionStatus.FINALIZED, 120);
 }
