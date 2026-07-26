@@ -115,9 +115,19 @@ console.log(`DEPLOY_RESULT=${transaction.resultName}`);
 console.log(`DEPLOY_EXECUTION=${transaction.txExecutionResultName}`);
 console.log(`CONTRACT_ADDRESS=${contractAddress}`);
 
+for (let attempt = 1; attempt <= 900 && transaction.statusName !== "FINALIZED"; attempt += 1) {
+  await new Promise((resolve) => setTimeout(resolve, 5_000));
+  transaction = await sdk.getTransaction({ hash: txId });
+  if (attempt % 12 === 0) console.log(`WAIT_DEPLOY_FINALITY status=${transaction.statusName}`);
+}
+if (transaction.statusName !== "FINALIZED") {
+  throw new Error(`NOT FULLY VERIFIED - deployment did not finalize: ${txId}`);
+}
+
 let schema;
 let offerIds;
-for (let attempt = 1; attempt <= 30; attempt += 1) {
+let verificationError;
+for (let attempt = 1; attempt <= 12; attempt += 1) {
   try {
     [schema, offerIds] = await Promise.all([
       sdk.getContractSchema(contractAddress),
@@ -125,9 +135,13 @@ for (let attempt = 1; attempt <= 30; attempt += 1) {
     ]);
     break;
   } catch (error) {
-    if (attempt === 30) throw error;
-    await new Promise((resolve) => setTimeout(resolve, 3_000));
+    verificationError = error;
+    if (attempt < 12) await new Promise((resolve) => setTimeout(resolve, 10_000));
   }
+}
+if (!schema || offerIds === undefined) {
+  const reason = verificationError instanceof Error ? verificationError.message : String(verificationError);
+  throw new Error(`NOT FULLY VERIFIED - finalized deployment has no readable code/schema/state at ${contractAddress}: ${reason}`);
 }
 const methodCount = Object.keys(schema?.methods || {}).length;
 if (methodCount !== 18) throw new Error(`Expected 18 schema methods, received ${methodCount}`);
