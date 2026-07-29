@@ -2,15 +2,15 @@
 
 ## Validator Review vNext
 
-The detailed validator-review release was clean-deployed to Bradbury on 2026-07-23. Its schema and clean public view are verified; the two-wallet payment and refund smoke histories will be appended after their terminal settlement states are confirmed.
+The detailed validator-review release was clean-deployed to Bradbury on 2026-07-29. Its schema and clean public view are verified; the two-wallet payment and refund smoke histories will be appended after their terminal settlement states are confirmed.
 
 - Network: GenLayer Testnet Bradbury, chain ID `4221`
-- Contract: `0x634C7628b593C41C26F4Cf19E4fF919310696b22`
-- Explorer: `https://explorer-bradbury.genlayer.com/address/0x634C7628b593C41C26F4Cf19E4fF919310696b22`
+- Contract: `0x1BcFc0dD38915Dd2CBBA32616fE94935249b6545`
+- Explorer: `https://explorer-bradbury.genlayer.com/address/0x1BcFc0dD38915Dd2CBBA32616fE94935249b6545`
 - Deployer: `0xe78def025cE53c9b46ac56cF19f720391119fa5b`
-- Deploy activation transaction: `0x7c73a3a2ba07a766af8e3a929ad83d2b6bbc05653bfb371edb25ef608d85f131`
-- Deploy GenLayer transaction: `0xb33ae7c5f26adfc73605043a1df97525130e726f752273b62cd8a1a593d743cd`
-- Result: `ACCEPTED / AGREE / FINISHED_WITH_RETURN`
+- Deploy activation transaction: `0x3c28978cfd55c237c65ae106d9d3418ecfc5a9a86221451dbf682d6c8e6fca22`
+- Deploy GenLayer transaction: `0x15b83bfed242b347bcb96733a17c5041fd12fd2de2ab31b4882681cfad7d4d66`
+- Result: `FINALIZED / AGREE / FINISHED_WITH_RETURN`
 - Schema: 18 methods
 - Basic clean view: `get_offer_ids=[]`
 
