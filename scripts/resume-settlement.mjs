@@ -29,7 +29,10 @@ if (!/^0x[a-fA-F0-9]{64}$/.test(key || "")) throw new Error(`Missing valid ${set
 
 const account = privateKeyToAccount(key);
 const sdk = createClient({ chain: testnetBradbury });
-const publicClient = createPublicClient({ chain: testnetBradbury, transport: http() });
+const publicClient = createPublicClient({
+  chain: testnetBradbury,
+  transport: http(undefined, { timeout: 30_000, retryCount: 0 }),
+});
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 async function retry(label, operation, attempts = 12) {

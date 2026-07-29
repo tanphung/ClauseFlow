@@ -44,7 +44,10 @@ if (builder.address.toLowerCase() === client.address.toLowerCase()) throw new Er
 if (env.ClauseFlow2_ADDRESS && builder.address.toLowerCase() !== env.ClauseFlow2_ADDRESS.toLowerCase()) throw new Error("Builder key does not match ClauseFlow2_ADDRESS");
 if (env.ClauseFlow3_ADDRESS && client.address.toLowerCase() !== env.ClauseFlow3_ADDRESS.toLowerCase()) throw new Error("Client key does not match ClauseFlow3_ADDRESS");
 
-const publicClient = createPublicClient({ chain: testnetBradbury, transport: http() });
+const publicClient = createPublicClient({
+  chain: testnetBradbury,
+  transport: http(undefined, { timeout: 30_000, retryCount: 0 })
+});
 const [builderBalance, clientBalance] = await Promise.all([
   publicClient.getBalance({ address: builder.address }),
   publicClient.getBalance({ address: client.address })

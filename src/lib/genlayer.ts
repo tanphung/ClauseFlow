@@ -106,7 +106,10 @@ async function submitBradburyWrite(
       gas: toHex(5_000_000n)
     }]
   }) as Hash;
-  const publicClient = createViemPublicClient({ chain: testnetBradbury, transport: http() });
+  const publicClient = createViemPublicClient({
+    chain: testnetBradbury,
+    transport: http(undefined, { timeout: 30_000, retryCount: 0 })
+  });
   const receipt = await publicClient.waitForTransactionReceipt({ hash: evmHash });
   if (receipt.status !== "success") throw new Error(`Consensus activation reverted after using ${receipt.gasUsed} gas: ${evmHash}`);
   const events = parseEventLogs({ abi: consensus.abi, logs: receipt.logs, strict: false }) as unknown as Array<{ eventName: string; args?: { txId?: string } }>;

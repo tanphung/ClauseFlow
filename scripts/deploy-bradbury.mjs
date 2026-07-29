@@ -21,9 +21,31 @@ if (env.EXPECTED_WALLET_ADDRESS && deployer.address.toLowerCase() !== env.EXPECT
   throw new Error("ACCOUNT1_PRIVATE_KEY does not match EXPECTED_WALLET_ADDRESS");
 }
 
-const publicClient = createPublicClient({ chain: testnetBradbury, transport: http() });
+const publicClient = createPublicClient({
+  chain: testnetBradbury,
+  transport: http(undefined, { timeout: 30_000, retryCount: 0 })
+});
 const sdk = createClient({ chain: testnetBradbury });
-const balance = await publicClient.getBalance({ address: deployer.address });
+const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+const isTransientRpcError = (error) => /internal error|fetch failed|timeout|timed out|econnreset|etimedout|network error|socket hang up|pipeline backpressure|not currently accepting transactions/i.test(
+  error instanceof Error ? error.message : String(error)
+);
+async function retryRpc(label, operation, attempts = 12) {
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      if (!isTransientRpcError(error) || attempt === attempts) throw error;
+      console.log(`RETRY_DEPLOY_${label} (${attempt}/${attempts})`);
+      await delay(5_000);
+    }
+  }
+  throw lastError;
+}
+
+const balance = await retryRpc("BALANCE", () => publicClient.getBalance({ address: deployer.address }));
 console.log(`DEPLOYER_ADDRESS=${deployer.address}`);
 console.log(`DEPLOYER_BALANCE=${formatEther(balance)} GEN`);
 if (balance < 100_000_000_000_000_000n) throw new Error("Deployer balance is below 0.1 GEN");
@@ -46,9 +68,9 @@ const encodedData = encodeFunctionData({
   ]
 });
 const [nonce, gasPrice, estimatedGas] = await Promise.all([
-  publicClient.getTransactionCount({ address: deployer.address }),
-  publicClient.getGasPrice(),
-  publicClient.estimateGas({ account: deployer.address, to: consensus.address, data: encodedData, value: 0n })
+  retryRpc("NONCE", () => publicClient.getTransactionCount({ address: deployer.address })),
+  retryRpc("GAS_PRICE", () => publicClient.getGasPrice()),
+  retryRpc("GAS_ESTIMATE", () => publicClient.estimateGas({ account: deployer.address, to: consensus.address, data: encodedData, value: 0n }))
 ]);
 const bradburyBlockGasLimit = 100_000_000n;
 const maximumDeploymentGas = 99_000_000n;
@@ -75,11 +97,9 @@ for (let attempt = 1; attempt <= 12; attempt += 1) {
     evmHash = await publicClient.sendRawTransaction({ serializedTransaction: signed });
     break;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    const retryable = /pipeline backpressure|not currently accepting transactions/i.test(message);
-    if (!retryable || attempt === 12) throw error;
+    if (!isTransientRpcError(error) || attempt === 12) throw error;
     console.log(`RETRY_DEPLOY_SUBMISSION backpressure (${attempt}/12)`);
-    await new Promise((resolve) => setTimeout(resolve, 5_000));
+    await delay(5_000);
   }
 }
 if (!evmHash) throw new Error("Deployment transaction was not accepted for submission");
