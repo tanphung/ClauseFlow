@@ -121,7 +121,7 @@ async function submitBradburyWrite(
 
 async function waitForAcceptedExecution(client: ConnectedClient, hash: TransactionHash) {
   let transientFailures = 0;
-  for (let attempt = 1; attempt <= 360; attempt += 1) {
+  for (let attempt = 1; attempt <= 2160; attempt += 1) {
     let transaction: Awaited<ReturnType<typeof client.getTransaction>>;
     try {
       transaction = await client.getTransaction({ hash });
@@ -143,7 +143,7 @@ async function waitForAcceptedExecution(client: ConnectedClient, hash: Transacti
     }
     await new Promise((resolve) => window.setTimeout(resolve, 5_000));
   }
-  throw new Error("Transaction did not produce an execution result before the wait limit.");
+  throw new Error("Transaction did not reach accepted consensus before the three-hour polling window ended.");
 }
 
 export async function writeAndVerify(
