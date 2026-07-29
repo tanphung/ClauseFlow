@@ -18,7 +18,7 @@ ClauseFlow is not an AI advice interface. The validator decision changes on-chai
 | --- | --- |
 | Live dApp | [clauseflow-two.vercel.app](https://clauseflow-two.vercel.app) |
 | Source | [github.com/tanphung/ClauseFlow](https://github.com/tanphung/ClauseFlow) |
-| Current Bradbury contract | [0x3349...D6E1](https://explorer-bradbury.genlayer.com/address/0x3349fb40b37fb0775986E729E1C3b7A2BD50D6E1) |
+| Current Bradbury contract | [0xb280...5390](https://explorer-bradbury.genlayer.com/address/0xb28051C20D778ECB5Ab6Dad0B45408FA60f15390) |
 | Intelligent contract source | [contracts/clauseflow.py](https://raw.githubusercontent.com/tanphung/ClauseFlow/main/contracts/clauseflow.py) |
 | Validator evidence dossier | [docs/RELEASE_EVIDENCE.md](https://raw.githubusercontent.com/tanphung/ClauseFlow/main/docs/RELEASE_EVIDENCE.md) |
 | Deployment proof | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
@@ -99,7 +99,7 @@ Valid JSON alone proves nothing. An accessible page alone proves nothing. The fe
 
 ## Release Status
 
-`main` contains the richer validator-review release described above. The byte-identical source is deployed to Bradbury at [`0x3349fb40b37fb0775986E729E1C3b7A2BD50D6E1`](https://explorer-bradbury.genlayer.com/address/0x3349fb40b37fb0775986E729E1C3b7A2BD50D6E1). Deployment transaction [`0x52eb31...1590c`](https://explorer-bradbury.genlayer.com/tx/0x52eb31da004f39caae200581f0d192152f784624d41f7ab9f211bda55441590c) is `FINALIZED / AGREE / FINISHED_WITH_RETURN`; the contract exposes a valid 18-method schema and began with `get_offer_ids=[]`.
+`main` contains the richer validator-review release described above. The byte-identical source is deployed to Bradbury at [`0xb28051C20D778ECB5Ab6Dad0B45408FA60f15390`](https://explorer-bradbury.genlayer.com/address/0xb28051C20D778ECB5Ab6Dad0B45408FA60f15390). Deployment transaction [`0x59906c...c4fe2`](https://explorer-bradbury.genlayer.com/tx/0x59906c98d09543ea96f2d04ce2ff612503735840146d309d729f0827779c4fe2) is `FINALIZED / AGREE / FINISHED_WITH_RETURN`; the contract exposes a valid 18-method schema and began with `get_offer_ids=[]`.
 
 Until the final smoke histories and recording are complete:
 
