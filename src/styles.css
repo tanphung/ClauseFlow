@@ -332,6 +332,24 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
   50% { opacity: 1; }
 }
 
+.lifecycleBand {
+  display: grid;
+  grid-template-columns: minmax(210px, 0.75fr) minmax(0, 2.25fr);
+  gap: 24px;
+  padding: 22px 24px;
+  color: #fff;
+  background: var(--forest);
+  border-radius: 8px;
+}
+.lifecycleHeading h2 { max-width: 310px; margin-top: 6px; color: #fff; font-size: 20px; line-height: 1.25; }
+.lifecycleBand .eyebrow { color: #f08a77; }
+.lifecycleBand ol { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0; padding: 0; list-style: none; }
+.lifecycleBand li { display: grid; grid-template-columns: 27px 1fr; gap: 9px; min-width: 0; padding: 4px 14px 14px; border-left: 1px solid rgba(255, 255, 255, 0.12); }
+.lifecycleBand li:nth-child(n + 4) { padding-top: 14px; padding-bottom: 4px; border-top: 1px solid rgba(255, 255, 255, 0.12); }
+.lifecycleBand li > span { display: grid; place-items: center; width: 25px; height: 25px; color: #f6a091; border: 1px solid rgba(246, 160, 145, 0.48); border-radius: 6px; font-size: 9px; font-weight: 800; }
+.lifecycleBand li p { margin: 0; color: rgba(255, 255, 255, 0.72); font-size: 10px; line-height: 1.5; }
+.lifecycleBand li strong { display: block; margin-bottom: 2px; color: #fff; font-size: 11px; }
+
 .ledgerSection, .offersMain, .formPanel, .draftPanel, .agreementDocument, .settlementPanel, .evidencePanel, .reviewPanel, .historyPanel, .txPanel {
   min-width: 0;
   background: var(--paper);
@@ -743,6 +761,8 @@ legend { width: 100%; padding: 0 0 12px; color: var(--ink); font-size: 11px; fon
   .metric { border-bottom: 1px solid var(--line); }
   .metric:nth-child(3) { border-right: 0; }
   .metric:nth-child(4), .metric:nth-child(5) { border-bottom: 0; }
+  .lifecycleBand { grid-template-columns: 1fr; }
+  .lifecycleHeading h2 { max-width: 560px; }
   .offersLayout, .createWorkspace, .evidenceTab, .historyTab { grid-template-columns: 1fr; }
   .trustRail, .draftPanel, .txPanel { position: static; }
   .contractDocument { max-height: none; }
@@ -787,6 +807,9 @@ legend { width: 100%; padding: 0 0 12px; color: var(--ink); font-size: 11px; fon
   .metric { min-height: 80px; border-right: 1px solid var(--line) !important; border-bottom: 1px solid var(--line) !important; }
   .metric:nth-child(2n) { border-right: 0 !important; }
   .metric:last-child { border-bottom: 0 !important; }
+  .lifecycleBand { gap: 18px; padding: 20px 18px; }
+  .lifecycleBand ol { grid-template-columns: 1fr; }
+  .lifecycleBand li, .lifecycleBand li:nth-child(n + 4) { padding: 11px 0; border-top: 1px solid rgba(255, 255, 255, 0.12); border-left: 0; }
   .ledgerSection, .offersMain, .formPanel { padding: 17px; }
   .sectionTitle, .ledgerTitle, .formHeading, .offerFooter, .deliveryFormHead { align-items: stretch; flex-direction: column; }
   .filterBox { width: 100%; }

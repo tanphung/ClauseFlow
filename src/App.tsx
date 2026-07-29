@@ -463,6 +463,21 @@ function Dashboard({ stats, deals, filter, setFilter, builderFilter, setBuilderF
         <Metric icon={<RefreshCcw size={18} />} label="GEN refunded" value={stats ? formatGen(stats.totalRefundedAtto) : unavailableValue} loading={loading && !stats} />
       </section>
 
+      <section className="lifecycleBand" aria-labelledby="settlement-lifecycle">
+        <div className="lifecycleHeading">
+          <p className="eyebrow">Settlement lifecycle</p>
+          <h2 id="settlement-lifecycle">From published terms to verified GEN movement</h2>
+        </div>
+        <ol>
+          <li><span>01</span><p><strong>Publish</strong>The Builder structures clauses, reviews every material term, then publishes the immutable offer.</p></li>
+          <li><span>02</span><p><strong>Fund exactly</strong>The Client accepts those terms and locks the exact displayed GEN amount in contract escrow.</p></li>
+          <li><span>03</span><p><strong>Submit evidence</strong>The Builder provides public delivery, demo, documentation, and source URLs for independent review.</p></li>
+          <li><span>04</span><p><strong>Reach consensus</strong>Bradbury validators fetch the evidence and assess each accepted criterion and deliverable.</p></li>
+          <li><span>05</span><p><strong>Settle</strong>An approved Builder can claim payment; a rejected or eligible agreement lets the Client claim a refund.</p></li>
+          <li><span>06</span><p><strong>Verify publicly</strong>ClauseFlow confirms the balance change and exposes the agreement, review, and settlement history on-chain.</p></li>
+        </ol>
+      </section>
+
       <section className="ledgerSection">
         <div className="sectionTitle ledgerTitle">
           <div>
