@@ -1,5 +1,5 @@
 window.CLAUSEFLOW_CONFIG = {
-  contractAddress: "0x993D37D07e31d8e3853B8702919f4d805299B124",
+  contractAddress: "0x3349fb40b37fb0775986E729E1C3b7A2BD50D6E1",
   chain: "testnetBradbury",
   explorerUrl: "https://explorer-bradbury.genlayer.com",
   stateStatus: "accepted"
