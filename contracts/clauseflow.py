@@ -324,8 +324,13 @@ class ClauseFlow(gl.Contract):
                 return False
             validator_evidence = _fetch_delivery_evidence(deal)
             leader = leaders_res.calldata
-            validator = _evaluate_delivery_review(offer, deal, validator_evidence)
-            return _review_results_compatible(leader, validator, validator_evidence)
+            if not _review_result_materially_valid(leader, validator_evidence):
+                return False
+            verification = gl.nondet.exec_prompt(
+                _review_verification_prompt(offer, deal, validator_evidence, leader),
+                response_format="json",
+            )
+            return _review_verification_passes(verification)
 
         review = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
         result = str(review["result"])
@@ -839,6 +844,63 @@ Rules:
 """
 
 
+def _review_verification_prompt(offer: dict, deal: dict, evidence: dict, leader: dict) -> str:
+    return f"""
+You are an independent GenLayer material review verifier.
+The leader proposed a ClauseFlow settlement report. Independently inspect the
+immutable agreement and fetched evidence, then verify the report's material
+outcome. Do not judge JSON shape alone and do not rewrite the report.
+
+Return JSON only with these keys:
+decisionConsistent, accessibilityConsistent, criteriaCoverageConsistent,
+deliverableCoverageConsistent, missingItemsConsistent, reason.
+
+Each consistency field must be a JSON boolean.
+
+Immutable offer:
+{json.dumps(offer, sort_keys=True)}
+
+Submitted deal:
+{json.dumps(deal, sort_keys=True)}
+
+Independently fetched evidence:
+{json.dumps(evidence, sort_keys=True)}
+
+Leader settlement report:
+{json.dumps(leader, sort_keys=True)}
+
+Verification rules:
+- decisionConsistent is true only when APPROVED, REVISION_REQUIRED, or REJECTED
+  follows from the report's normalized assessments and the fetched evidence.
+- accessibilityConsistent compares every reported source and accessible count
+  with the independently fetched pages.
+- criteriaCoverageConsistent checks each immutable acceptance criterion against
+  direct public evidence. Reject keyword-only or unsupported overclaims.
+- deliverableCoverageConsistent checks each promised deliverable against direct
+  public evidence.
+- missingItemsConsistent is true only when material gaps are named for every
+  partial, unsupported, or unverifiable obligation and empty for full approval.
+- Use reason to identify the first material mismatch, or briefly explain why
+  all five checks pass.
+"""
+
+
+def _review_verification_passes(value) -> bool:
+    if not isinstance(value, dict):
+        return False
+    required = [
+        "decisionConsistent",
+        "accessibilityConsistent",
+        "criteriaCoverageConsistent",
+        "deliverableCoverageConsistent",
+        "missingItemsConsistent",
+    ]
+    for key in required:
+        if not _as_bool(value.get(key)):
+            return False
+    return len(_clean(value.get("reason", ""))) >= 20
+
+
 def _normalize_review(value, evidence: dict, criteria: list, deliverables: list) -> dict:
     if not isinstance(value, dict):
         raise gl.vm.UserError("[LLM_ERROR] Review returned non-object")
@@ -1100,46 +1162,3 @@ def _review_result_materially_valid(leader: dict, evidence: dict) -> bool:
         return score < 35 and len(missing_items) > 0
     assessment_statuses = [item["status"] for item in criterion_assessments + deliverable_assessments]
     return score < 100 and any(status in ["SATISFIED", "PARTIAL"] for status in assessment_statuses) and len(missing_items) > 0
-
-
-def _review_results_compatible(leader: dict, validator: dict, validator_evidence: dict) -> bool:
-    if not isinstance(leader, dict) or not isinstance(validator, dict):
-        return False
-    if not _review_result_materially_valid(leader, validator_evidence) or not _review_result_materially_valid(validator, validator_evidence):
-        return False
-    if leader["result"] != validator["result"] or leader["accessibleCount"] != validator["accessibleCount"]:
-        return False
-    if leader["criteriaTotal"] != validator["criteriaTotal"]:
-        return False
-    leader_criteria = _material_coverage_signature(leader.get("criterionAssessments", []))
-    validator_criteria = _material_coverage_signature(validator.get("criterionAssessments", []))
-    leader_deliverables = _material_coverage_signature(leader.get("deliverableAssessments", []))
-    validator_deliverables = _material_coverage_signature(validator.get("deliverableAssessments", []))
-    leader_sources = [str(item["accessible"]) for item in leader.get("sourceAssessments", [])]
-    validator_sources = [str(item["accessible"]) for item in validator.get("sourceAssessments", [])]
-    leader_missing = len(_clean(leader.get("missingItems", ""))) > 0
-    validator_missing = len(_clean(validator.get("missingItems", ""))) > 0
-    if leader["result"] == STATUS_APPROVED:
-        leader_criteria = [item["status"] for item in leader.get("criterionAssessments", [])]
-        validator_criteria = [item["status"] for item in validator.get("criterionAssessments", [])]
-        leader_deliverables = [item["status"] for item in leader.get("deliverableAssessments", [])]
-        validator_deliverables = [item["status"] for item in validator.get("deliverableAssessments", [])]
-    return (
-        leader_criteria == validator_criteria
-        and leader_deliverables == validator_deliverables
-        and leader_sources == validator_sources
-        and leader_missing == validator_missing
-        and abs(int(leader["criteriaSatisfied"]) - int(validator["criteriaSatisfied"])) <= 1
-        and abs(int(leader["score"]) - int(validator["score"])) <= 25
-    )
-
-
-def _material_coverage_signature(assessments: list) -> list:
-    signature = []
-    for assessment in assessments:
-        status = assessment.get("status", "UNVERIFIABLE")
-        if status in ["SATISFIED", "PARTIAL"]:
-            signature.append("SUPPORTED")
-        else:
-            signature.append("UNSUPPORTED")
-    return signature
