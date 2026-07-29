@@ -136,6 +136,11 @@ type StructuredClauses = {
   evidenceRequirements?: string;
   verificationPlan?: string;
   priceDisplay?: string;
+  sourceCoverage?: "COMPLETE" | "INCOMPLETE";
+  scopeSpecific?: boolean;
+  deliverablesTestable?: boolean;
+  criteriaObjective?: boolean;
+  missingMaterialTerms?: string;
 };
 
 type StructuredDraft = {
@@ -624,6 +629,14 @@ function CreateOffer({ executeWrite, config, walletAddress }: { executeWrite: Ex
     form.refundRule,
     form.referenceUrls
   ]);
+  const draftReady = Boolean(
+    draft
+    && draft.clauses.sourceCoverage === "COMPLETE"
+    && draft.clauses.scopeSpecific
+    && draft.clauses.deliverablesTestable
+    && draft.clauses.criteriaObjective
+    && !draft.clauses.missingMaterialTerms?.trim()
+  );
   return (
     <div className="createPage">
       <ol className="creationSteps" aria-label="Offer creation progress">
@@ -678,6 +691,7 @@ function CreateOffer({ executeWrite, config, walletAddress }: { executeWrite: Ex
         </div>}
         {draft && <div className="draftClauses contractDocument">
           <div className="documentTitle"><ShieldCheck size={18} /><span><strong>{form.title}</strong><small>ClauseFlow structured agreement</small></span></div>
+          {!draftReady && <div className="notice warning"><CircleDotIcon /><span><strong>Terms need clarification.</strong> {draft.clauses.missingMaterialTerms || "Make the scope, deliverables, and acceptance criteria specific and independently testable."}</span></div>}
           <ClauseBlock title="Scope" items={[draft.clauses.scope]} />
           <ClauseBlock title="Deliverables" items={[draft.clauses.deliverables]} />
           {draft.clauses.milestones && <ClauseBlock title="Milestones" items={[draft.clauses.milestones]} />}
@@ -691,8 +705,8 @@ function CreateOffer({ executeWrite, config, walletAddress }: { executeWrite: Ex
           <p className="draftMeta">Structured {formatDate(draft.structuredAt)} for {short(draft.builder)}</p>
         </div>}
         <div className="publishBar">
-          <span>{draft ? "Review complete? Commit this offer to Bradbury." : "Structure the clauses to unlock publishing."}</span>
-          <button className="primary wide" disabled={!draft || Boolean(draftError) || Boolean(draft.publishedOfferId)} onClick={() => void publish().catch((error) => setDraftError(normalizeError(error)))}><FileText size={16} /> Publish reviewed offer</button>
+          <span>{draftReady ? "Review complete? Commit this offer to Bradbury." : draft ? "Clarify the highlighted terms, then structure again." : "Structure the clauses to unlock publishing."}</span>
+          <button className="primary wide" disabled={!draftReady || Boolean(draftError) || Boolean(draft?.publishedOfferId)} onClick={() => void publish().catch((error) => setDraftError(normalizeError(error)))}><FileText size={16} /> Publish reviewed offer</button>
         </div>
       </aside>
       </div>

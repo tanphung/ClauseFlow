@@ -170,6 +170,54 @@ def test_structured_draft_is_material_and_bound_to_source(direct_vm, direct_depl
         )
 
 
+def test_incomplete_clause_draft_is_stored_but_cannot_be_published(direct_vm, direct_deploy, direct_alice):
+    contract = direct_deploy("contracts/clauseflow.py")
+    direct_vm.sender = direct_alice
+    direct_vm.value = 0
+    direct_vm.mock_llm(
+        r"ClauseFlow's GenLayer contract drafter",
+        json.dumps({
+            "scope": "The Builder will publish a reviewer evidence package for the named application workflow.",
+            "deliverables": "A public application and supporting reviewer documentation will be submitted as evidence.",
+            "acceptanceCriteria": "Validators can fetch the public application and supporting reviewer documentation.",
+            "evidenceRequirements": "Public application and documentation URLs are required for validator review.",
+            "verificationPlan": "Validators fetch each submitted source and compare it with the funded agreement.",
+            "paymentTerms": "Release 0.02 GEN after an APPROVED evidence review.",
+            "refundConditions": "Client may claim a refund after rejected evidence.",
+            "summary": "The source terms require clarification before publication.",
+            "sourceCoverage": "INCOMPLETE",
+            "scopeSpecific": False,
+            "deliverablesTestable": True,
+            "criteriaObjective": True,
+            "missingMaterialTerms": "Name the exact workflow and its observable acceptance behavior.",
+        }),
+    )
+    clauses = json.loads(contract.structure_offer(
+        *BUILDER_INPUTS,
+        PRICE,
+        3,
+        1,
+        24,
+        24,
+        "Refund after deadline plus grace period if no valid delivery exists.",
+    ))
+    assert clauses["sourceCoverage"] == "INCOMPLETE"
+    assert "exact workflow" in clauses["missingMaterialTerms"]
+    stored = json.loads(contract.get_structured_offer(_wallet(direct_alice)))
+    assert stored["clauses"]["missingMaterialTerms"] == clauses["missingMaterialTerms"]
+    with direct_vm.expect_revert("Structured draft is incomplete"):
+        contract.publish_offer(
+            *BUILDER_INPUTS,
+            PRICE,
+            3,
+            1,
+            24,
+            24,
+            "Refund after deadline plus grace period if no valid delivery exists.",
+            "https://github.com/tanphung/Mochi-Game",
+        )
+
+
 def test_exact_funding_history_and_address_views(direct_vm, direct_deploy, direct_alice, direct_bob):
     contract = direct_deploy("contracts/clauseflow.py")
     offer_id = _publish(contract, direct_vm, direct_alice)

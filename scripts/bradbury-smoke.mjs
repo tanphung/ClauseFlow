@@ -155,7 +155,7 @@ async function waitForAcceptedExecution(hash, retries = 360) {
     }
     const status = transaction.statusName;
     const execution = transaction.txExecutionResultName;
-    if (["UNDETERMINED", "CANCELED", "VALIDATORS_TIMEOUT", "LEADER_TIMEOUT"].includes(status)) {
+    if (["UNDETERMINED", "CANCELED"].includes(status)) {
       throw new Error(`Transaction ${hash} ended with status=${status} execution=${execution}`);
     }
     if (["ACCEPTED", "READY_TO_FINALIZE", "FINALIZED"].includes(status) && execution === "FINISHED_WITH_RETURN" && ["AGREE", "MAJORITY_AGREE"].includes(transaction.resultName)) {
@@ -240,10 +240,10 @@ async function finalizeParentTransaction(hash, account) {
 const refundRule = "Client may claim a refund after deadline plus grace period, or after rejected evidence.";
 const paymentArgs = (title, price) => [
   title,
-  "Publish a public ClauseFlow release evidence dossier that a Client can use to independently verify the delivered dApp release.",
-  "Provide a versioned public evidence dossier that maps the live ClauseFlow application, direct intelligent contract source, and README-based reviewer documentation to one coherent on-chain agreement workflow.",
-  "A public release evidence dossier, a usable live ClauseFlow dashboard, direct intelligent contract source, and README-based reviewer documentation.",
-  "Approve only when validators independently fetch the dossier, live ClauseFlow interface, direct intelligent contract source, and README; confirm all are publicly accessible; and confirm the dossier explicitly maps the same lifecycle and method surface (publish, exact funding, delivery, review, payment, refund, and history) across those sources.",
+  "Publish a versioned ClauseFlow release evidence dossier whose public artifacts let Bradbury validators independently verify one complete agreement lifecycle before escrow settlement.",
+  "The Builder must publish a Markdown method matrix linking each contract method to the matching live dApp action and README explanation. The matrix must cover publish_offer, accept_offer with exact GEN funding, submit_delivery, review_delivery, claim_payment, confirm_payment, claim_refund, confirm_refund, get_deal_history, and get_dashboard_stats. The Builder submits the dossier, live application, direct contract source, and README through submit_delivery; Bradbury protocol-selected validators review those URLs through review_delivery.",
+  "A public Markdown release dossier containing the cross-source method matrix.\nA usable public ClauseFlow dashboard configured for the reviewed release.\nThe direct public intelligent contract source.\nPublic README reviewer documentation describing the same lifecycle and settlement consequences.",
+  "Each of the four submitted HTTPS sources must be fetchable.\nThe dossier must contain all ten named lifecycle methods and map each to the live interface and README.\nThe contract source must expose those named methods.\nThe README and live interface must describe publishing, exact funding, evidence delivery, validator review, Builder payment, Client refund, and public history without contradictory settlement rules.\nAPPROVED permits the Builder to claim exactly 0.02 GEN; any material mismatch requires revision, and REJECTED permits the Client refund under the funded rule.",
   price,
   2n,
   1n,
@@ -254,10 +254,10 @@ const paymentArgs = (title, price) => [
 
 const refundArgs = (title, price) => [
   title,
-  "Deliver a complete public accessibility audit for the ClauseFlow agreement dashboard.",
-  "Publish an audit that documents keyboard navigation, visible focus, color contrast, and actionable remediation for the public ClauseFlow dashboard.",
-  "A public accessibility audit report, the live ClauseFlow dashboard, and repository evidence supporting each finding.",
-  "Approve only if validators can fetch a dedicated public audit report that contains keyboard navigation, focus visibility, contrast, and remediation findings tied to ClauseFlow. Reject evidence that only links the app or repository without the required audit.",
+  "Deliver a dedicated public accessibility audit for the ClauseFlow agreement dashboard, with independently verifiable findings that determine release of the funded escrow.",
+  "The Builder must publish one dedicated Markdown or HTML audit report for the public ClauseFlow dashboard. The report must separately document tested keyboard navigation, visible focus behavior, color-contrast measurements, and actionable remediation tied to identified interface elements. The Builder submits the report, live dashboard, repository, and reviewer documentation through submit_delivery for Bradbury validator review.",
+  "A dedicated public accessibility audit report with four named sections: keyboard navigation, focus visibility, color contrast, and remediation.\nThe public ClauseFlow dashboard URL.\nPublic repository evidence supporting each finding.",
+  "The dedicated audit-report URL must be fetchable and identify ClauseFlow.\nThe report must contain concrete keyboard test results, visible-focus findings, measured contrast evidence, and actionable remediation tied to the dashboard.\nLinks to only the application, repository, or general README do not satisfy the audit deliverable.\nAPPROVED permits the Builder to claim exactly 0.015 GEN; absence of the dedicated audit report is NOT_SATISFIED and REJECTED permits the Client refund.",
   price,
   2n,
   1n,
@@ -288,6 +288,15 @@ async function createOffer(title, args) {
     draft = await waitForStructuredDraft(title, price);
   } else {
     console.log(`RESUME structured draft for ${title}`);
+  }
+  const clauses = draft?.clauses || {};
+  const draftReady = clauses.sourceCoverage === "COMPLETE"
+    && clauses.scopeSpecific === true
+    && clauses.deliverablesTestable === true
+    && clauses.criteriaObjective === true
+    && !String(clauses.missingMaterialTerms || "").trim();
+  if (!draftReady) {
+    throw new Error(`Structured draft is incomplete: ${clauses.missingMaterialTerms || "material terms require clarification"}`);
   }
   if (!draft?.clauses?.acceptanceCriteria || draft.publishedOfferId) throw new Error("Contract draft was not stored correctly");
   await write(builder, "publish_offer", [...args, "https://github.com/tanphung/ClauseFlow\nhttps://clauseflow-two.vercel.app"]);

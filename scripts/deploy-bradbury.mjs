@@ -97,7 +97,7 @@ for (let attempt = 1; attempt <= 360; attempt += 1) {
   transaction = await sdk.getTransaction({ hash: txId });
   const status = transaction.statusName;
   const execution = transaction.txExecutionResultName;
-  if (["UNDETERMINED", "CANCELED", "VALIDATORS_TIMEOUT", "LEADER_TIMEOUT"].includes(status)) {
+  if (["UNDETERMINED", "CANCELED"].includes(status)) {
     throw new Error(`Deployment ended with status=${status} execution=${execution}`);
   }
   if (["ACCEPTED", "READY_TO_FINALIZE", "FINALIZED"].includes(status) && execution !== "NOT_VOTED") break;

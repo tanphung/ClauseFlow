@@ -57,7 +57,7 @@ async function waitForClaimFinalization() {
   for (let attempt = 1; attempt <= 1_440; attempt += 1) {
     const transaction = await retry("claim status", () => sdk.getTransaction({ hash: claimHash }));
     const { statusName, resultName, txExecutionResultName } = transaction;
-    if (["UNDETERMINED", "CANCELED", "VALIDATORS_TIMEOUT", "LEADER_TIMEOUT"].includes(statusName)) {
+    if (["UNDETERMINED", "CANCELED"].includes(statusName)) {
       throw new Error(`Claim failed status=${statusName} result=${resultName} execution=${txExecutionResultName}`);
     }
     if (txExecutionResultName !== "NOT_VOTED" && txExecutionResultName !== "FINISHED_WITH_RETURN") {
@@ -129,7 +129,7 @@ async function submitConfirm() {
 async function waitForConfirmedState(txId, expectedStatus) {
   for (let attempt = 1; attempt <= 360; attempt += 1) {
     const transaction = await retry("confirm status", () => sdk.getTransaction({ hash: txId }));
-    if (["UNDETERMINED", "CANCELED", "VALIDATORS_TIMEOUT", "LEADER_TIMEOUT"].includes(transaction.statusName)) {
+    if (["UNDETERMINED", "CANCELED"].includes(transaction.statusName)) {
       throw new Error(`Confirm failed status=${transaction.statusName} execution=${transaction.txExecutionResultName}`);
     }
     if (["ACCEPTED", "READY_TO_FINALIZE", "FINALIZED"].includes(transaction.statusName) && transaction.txExecutionResultName !== "NOT_VOTED") {

@@ -14,6 +14,10 @@ export function hasContractAddress(config: ClauseFlowConfig | null | undefined) 
   return Boolean(config?.contractAddress && /^0x[a-fA-F0-9]{40}$/.test(config.contractAddress));
 }
 
+export function isTerminalTransactionFailure(status: string) {
+  return status === "UNDETERMINED" || status === "CANCELED";
+}
+
 export function createReadClient(config: ClauseFlowConfig) {
   const chain = config.chain === "studionet" ? studionet : testnetBradbury;
   return createClient({ chain });
@@ -128,7 +132,7 @@ async function waitForAcceptedExecution(client: ConnectedClient, hash: Transacti
     }
     const status = transaction.statusName || String(transaction.status || "UNINITIALIZED");
     const execution = transaction.txExecutionResultName || "NOT_VOTED";
-    if (["UNDETERMINED", "CANCELED", "VALIDATORS_TIMEOUT", "LEADER_TIMEOUT"].includes(status)) {
+    if (isTerminalTransactionFailure(status)) {
       throw new Error(`${status}: transaction ended before successful execution (${execution}).`);
     }
     if (["ACCEPTED", "READY_TO_FINALIZE", "FINALIZED"].includes(status) && execution !== "NOT_VOTED") {

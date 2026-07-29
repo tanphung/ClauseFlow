@@ -107,7 +107,8 @@ class ClauseFlow(gl.Contract):
             if not isinstance(leaders_res, gl.vm.Return):
                 return False
             leader = leaders_res.calldata
-            return _structured_clauses_materially_valid(leader, source)
+            validator = leader_fn()
+            return _structured_clauses_compatible(leader, validator, source)
 
         structured = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
         builder = str(gl.message.sender_address)
@@ -160,6 +161,8 @@ class ClauseFlow(gl.Contract):
         draft = _loads(self.structured_offer_drafts[builder_key])
         if draft["publishedOfferId"] != "":
             raise gl.vm.UserError("This structured draft has already been published")
+        if not _structured_clauses_ready(draft["clauses"]):
+            raise gl.vm.UserError("Structured draft is incomplete. Address the missing material terms and structure it again")
         if not _draft_matches_offer(
             draft,
             title,
@@ -742,26 +745,40 @@ def _normalize_structured_clauses(value, source: dict) -> dict:
     return structured
 
 
-def _structured_clauses_materially_valid(leader: dict, source: dict) -> bool:
-    if not isinstance(leader, dict):
+def _structured_clauses_well_formed(value: dict, source: dict) -> bool:
+    if not isinstance(value, dict):
         return False
-    if str(leader.get("priceAttoGen", "")) != source["priceAttoGen"]:
+    if str(value.get("priceAttoGen", "")) != source["priceAttoGen"]:
         return False
-    if source["priceDisplay"].lower() not in _clean(leader.get("paymentTerms", "")).lower():
+    if source["priceDisplay"].lower() not in _clean(value.get("paymentTerms", "")).lower():
         return False
-    if leader.get("sourceCoverage") != "COMPLETE":
-        return False
-    if not leader.get("scopeSpecific") or not leader.get("deliverablesTestable") or not leader.get("criteriaObjective"):
+    if value.get("sourceCoverage") not in ["COMPLETE", "INCOMPLETE"]:
         return False
     return (
-        len(_clean(leader.get("scope", ""))) >= 40
-        and len(_clean(leader.get("deliverables", ""))) >= 40
-        and len(_clean(leader.get("acceptanceCriteria", ""))) >= 40
-        and len(_clean(leader.get("evidenceRequirements", ""))) >= 30
-        and len(_clean(leader.get("verificationPlan", ""))) >= 30
-        and len(_clean(leader.get("paymentTerms", ""))) >= 20
-        and len(_clean(leader.get("refundConditions", ""))) >= 20
+        len(_clean(value.get("scope", ""))) >= 40
+        and len(_clean(value.get("deliverables", ""))) >= 40
+        and len(_clean(value.get("acceptanceCriteria", ""))) >= 40
+        and len(_clean(value.get("evidenceRequirements", ""))) >= 30
+        and len(_clean(value.get("verificationPlan", ""))) >= 30
+        and len(_clean(value.get("paymentTerms", ""))) >= 20
+        and len(_clean(value.get("refundConditions", ""))) >= 20
     )
+
+
+def _structured_clauses_ready(value: dict) -> bool:
+    return (
+        value.get("sourceCoverage") == "COMPLETE"
+        and bool(value.get("scopeSpecific"))
+        and bool(value.get("deliverablesTestable"))
+        and bool(value.get("criteriaObjective"))
+        and len(_clean(value.get("missingMaterialTerms", ""))) == 0
+    )
+
+
+def _structured_clauses_compatible(leader: dict, validator: dict, source: dict) -> bool:
+    if not _structured_clauses_well_formed(leader, source) or not _structured_clauses_well_formed(validator, source):
+        return False
+    return _structured_clauses_ready(leader) == _structured_clauses_ready(validator)
 
 
 def _review_prompt(offer: dict, deal: dict, evidence: dict, criteria: list, deliverables: list) -> str:

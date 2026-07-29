@@ -77,6 +77,13 @@ function fillValidOfferForm() {
 }
 
 describe("ClauseFlow", () => {
+  it("keeps polling through recoverable validator timeout statuses", () => {
+    expect(genlayer.isTerminalTransactionFailure("LEADER_TIMEOUT")).toBe(false);
+    expect(genlayer.isTerminalTransactionFailure("VALIDATORS_TIMEOUT")).toBe(false);
+    expect(genlayer.isTerminalTransactionFailure("UNDETERMINED")).toBe(true);
+    expect(genlayer.isTerminalTransactionFailure("CANCELED")).toBe(true);
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
