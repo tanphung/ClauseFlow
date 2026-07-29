@@ -52,7 +52,7 @@ async function retry(label, operation, attempts = 12) {
 }
 
 async function readJson(functionName, args = []) {
-  const value = await retry(`view ${functionName}`, () => sdk.readContract({ address: contractAddress, functionName, args }));
+  const value = await retry(`view ${functionName}`, () => sdk.readContract({ address: contractAddress, functionName, args, transactionHashVariant: "latest-nonfinal" }));
   return typeof value === "string" ? JSON.parse(value) : value;
 }
 

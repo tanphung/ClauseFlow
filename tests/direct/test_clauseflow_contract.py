@@ -38,10 +38,10 @@ def _structure(contract, vm, builder) -> dict:
             "refundConditions": "Client may claim a refund after deadline plus grace period if no valid delivery exists.",
             "summary": "Mochi-Game Quest Evaluator reviewer-ready evidence agreement.",
             "sourceCoverage": "COMPLETE",
-            "scopeSpecific": True,
-            "deliverablesTestable": True,
-            "criteriaObjective": True,
-            "missingMaterialTerms": "",
+            "scopeSpecific": False,
+            "deliverablesTestable": False,
+            "criteriaObjective": False,
+            "missingMaterialTerms": "None.",
         }),
     )
     result = json.loads(contract.structure_offer(
@@ -53,6 +53,10 @@ def _structure(contract, vm, builder) -> dict:
         24,
         "Refund after deadline plus grace period if no valid delivery exists.",
     ))
+    assert result["scopeSpecific"] is True
+    assert result["deliverablesTestable"] is True
+    assert result["criteriaObjective"] is True
+    assert result["missingMaterialTerms"] == ""
     return result
 
 

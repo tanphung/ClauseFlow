@@ -1,6 +1,6 @@
 import { abi, createClient } from "genlayer-js";
 import { studionet, testnetBradbury } from "genlayer-js/chains";
-import type { CalldataEncodable } from "genlayer-js/types";
+import { TransactionHashVariant, type CalldataEncodable } from "genlayer-js/types";
 import { createPublicClient as createViemPublicClient, encodeFunctionData, http, parseEventLogs, toHex, type Hash } from "viem";
 
 export type ClauseFlowConfig = {
@@ -195,7 +195,10 @@ export async function readJsonView<T>(client: ReturnType<typeof createReadClient
         client.readContract({
           address: config.contractAddress as `0x${string}`,
           functionName,
-          args
+          args,
+          transactionHashVariant: config.stateStatus === "finalized"
+            ? TransactionHashVariant.LATEST_FINAL
+            : TransactionHashVariant.LATEST_NONFINAL
         }),
         8_000,
         `${functionName} timed out while reading Bradbury state`

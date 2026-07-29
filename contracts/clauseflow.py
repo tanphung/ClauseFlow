@@ -710,7 +710,11 @@ Drafting rules:
 - A verification offer remains verification work, not implementation work.
 - Every deliverable must be testable from submitted public evidence.
 - Mention exact payment as {source["priceDisplay"]} GEN.
-- Mark vague or incomplete terms INCOMPLETE and list the missing terms.
+- Evaluate completeness from the accepted source terms, not from whether the
+  Builder has already delivered the evidence.
+- Mark vague or incomplete terms INCOMPLETE and list concrete missing terms.
+- When terms are complete, use COMPLETE and an empty string for
+  missingMaterialTerms. Never write "None", "N/A", or similar placeholders.
 """
 
 
@@ -720,10 +724,16 @@ def _normalize_structured_clauses(value, source: dict) -> dict:
     source_coverage = _clean(value.get("sourceCoverage", "COMPLETE")).upper()
     if source_coverage not in ["COMPLETE", "INCOMPLETE"]:
         source_coverage = "INCOMPLETE"
+    scope = _fallback_text(value.get("scope"), source["scope"], 900)
+    deliverables = _fallback_text(value.get("deliverables"), source["deliverables"], 1200)
+    acceptance_criteria = _fallback_text(value.get("acceptanceCriteria"), source["acceptanceCriteria"], 1400)
+    missing_terms = _clean_limit(value.get("missingMaterialTerms", ""), 500)
+    if missing_terms.lower().rstrip(".") in ["none", "n/a", "not applicable"]:
+        missing_terms = ""
     structured = {
-        "scope": _fallback_text(value.get("scope"), source["scope"], 900),
-        "deliverables": _fallback_text(value.get("deliverables"), source["deliverables"], 1200),
-        "acceptanceCriteria": _fallback_text(value.get("acceptanceCriteria"), source["acceptanceCriteria"], 1400),
+        "scope": scope,
+        "deliverables": deliverables,
+        "acceptanceCriteria": acceptance_criteria,
         "milestones": _clean_limit(value.get("milestones", ""), 900),
         "evidenceRequirements": _fallback_text(value.get("evidenceRequirements"), "Public delivery URL, GitHub repository, documentation URL, and optional demo URL.", 1000),
         "verificationPlan": _fallback_text(value.get("verificationPlan"), "Validators fetch each public evidence URL and compare visible content, repo/docs, and delivery notes against the accepted criteria.", 1200),
@@ -733,10 +743,12 @@ def _normalize_structured_clauses(value, source: dict) -> dict:
         "refundConditions": _fallback_text(value.get("refundConditions"), source["refundRule"], 700),
         "summary": _fallback_text(value.get("summary"), source["serviceDescription"], 450),
         "sourceCoverage": source_coverage,
-        "scopeSpecific": _as_bool(value.get("scopeSpecific")),
-        "deliverablesTestable": _as_bool(value.get("deliverablesTestable")),
-        "criteriaObjective": _as_bool(value.get("criteriaObjective")),
-        "missingMaterialTerms": _clean_limit(value.get("missingMaterialTerms", ""), 500),
+        # Derive display/readiness signals from the normalized clauses. LLM
+        # self-rating booleans can contradict the detailed text.
+        "scopeSpecific": len(_clean(scope)) >= 40,
+        "deliverablesTestable": len(_clean(deliverables)) >= 40,
+        "criteriaObjective": len(_clean(acceptance_criteria)) >= 40,
+        "missingMaterialTerms": missing_terms,
         "priceDisplay": source["priceDisplay"],
         "priceAttoGen": source["priceAttoGen"],
     }

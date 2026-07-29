@@ -151,7 +151,7 @@ for (let attempt = 1; attempt <= 12; attempt += 1) {
   try {
     [schema, offerIds] = await Promise.all([
       sdk.getContractSchema(contractAddress),
-      sdk.readContract({ address: contractAddress, functionName: "get_offer_ids", args: [] })
+      sdk.readContract({ address: contractAddress, functionName: "get_offer_ids", args: [], transactionHashVariant: "latest-nonfinal" })
     ]);
     break;
   } catch (error) {

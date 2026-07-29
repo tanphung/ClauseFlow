@@ -127,7 +127,7 @@ async function read(functionName, args = []) {
   let lastError;
   for (let attempt = 1; attempt <= 60; attempt += 1) {
     try {
-      return await sdk.readContract({ address: contractAddress, functionName, args });
+      return await sdk.readContract({ address: contractAddress, functionName, args, transactionHashVariant: "latest-nonfinal" });
     } catch (error) {
       lastError = error;
       if (!isTransientRpcError(error) || attempt === 60) throw error;
