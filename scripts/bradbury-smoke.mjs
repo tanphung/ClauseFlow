@@ -143,7 +143,7 @@ const readJson = async (functionName, args = []) => {
   return typeof value === "string" ? JSON.parse(value) : value;
 };
 
-async function waitForAcceptedExecution(hash, retries = 360) {
+async function waitForAcceptedExecution(hash, retries = 2160) {
   let transientFailures = 0;
   for (let attempt = 1; attempt <= retries; attempt += 1) {
     let transaction;
@@ -167,7 +167,7 @@ async function waitForAcceptedExecution(hash, retries = 360) {
     if (attempt % 12 === 0) console.log(`WAIT execution ${hash} status=${status} execution=${execution}`);
     await delay(5_000);
   }
-  throw new Error(`Transaction ${hash} did not produce an execution result`);
+  throw new Error(`Transaction ${hash} did not reach accepted consensus before the polling window ended`);
 }
 
 async function waitForReceipt(hash, status, retries) {
