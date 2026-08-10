@@ -330,7 +330,7 @@ def test_one_revision_round_allows_one_corrected_submission(direct_vm, direct_de
     assert json.loads(contract.get_deal(deal_id))["status"] == "SUBMITTED"
 
 
-def test_material_comparator_accepts_prose_variance_and_rejects_status_disagreement(direct_vm, direct_deploy, direct_alice, direct_bob):
+def test_material_comparator_accepts_nonmaterial_variance_and_rejects_outcome_disagreement(direct_vm, direct_deploy, direct_alice, direct_bob):
     contract = direct_deploy("contracts/clauseflow.py")
     deal_id = _fund(contract, direct_vm, direct_alice, direct_bob)
     leader = _submit_and_review(contract, direct_vm, direct_alice, deal_id, "APPROVED")
@@ -350,3 +350,14 @@ def test_material_comparator_accepts_prose_variance_and_rejects_status_disagreem
     disagreement["score"] = "75"
     disagreement["missingItems"] = "The promised evidence package remains incomplete."
     assert module._reviews_materially_equivalent(leader, disagreement) is False
+
+    revision_leader = copy.deepcopy(leader)
+    revision_leader["deliverableAssessments"][0]["status"] = "PARTIAL"
+    revision_leader["result"] = "REVISION_REQUIRED"
+    revision_leader["score"] = "75"
+    revision_leader["missingItems"] = "Complete the remaining deliverable evidence."
+    revision_validator = copy.deepcopy(revision_leader)
+    revision_validator["criterionAssessments"][0]["status"] = "PARTIAL"
+    revision_validator["score"] = "50"
+    revision_validator["criteriaSatisfied"] = "0"
+    assert module._reviews_materially_equivalent(revision_leader, revision_validator) is True

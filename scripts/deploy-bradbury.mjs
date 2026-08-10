@@ -114,7 +114,7 @@ console.log(`DEPLOY_TX_HASH=${txId}`);
 
 let transaction;
 for (let attempt = 1; attempt <= 360; attempt += 1) {
-  transaction = await sdk.getTransaction({ hash: txId });
+  transaction = await retryRpc("TX_STATUS", () => sdk.getTransaction({ hash: txId }));
   const status = transaction.statusName;
   const execution = transaction.txExecutionResultName;
   if (["UNDETERMINED", "CANCELED"].includes(status)) {
@@ -137,7 +137,7 @@ console.log(`CONTRACT_ADDRESS=${contractAddress}`);
 
 for (let attempt = 1; attempt <= 900 && transaction.statusName !== "FINALIZED"; attempt += 1) {
   await new Promise((resolve) => setTimeout(resolve, 5_000));
-  transaction = await sdk.getTransaction({ hash: txId });
+  transaction = await retryRpc("FINALITY_STATUS", () => sdk.getTransaction({ hash: txId }));
   if (attempt % 12 === 0) console.log(`WAIT_DEPLOY_FINALITY status=${transaction.statusName}`);
 }
 if (transaction.statusName !== "FINALIZED") {

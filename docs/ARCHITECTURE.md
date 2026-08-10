@@ -19,7 +19,7 @@
 2. The contract normalizes assessment statuses and deterministically derives score and result.
 3. Each validator independently refetches the sources.
 4. Without seeing the leader report, each validator produces its own compact assessment for every criterion and deliverable from its independently fetched evidence.
-5. The contract derives each side's score and result, then compares stable material fields: decision, score, every assessment status, and supporting evidence URLs. Free-form wording and transient fetch-count differences are not consensus fields.
+5. The contract derives each side's result from full criterion and deliverable coverage, then requires the same settlement outcome and obligation structure. Approval additionally requires a 100 score, every item satisfied, and common supporting evidence URLs. Free-form wording, partial-status placement, and transient fetch-count differences are not consensus fields.
 6. Storage changes occur only after consensus returns.
 
 Validators do not approve JSON format or identical prose. Approval requires every obligation to be `SATISFIED`, a score of 100, accessible supporting evidence, and no missing items.

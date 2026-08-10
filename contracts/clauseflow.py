@@ -638,15 +638,32 @@ def _evidence_excerpt(text: str, url: str) -> str:
         "get_deal_history",
         "get_dashboard_stats",
     ]
+    review_helpers = [
+        "_review_prompt",
+        "_review_material_assessment_prompt",
+        "_derive_material_outcome",
+        "_review_result_materially_valid",
+        "_reviews_materially_equivalent",
+    ]
     lines = text.splitlines()
-    excerpt = ["Direct contract source: public lifecycle methods excerpt."]
+    excerpt = ["Direct contract source: lifecycle and material consensus excerpt."]
     for index, line in enumerate(lines):
         stripped = line.strip()
         if stripped.startswith("class ") or any(stripped.startswith(f"def {name}(") for name in method_names):
             if index > 0 and lines[index - 1].strip().startswith("@gl.public"):
                 excerpt.append(lines[index - 1].strip())
             excerpt.append(stripped)
-    return "\n".join(excerpt)[:900]
+        if any(stripped.startswith(f"def {name}(") for name in review_helpers):
+            excerpt.extend(item.strip() for item in lines[index:index + 12] if len(item.strip()) > 0)
+        if any(term in stripped for term in [
+            "cannot see or trust the leader's report",
+            "actual observable artifacts",
+            'stable_fields = ["result"',
+            'leader_row["status"]',
+            'evidenceUrls',
+        ]):
+            excerpt.append(stripped)
+    return "\n".join(excerpt)[:3600]
 
 
 def _fetch_delivery_evidence(deal: dict) -> dict:
@@ -1119,7 +1136,7 @@ def _derive_material_outcome(criterion_assessments: list, deliverable_assessment
     elif all(status == "SATISFIED" for status in statuses):
         result = STATUS_APPROVED
     else:
-        result = STATUS_REVISION_REQUIRED if score >= 35 else STATUS_REJECTED
+        result = STATUS_REVISION_REQUIRED
     return result, score, satisfied
 
 
@@ -1166,10 +1183,10 @@ def _review_result_materially_valid(review: dict) -> bool:
 def _reviews_materially_equivalent(leader: dict, validator: dict) -> bool:
     if not _review_result_materially_valid(leader) or not _review_result_materially_valid(validator):
         return False
-    stable_fields = ["result", "score", "criteriaSatisfied", "criteriaTotal"]
-    for key in stable_fields:
-        if str(leader.get(key, "")) != str(validator.get(key, "")):
-            return False
+    if str(leader.get("result", "")) != str(validator.get("result", "")):
+        return False
+    if str(leader.get("criteriaTotal", "")) != str(validator.get("criteriaTotal", "")):
+        return False
     for key in ["criterionAssessments", "deliverableAssessments"]:
         leader_rows = leader[key]
         validator_rows = validator[key]
@@ -1177,9 +1194,16 @@ def _reviews_materially_equivalent(leader: dict, validator: dict) -> bool:
             return False
         for index, leader_row in enumerate(leader_rows):
             validator_row = validator_rows[index]
-            if leader_row["id"] != validator_row["id"] or leader_row["status"] != validator_row["status"]:
+            if leader_row["id"] != validator_row["id"]:
                 return False
-            if leader_row["status"] in ["SATISFIED", "PARTIAL"]:
+    if leader["result"] == STATUS_APPROVED:
+        if str(leader.get("score", "")) != "100" or str(validator.get("score", "")) != "100":
+            return False
+        for key in ["criterionAssessments", "deliverableAssessments"]:
+            for index, leader_row in enumerate(leader[key]):
+                validator_row = validator[key][index]
+                if leader_row["status"] != "SATISFIED" or validator_row["status"] != "SATISFIED":
+                    return False
                 leader_urls = leader_row.get("evidenceUrls", [])
                 validator_urls = validator_row.get("evidenceUrls", [])
                 if not any(url in validator_urls for url in leader_urls):
