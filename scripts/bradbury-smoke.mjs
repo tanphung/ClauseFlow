@@ -11,7 +11,7 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(contractAddress || "")) {
 }
 const mode = process.argv[3] || "full";
 const resumedPaymentDealId = process.argv[4] || "";
-if (!["preflight", "payment-only", "refund-only", "full", "payment-revision", "payment-resume", "appeal", "finalize"].includes(mode)) throw new Error(`Unknown smoke mode: ${mode}`);
+if (!["preflight", "payment-only", "refund-only", "full", "payment-revision", "payment-resume", "appeal", "finalize-idle", "finalize"].includes(mode)) throw new Error(`Unknown smoke mode: ${mode}`);
 if (mode === "payment-revision" && !/^\d+$/.test(resumedPaymentDealId)) {
   throw new Error("Usage: npm run smoke:bradbury -- <contract-address> payment-revision <deal-id>");
 }
@@ -23,6 +23,9 @@ if (mode === "finalize" && !/^0x[a-fA-F0-9]{64}$/.test(resumedPaymentDealId)) {
 }
 if (mode === "appeal" && !/^0x[a-fA-F0-9]{64}$/.test(resumedPaymentDealId)) {
   throw new Error("Usage: npm run smoke:bradbury -- <contract-address> appeal <transaction-hash>");
+}
+if (mode === "finalize-idle" && !/^0x[a-fA-F0-9]{64}$/.test(resumedPaymentDealId)) {
+  throw new Error("Usage: npm run smoke:bradbury -- <contract-address> finalize-idle <transaction-hash>");
 }
 
 console.log(`SMOKE_BOOT contract=${contractAddress}`);
@@ -577,6 +580,23 @@ if (mode === "finalize") {
 if (mode === "appeal") {
   const result = await appealTransaction(resumedPaymentDealId, builder);
   console.log(`SMOKE_APPEAL_OK tx=${resumedPaymentDealId} status=${result.statusName} consensus=${result.resultName} execution=${result.txExecutionResultName}`);
+  process.exit(0);
+}
+
+if (mode === "finalize-idle") {
+  const before = await sdk.getTransaction({ hash: resumedPaymentDealId });
+  if (!["UNDETERMINED", "VALIDATORS_TIMEOUT", "LEADER_TIMEOUT"].includes(before.statusName)) {
+    throw new Error(`Idleness finalization requires a stuck transaction, received ${before.statusName}`);
+  }
+  const evmHash = await sdk.finalizeIdlenessTxs({ account: builder, txIds: [resumedPaymentDealId] });
+  recordCheckpoint({
+    phase: "IDLENESS_FINALIZED",
+    functionName: "review_delivery",
+    transactionHash: resumedPaymentDealId,
+    evmActivationHash: evmHash,
+    lifecycleBefore: before.statusName,
+  });
+  console.log(`SMOKE_FINALIZE_IDLE_OK tx=${resumedPaymentDealId} evm=${evmHash} previous=${before.statusName}`);
   process.exit(0);
 }
 
