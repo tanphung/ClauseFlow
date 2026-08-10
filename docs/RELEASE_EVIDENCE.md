@@ -2,6 +2,8 @@
 
 This versioned dossier is the Builder's public deliverable for the `ClauseFlow release evidence dossier` Bradbury pilot agreement.
 
+**Complete mapping:** `publish_offer` -> New offer -> README publish terms; `accept_offer` -> exact funding -> README exact escrow lock; `submit_delivery` -> Evidence submission -> README public evidence; `review_delivery` -> Validator review -> README consensus decision; `claim_payment` + `confirm_payment` -> Builder payment -> README balance-proved `PAID`; `claim_refund` + `confirm_refund` -> Client refund -> README balance-proved `REFUNDED`; `get_deal_history` -> On-chain history -> README lifecycle events; `get_dashboard_stats` -> Protocol summary -> README public totals.
+
 ## Release Identity
 
 - Live app: https://clauseflow-two.vercel.app

@@ -4,6 +4,8 @@
 
 ClauseFlow lets a Builder publish objective service terms and a Client lock the exact GEN price. After delivery, Bradbury validators independently fetch the submitted public evidence and decide whether the funded obligations are approved, require revision, or justify a refund. The decision changes on-chain settlement rights; ClauseFlow is not an AI advice interface.
 
+**Lifecycle evidence:** `publish_offer` = New offer; `accept_offer` = exact funding; `submit_delivery` = evidence delivery; `review_delivery` = validator review; `claim_payment` + `confirm_payment` = Builder payment; `claim_refund` + `confirm_refund` = Client refund; `get_deal_history` = On-chain history; `get_dashboard_stats` = Protocol summary. These labels are visible in the live interface and explained below.
+
 ![ClauseFlow public agreement dashboard](docs/assets/clauseflow-dashboard.png)
 
 ## Live Release
