@@ -11,7 +11,7 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(contractAddress || "")) {
 }
 const mode = process.argv[3] || "full";
 const resumedPaymentDealId = process.argv[4] || "";
-if (!["preflight", "payment-only", "refund-only", "full", "payment-revision", "payment-resume", "finalize"].includes(mode)) throw new Error(`Unknown smoke mode: ${mode}`);
+if (!["preflight", "payment-only", "refund-only", "full", "payment-revision", "payment-resume", "appeal", "finalize"].includes(mode)) throw new Error(`Unknown smoke mode: ${mode}`);
 if (mode === "payment-revision" && !/^\d+$/.test(resumedPaymentDealId)) {
   throw new Error("Usage: npm run smoke:bradbury -- <contract-address> payment-revision <deal-id>");
 }
@@ -20,6 +20,9 @@ if (mode === "payment-resume" && !/^\d+$/.test(resumedPaymentDealId)) {
 }
 if (mode === "finalize" && !/^0x[a-fA-F0-9]{64}$/.test(resumedPaymentDealId)) {
   throw new Error("Usage: npm run smoke:bradbury -- <contract-address> finalize <transaction-hash>");
+}
+if (mode === "appeal" && !/^0x[a-fA-F0-9]{64}$/.test(resumedPaymentDealId)) {
+  throw new Error("Usage: npm run smoke:bradbury -- <contract-address> appeal <transaction-hash>");
 }
 
 console.log(`SMOKE_BOOT contract=${contractAddress}`);
@@ -267,6 +270,69 @@ async function write(account, functionName, args = [], value = 0n) {
   return { hash, receipt };
 }
 
+async function appealTransaction(hash, account) {
+  if (!(await sdk.canAppeal({ txId: hash }))) throw new Error(`Transaction ${hash} cannot be appealed`);
+  const value = await sdk.getMinAppealBond({ txId: hash });
+  const consensus = testnetBradbury.consensusMainContract;
+  if (!consensus?.address || !consensus.abi) throw new Error("Bradbury consensus contract configuration is unavailable");
+  const encodedData = encodeFunctionData({ abi: consensus.abi, functionName: "submitAppeal", args: [hash] });
+  const [nonce, gasPrice] = await Promise.all([
+    publicClient.getTransactionCount({ address: account.address, blockTag: "pending" }),
+    publicClient.getGasPrice(),
+  ]);
+  const serializedTransaction = await account.signTransaction({
+    to: consensus.address,
+    data: encodedData,
+    value,
+    gas: 500_000n,
+    gasPrice,
+    nonce,
+    chainId: testnetBradbury.id,
+    type: "legacy",
+  });
+  const evmHash = await publicClient.sendRawTransaction({ serializedTransaction });
+  const receipt = await publicClient.waitForTransactionReceipt({ hash: evmHash });
+  if (receipt.status !== "success") throw new Error(`Appeal activation reverted: ${evmHash}`);
+  recordCheckpoint({
+    phase: "APPEAL_SUBMITTED",
+    functionName: "review_delivery",
+    transactionHash: hash,
+    evmActivationHash: evmHash,
+    appealBondAtto: String(value),
+  });
+  console.log(`APPEAL review_delivery tx=${hash} evm=${evmHash} bondAtto=${value}`);
+
+  let observedAppealProgress = false;
+  for (let attempt = 1; attempt <= 2160; attempt += 1) {
+    const transaction = await sdk.getTransaction({ hash });
+    const status = transaction.statusName;
+    if (["APPEAL_REVEALING", "APPEAL_COMMITTING", "PENDING", "PROPOSING", "COMMITTING", "REVEALING"].includes(status)) {
+      observedAppealProgress = true;
+    }
+    if (["ACCEPTED", "READY_TO_FINALIZE", "FINALIZED"].includes(status) && transaction.txExecutionResultName !== "NOT_VOTED") {
+      const success = transaction.txExecutionResultName === "FINISHED_WITH_RETURN"
+        && ["AGREE", "MAJORITY_AGREE"].includes(transaction.resultName);
+      recordCheckpoint({
+        phase: success ? "APPEAL_RESOLVED" : "TERMINAL_FAILURE",
+        functionName: "review_delivery",
+        transactionHash: hash,
+        lifecycle: status,
+        consensus: transaction.resultName,
+        execution: transaction.txExecutionResultName,
+      });
+      if (!success) throw new Error(`Appealed transaction ${hash} ended status=${status} consensus=${transaction.resultName} execution=${transaction.txExecutionResultName}`);
+      return transaction;
+    }
+    if (["CANCELED", "UNDETERMINED"].includes(status) && observedAppealProgress) {
+      recordCheckpoint({ phase: "TERMINAL_FAILURE", functionName: "review_delivery", transactionHash: hash, lifecycle: status, consensus: transaction.resultName, execution: transaction.txExecutionResultName });
+      throw new Error(`Appealed transaction ${hash} ended status=${status} consensus=${transaction.resultName}`);
+    }
+    if (attempt % 12 === 0) console.log(`WAIT appeal ${hash} status=${status} execution=${transaction.txExecutionResultName}`);
+    await delay(5_000);
+  }
+  throw new Error(`Appealed transaction ${hash} did not resolve before the polling window ended`);
+}
+
 async function waitForFinalizationReady(hash) {
   let transientFailures = 0;
   for (let attempt = 1; attempt <= 720; attempt += 1) {
@@ -489,6 +555,12 @@ console.log(`SMOKE mode=${mode} builder=${builder.address} client=${client.addre
 if (mode === "finalize") {
   await finalizeParentTransaction(resumedPaymentDealId, builder);
   console.log(`SMOKE_FINALIZE_OK tx=${resumedPaymentDealId}`);
+  process.exit(0);
+}
+
+if (mode === "appeal") {
+  const result = await appealTransaction(resumedPaymentDealId, builder);
+  console.log(`SMOKE_APPEAL_OK tx=${resumedPaymentDealId} status=${result.statusName} consensus=${result.resultName} execution=${result.txExecutionResultName}`);
   process.exit(0);
 }
 
