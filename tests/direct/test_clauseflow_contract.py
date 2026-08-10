@@ -1,4 +1,6 @@
+import copy
 import json
+import sys
 
 
 PRICE = 20_000_000_000_000_000
@@ -84,7 +86,7 @@ def _fund(contract, vm, builder, client) -> str:
     return deal_id
 
 
-def _submit_and_review(contract, vm, builder, deal_id: str, result: str) -> dict:
+def _submit_and_review(contract, vm, builder, deal_id: str, result: str, validator_status: str = "") -> dict:
     vm.sender = builder
     approved = result == "APPROVED"
     revision = result == "REVISION_REQUIRED"
@@ -114,7 +116,7 @@ def _submit_and_review(contract, vm, builder, deal_id: str, result: str) -> dict
         "The accepted obligations therefore cannot be settled in the Builder's favor."
     )
     vm.mock_llm(
-        r"independent GenLayer settlement validator",
+        r"independent GenLayer settlement validator for ClauseFlow",
         json.dumps({
             "executiveSummary": executive_summary,
             "criterionAssessments": [{
@@ -141,6 +143,31 @@ def _submit_and_review(contract, vm, builder, deal_id: str, result: str) -> dict
             "risks": [] if approved else ["The final evidence package is incomplete."] if revision else ["No accepted deliverable can be verified."],
             "missingItems": [] if approved else ["Submit the contracted live app, repository, and documentation evidence."],
             "nextAction": "Builder can claim payment." if approved else "Builder should submit the documented correction." if revision else "Client can claim a refund under the accepted agreement.",
+        }),
+    )
+    independent_criterion_status = validator_status or criterion_status
+    independent_deliverable_status = validator_status or deliverable_status
+    independent_missing = [] if independent_criterion_status == "SATISFIED" and independent_deliverable_status == "SATISFIED" else [
+        "The independently assessed material obligation remains unresolved."
+    ]
+    vm.mock_llm(
+        r"independent GenLayer settlement material assessor",
+        json.dumps({
+            "criterionAssessments": [{
+                "id": "C1",
+                "status": independent_criterion_status,
+                "finding": "Independent retrieval confirms the observable accepted workflow." if independent_criterion_status == "SATISFIED" else "Independent retrieval does not establish the accepted workflow.",
+                "reasoning": "The fetched public artifact directly demonstrates the required behavior without relying on the Builder note." if independent_criterion_status == "SATISFIED" else "The fetched artifact lacks direct observable support for this immutable acceptance obligation.",
+                "evidenceUrls": evidence_urls if independent_criterion_status in ["SATISFIED", "PARTIAL"] else [],
+            }],
+            "deliverableAssessments": [{
+                "id": "D1",
+                "status": independent_deliverable_status,
+                "finding": "Independent retrieval confirms the complete contracted evidence package." if independent_deliverable_status == "SATISFIED" else "Independent retrieval identifies a material deliverable gap.",
+                "reasoning": "The public sources expose each promised artifact and allow independent cross-checking." if independent_deliverable_status == "SATISFIED" else "The available sources do not prove that every promised delivery artifact was supplied.",
+                "evidenceUrls": evidence_urls if independent_deliverable_status in ["SATISFIED", "PARTIAL"] else [],
+            }],
+            "missingItems": independent_missing,
         }),
     )
     return json.loads(contract.review_delivery(deal_id))
@@ -301,3 +328,25 @@ def test_one_revision_round_allows_one_corrected_submission(direct_vm, direct_de
         "Corrected evidence package for the allowed revision round.",
     )
     assert json.loads(contract.get_deal(deal_id))["status"] == "SUBMITTED"
+
+
+def test_material_comparator_accepts_prose_variance_and_rejects_status_disagreement(direct_vm, direct_deploy, direct_alice, direct_bob):
+    contract = direct_deploy("contracts/clauseflow.py")
+    deal_id = _fund(contract, direct_vm, direct_alice, direct_bob)
+    leader = _submit_and_review(contract, direct_vm, direct_alice, deal_id, "APPROVED")
+    module = sys.modules[type(contract._instance).__module__]
+
+    independent = copy.deepcopy(leader)
+    independent["criterionAssessments"][0]["finding"] = "A second assessor independently observed the contracted workflow."
+    independent["criterionAssessments"][0]["reasoning"] = "The cited public application exposes the required behavior without relying on matching prose."
+    independent["deliverableAssessments"][0]["finding"] = "A second assessor independently found every promised artifact."
+    independent["deliverableAssessments"][0]["reasoning"] = "The same public source directly supports the complete immutable delivery obligation."
+    assert module._reviews_materially_equivalent(leader, independent) is True
+
+    disagreement = copy.deepcopy(independent)
+    disagreement["deliverableAssessments"][0]["status"] = "NOT_SATISFIED"
+    disagreement["deliverableAssessments"][0]["evidenceUrls"] = []
+    disagreement["result"] = "REVISION_REQUIRED"
+    disagreement["score"] = "75"
+    disagreement["missingItems"] = "The promised evidence package remains incomplete."
+    assert module._reviews_materially_equivalent(leader, disagreement) is False

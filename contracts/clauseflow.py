@@ -314,6 +314,8 @@ class ClauseFlow(gl.Contract):
         offer = _loads(self.offers[deal["offerId"]])
         if deal["status"] != STATUS_SUBMITTED:
             raise gl.vm.UserError("Deal must be submitted before review")
+        criteria = _material_items(offer["acceptanceCriteria"], 4)
+        deliverables = _material_items(offer["deliverables"], 4)
 
         def leader_fn():
             evidence = _fetch_delivery_evidence(deal)
@@ -324,13 +326,14 @@ class ClauseFlow(gl.Contract):
                 return False
             validator_evidence = _fetch_delivery_evidence(deal)
             leader = leaders_res.calldata
-            if not _review_result_materially_valid(leader, validator_evidence):
+            if not _review_result_materially_valid(leader):
                 return False
-            verification = gl.nondet.exec_prompt(
-                _review_verification_prompt(offer, deal, validator_evidence, leader),
+            validator_raw = gl.nondet.exec_prompt(
+                _review_material_assessment_prompt(offer, deal, validator_evidence, criteria, deliverables),
                 response_format="json",
             )
-            return _review_verification_passes(verification)
+            validator_review = _normalize_review(validator_raw, validator_evidence, criteria, deliverables)
+            return _reviews_materially_equivalent(leader, validator_review)
 
         review = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
         result = str(review["result"])
@@ -587,13 +590,18 @@ def _is_url(value: str) -> bool:
 def _fetch_url_text(url: str, label: str) -> dict:
     if not _is_url(url):
         return {"label": label, "url": url, "accessible": False, "text": "", "error": "missing_or_invalid_url"}
-    try:
-        response = gl.nondet.web.get(url)
-        text = response.body.decode("utf-8")
-        clipped = _evidence_excerpt(str(text), url)
-        return {"label": label, "url": url, "accessible": len(clipped) > 0, "text": clipped, "error": ""}
-    except Exception as exc:
-        return {"label": label, "url": url, "accessible": False, "text": "", "error": str(exc)[:240]}
+    last_error = ""
+    for _attempt in range(2):
+        try:
+            response = gl.nondet.web.get(url)
+            text = response.body.decode("utf-8")
+            clipped = _evidence_excerpt(str(text), url)
+            if len(clipped) > 0:
+                return {"label": label, "url": url, "accessible": True, "text": clipped, "error": ""}
+            last_error = "empty_response"
+        except Exception as exc:
+            last_error = str(exc)[:240]
+    return {"label": label, "url": url, "accessible": False, "text": "", "error": last_error}
 
 
 def _evidence_excerpt(text: str, url: str) -> str:
@@ -844,18 +852,27 @@ Rules:
 """
 
 
-def _review_verification_prompt(offer: dict, deal: dict, evidence: dict, leader: dict) -> str:
+def _review_material_assessment_prompt(offer: dict, deal: dict, evidence: dict, criteria: list, deliverables: list) -> str:
+    criterion_rows = [{"id": f"C{index + 1}", "text": text} for index, text in enumerate(criteria)]
+    deliverable_rows = [{"id": f"D{index + 1}", "text": text} for index, text in enumerate(deliverables)]
     return f"""
-You are an independent GenLayer material review verifier.
-The leader proposed a ClauseFlow settlement report. Independently inspect the
-immutable agreement and fetched evidence, then verify the report's material
-outcome. Do not judge JSON shape alone and do not rewrite the report.
+You are an independent GenLayer settlement material assessor. Derive your own compact
+material assessment from the immutable agreement and independently fetched
+public evidence. You cannot see or trust the leader's report.
 
 Return JSON only with these keys:
-decisionConsistent, accessibilityConsistent, criteriaCoverageConsistent,
-deliverableCoverageConsistent, missingItemsConsistent, reason.
+criterionAssessments, deliverableAssessments, missingItems.
 
-Each consistency field must be a JSON boolean.
+Each assessment must be in supplied order with keys id, status, finding,
+reasoning, evidenceUrls. Allowed statuses are SATISFIED, PARTIAL,
+NOT_SATISFIED, UNVERIFIABLE. Use only independently fetched URLs in
+evidenceUrls. Keep finding and reasoning concise but materially specific.
+
+Immutable criteria with stable IDs:
+{json.dumps(criterion_rows, sort_keys=True)}
+
+Immutable deliverables with stable IDs:
+{json.dumps(deliverable_rows, sort_keys=True)}
 
 Immutable offer:
 {json.dumps(offer, sort_keys=True)}
@@ -866,39 +883,17 @@ Submitted deal:
 Independently fetched evidence:
 {json.dumps(evidence, sort_keys=True)}
 
-Leader settlement report:
-{json.dumps(leader, sort_keys=True)}
-
-Verification rules:
-- decisionConsistent is true only when APPROVED, REVISION_REQUIRED, or REJECTED
-  follows from the report's normalized assessments and the fetched evidence.
-- accessibilityConsistent compares every reported source and accessible count
-  with the independently fetched pages.
-- criteriaCoverageConsistent checks each immutable acceptance criterion against
-  direct public evidence. Reject keyword-only or unsupported overclaims.
-- deliverableCoverageConsistent checks each promised deliverable against direct
-  public evidence.
-- missingItemsConsistent is true only when material gaps are named for every
-  partial, unsupported, or unverifiable obligation and empty for full approval.
-- Use reason to identify the first material mismatch, or briefly explain why
-  all five checks pass.
+Rules:
+- Judge actual observable artifacts, behavior, and source content; keyword or
+  format matches alone are never sufficient.
+- SATISFIED requires direct public proof and at least one fetched evidence URL.
+- PARTIAL identifies a concrete remaining gap and its available proof.
+- NOT_SATISFIED means the obligation is absent or contradicted.
+- UNVERIFIABLE means independently fetched evidence cannot establish it.
+- missingItems is empty only when every criterion and deliverable is satisfied.
+- Do not choose a settlement result or score; the contract derives both from
+  your independent assessment.
 """
-
-
-def _review_verification_passes(value) -> bool:
-    if not isinstance(value, dict):
-        return False
-    required = [
-        "decisionConsistent",
-        "accessibilityConsistent",
-        "criteriaCoverageConsistent",
-        "deliverableCoverageConsistent",
-        "missingItemsConsistent",
-    ]
-    for key in required:
-        if not _as_bool(value.get(key)):
-            return False
-    return len(_clean(value.get("reason", ""))) >= 20
 
 
 def _normalize_review(value, evidence: dict, criteria: list, deliverables: list) -> dict:
@@ -907,22 +902,8 @@ def _normalize_review(value, evidence: dict, criteria: list, deliverables: list)
     criterion_assessments = _normalize_assessments(value.get("criterionAssessments", []), criteria, "C", evidence)
     deliverable_assessments = _normalize_assessments(value.get("deliverableAssessments", []), deliverables, "D", evidence)
     all_assessments = criterion_assessments + deliverable_assessments
-    satisfied = len([item for item in criterion_assessments if item["status"] == "SATISFIED"])
-    points = 0
-    for item in all_assessments:
-        if item["status"] == "SATISFIED":
-            points += 100
-        elif item["status"] == "PARTIAL":
-            points += 50
-    score = points // len(all_assessments) if len(all_assessments) > 0 else 0
     accessible_count = int(evidence["accessibleCount"])
-    statuses = [item["status"] for item in all_assessments]
-    if accessible_count == 0 or len(statuses) == 0 or all(status in ["NOT_SATISFIED", "UNVERIFIABLE"] for status in statuses):
-        result = STATUS_REJECTED
-    elif all(status == "SATISFIED" for status in statuses):
-        result = STATUS_APPROVED
-    else:
-        result = STATUS_REVISION_REQUIRED if score >= 35 else STATUS_REJECTED
+    result, score, satisfied = _derive_material_outcome(criterion_assessments, deliverable_assessments, accessible_count)
     source_assessments = _normalize_source_assessments(value.get("sourceAssessments", []), evidence)
     strengths = _normalize_text_list(value.get("strengths", []), 3, 240)
     risks = _normalize_text_list(value.get("risks", []), 3, 240)
@@ -1122,43 +1103,85 @@ def _draft_matches_offer(
     )
 
 
-def _review_result_materially_valid(leader: dict, evidence: dict) -> bool:
-    if not isinstance(leader, dict):
+def _derive_material_outcome(criterion_assessments: list, deliverable_assessments: list, accessible_count: int):
+    all_assessments = criterion_assessments + deliverable_assessments
+    statuses = [item["status"] for item in all_assessments]
+    satisfied = len([item for item in criterion_assessments if item["status"] == "SATISFIED"])
+    points = 0
+    for item in all_assessments:
+        if item["status"] == "SATISFIED":
+            points += 100
+        elif item["status"] == "PARTIAL":
+            points += 50
+    score = points // len(all_assessments) if len(all_assessments) > 0 else 0
+    if accessible_count == 0 or len(statuses) == 0 or all(status in ["NOT_SATISFIED", "UNVERIFIABLE"] for status in statuses):
+        result = STATUS_REJECTED
+    elif all(status == "SATISFIED" for status in statuses):
+        result = STATUS_APPROVED
+    else:
+        result = STATUS_REVISION_REQUIRED if score >= 35 else STATUS_REJECTED
+    return result, score, satisfied
+
+
+def _review_result_materially_valid(review: dict) -> bool:
+    if not isinstance(review, dict):
         return False
-    result = str(leader.get("result", ""))
-    if result not in [STATUS_APPROVED, STATUS_REVISION_REQUIRED, STATUS_REJECTED]:
-        return False
-    if str(leader.get("accessibleCount", "")) != str(evidence["accessibleCount"]):
-        return False
-    accessible_count = int(evidence["accessibleCount"])
-    score = _bounded_int(leader.get("score", 0))
-    criteria_satisfied = _bounded_int(leader.get("criteriaSatisfied", 0))
-    criteria_total = _bounded_int(leader.get("criteriaTotal", 0))
-    reason = _clean(leader.get("reason", ""))
-    evidence_summary = _clean(leader.get("evidenceSummary", ""))
-    criteria_results = _clean(leader.get("criteriaResults", ""))
-    missing_items = _clean(leader.get("missingItems", ""))
-    criterion_assessments = leader.get("criterionAssessments", [])
-    deliverable_assessments = leader.get("deliverableAssessments", [])
-    source_assessments = leader.get("sourceAssessments", [])
-    if len(reason) < 40 or len(evidence_summary) < 20 or len(criteria_results) < 20:
-        return False
+    criterion_assessments = review.get("criterionAssessments", [])
+    deliverable_assessments = review.get("deliverableAssessments", [])
+    source_assessments = review.get("sourceAssessments", [])
     if not isinstance(criterion_assessments, list) or not isinstance(deliverable_assessments, list) or not isinstance(source_assessments, list):
         return False
-    if len(criterion_assessments) != criteria_total or len(source_assessments) != len(evidence["pages"]):
+    if len(criterion_assessments) == 0 or len(deliverable_assessments) == 0:
         return False
-    for assessment in criterion_assessments + deliverable_assessments:
-        if assessment.get("status") not in ["SATISFIED", "PARTIAL", "NOT_SATISFIED", "UNVERIFIABLE"]:
-            return False
-        if len(_clean(assessment.get("finding", ""))) < 15 or len(_clean(assessment.get("reasoning", ""))) < 20:
-            return False
-    if accessible_count == 0:
-        return result == STATUS_REJECTED and score == 0 and criteria_satisfied == 0 and len(missing_items) > 0
-    if criteria_total == 0 or criteria_satisfied > criteria_total:
+    if len(_clean(review.get("reason", ""))) < 40 or len(_clean(review.get("criteriaResults", ""))) < 20:
         return False
-    if result == STATUS_APPROVED:
-        return score == 100 and criteria_satisfied > 0 and criteria_satisfied >= criteria_total and len(missing_items) == 0
-    if result == STATUS_REJECTED:
-        return score < 35 and len(missing_items) > 0
-    assessment_statuses = [item["status"] for item in criterion_assessments + deliverable_assessments]
-    return score < 100 and any(status in ["SATISFIED", "PARTIAL"] for status in assessment_statuses) and len(missing_items) > 0
+    allowed_statuses = ["SATISFIED", "PARTIAL", "NOT_SATISFIED", "UNVERIFIABLE"]
+    for prefix, assessments in [("C", criterion_assessments), ("D", deliverable_assessments)]:
+        for index, assessment in enumerate(assessments):
+            if not isinstance(assessment, dict) or assessment.get("id") != f"{prefix}{index + 1}":
+                return False
+            status = assessment.get("status")
+            if status not in allowed_statuses:
+                return False
+            if len(_clean(assessment.get("finding", ""))) < 15 or len(_clean(assessment.get("reasoning", ""))) < 20:
+                return False
+            urls = assessment.get("evidenceUrls", [])
+            if not isinstance(urls, list):
+                return False
+            if status in ["SATISFIED", "PARTIAL"] and len(urls) == 0:
+                return False
+    accessible_count = _bounded_int(review.get("accessibleCount", 0))
+    reported_accessible = len([item for item in source_assessments if isinstance(item, dict) and item.get("accessible") is True])
+    if accessible_count != reported_accessible:
+        return False
+    result, score, satisfied = _derive_material_outcome(criterion_assessments, deliverable_assessments, accessible_count)
+    missing_items = _clean(review.get("missingItems", ""))
+    if str(review.get("result", "")) != result or _bounded_int(review.get("score", 0)) != score:
+        return False
+    if _bounded_int(review.get("criteriaSatisfied", 0)) != satisfied or _bounded_int(review.get("criteriaTotal", 0)) != len(criterion_assessments):
+        return False
+    return (result == STATUS_APPROVED and len(missing_items) == 0) or (result != STATUS_APPROVED and len(missing_items) > 0)
+
+
+def _reviews_materially_equivalent(leader: dict, validator: dict) -> bool:
+    if not _review_result_materially_valid(leader) or not _review_result_materially_valid(validator):
+        return False
+    stable_fields = ["result", "score", "criteriaSatisfied", "criteriaTotal"]
+    for key in stable_fields:
+        if str(leader.get(key, "")) != str(validator.get(key, "")):
+            return False
+    for key in ["criterionAssessments", "deliverableAssessments"]:
+        leader_rows = leader[key]
+        validator_rows = validator[key]
+        if len(leader_rows) != len(validator_rows):
+            return False
+        for index, leader_row in enumerate(leader_rows):
+            validator_row = validator_rows[index]
+            if leader_row["id"] != validator_row["id"] or leader_row["status"] != validator_row["status"]:
+                return False
+            if leader_row["status"] in ["SATISFIED", "PARTIAL"]:
+                leader_urls = leader_row.get("evidenceUrls", [])
+                validator_urls = validator_row.get("evidenceUrls", [])
+                if not any(url in validator_urls for url in leader_urls):
+                    return False
+    return bool(_clean(leader.get("missingItems", ""))) == bool(_clean(validator.get("missingItems", "")))

@@ -18,8 +18,9 @@
 1. The leader independently fetches all submitted sources and creates a detailed report for every immutable criterion and deliverable.
 2. The contract normalizes assessment statuses and deterministically derives score and result.
 3. Each validator independently refetches the sources.
-4. A compact material verifier checks decision consistency, source accessibility, criterion coverage, deliverable coverage, and missing items against the leader report.
-5. Storage changes occur only after consensus returns.
+4. Without seeing the leader report, each validator produces its own compact assessment for every criterion and deliverable from its independently fetched evidence.
+5. The contract derives each side's score and result, then compares stable material fields: decision, score, every assessment status, and supporting evidence URLs. Free-form wording and transient fetch-count differences are not consensus fields.
+6. Storage changes occur only after consensus returns.
 
 Validators do not approve JSON format or identical prose. Approval requires every obligation to be `SATISFIED`, a score of 100, accessible supporting evidence, and no missing items.
 
