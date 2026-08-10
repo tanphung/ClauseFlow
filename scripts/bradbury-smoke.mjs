@@ -280,11 +280,17 @@ async function appealTransaction(hash, account) {
     publicClient.getTransactionCount({ address: account.address, blockTag: "pending" }),
     publicClient.getGasPrice(),
   ]);
+  const estimatedGas = await publicClient.estimateGas({
+    account: account.address,
+    to: consensus.address,
+    data: encodedData,
+    value,
+  });
   const serializedTransaction = await account.signTransaction({
     to: consensus.address,
     data: encodedData,
     value,
-    gas: 500_000n,
+    gas: estimatedGas * 12n / 10n,
     gasPrice,
     nonce,
     chainId: testnetBradbury.id,
@@ -292,7 +298,17 @@ async function appealTransaction(hash, account) {
   });
   const evmHash = await publicClient.sendRawTransaction({ serializedTransaction });
   const receipt = await publicClient.waitForTransactionReceipt({ hash: evmHash });
-  if (receipt.status !== "success") throw new Error(`Appeal activation reverted: ${evmHash}`);
+  if (receipt.status !== "success") {
+    recordCheckpoint({
+      phase: "ACTIVATION_FAILURE",
+      functionName: "appeal_review_delivery",
+      transactionHash: hash,
+      evmActivationHash: evmHash,
+      execution: "EVM_REVERTED",
+      gasUsed: String(receipt.gasUsed),
+    });
+    throw new Error(`Appeal activation reverted: ${evmHash}`);
+  }
   recordCheckpoint({
     phase: "APPEAL_SUBMITTED",
     functionName: "review_delivery",
