@@ -1,40 +1,19 @@
-# ClauseFlow Submission Video
+# ClauseFlow Demo Video
 
-## Deliverables
+The reviewer video is generated from the live production app after both pilot agreements reach terminal state.
 
+- Build command: `npm run demo:video`
 - Video: `demo-video/ClauseFlow-GenLayer-Demo.mp4`
 - Thumbnail: `demo-video/ClauseFlow-Demo-Thumbnail.png`
-- Duration: 2 minutes 27 seconds
-- Format: H.264 MP4, 1920x1080, 30 fps, AAC stereo
-- Voice-over: English, male
-- Build command: `npm run demo:video`
-
-The generated media directory is intentionally ignored by Git. The existing MP4 documents the previous deployed review release. Regenerate and visually review the video after the richer validator contract is clean-deployed and new two-party history exists; only that new recording should be uploaded for submission.
-
-## Suggested Title
-
-ClauseFlow: Verifiable Service Agreements and GEN Escrow on GenLayer
-
-## Suggested Description
-
-ClauseFlow is a two-party service agreement dApp on GenLayer Bradbury. Builders publish objective terms, Clients lock exact GEN escrow, and validators fetch public delivery evidence before the contract permits payment or refund.
-
-After the approved redeploy, the final demo must show a real `PAID` agreement, a real `REFUNDED` agreement, detailed per-criterion validator reasoning with evidence links, canonical lifecycle history, public party filters, and the empty Builder workspace.
-
 - Live app: https://clauseflow-two.vercel.app
-- Source: https://github.com/tanphung/ClauseFlow
-- Contract: https://explorer-bradbury.genlayer.com/address/0x993D37D07e31d8e3853B8702919f4d805299B124
+- Contract: https://explorer-bradbury.genlayer.com/address/0x90ef8Bc9f3AF76861Da8FeC0502aA045e697AAd3
 
-## Chapters
+The media directory is intentionally ignored by Git. The final recording must show only state read from the canonical Bradbury contract:
 
-- `0:00` ClauseFlow and the trust problem
-- `0:04` Public Bradbury dashboard
-- `0:25` Approved evidence and Builder payment
-- `0:58` Rejected evidence and Client refund
-- `1:28` Public agreement and party filters
-- `1:46` Empty Builder workspace and published clauses
-- `2:09` Review links and closing summary
+- the `PAID` `0.02 GEN` release-evidence agreement;
+- the `REFUNDED` `0.015 GEN` audit non-delivery agreement;
+- detailed source, criterion, and deliverable reasoning;
+- balance-backed settlement history;
+- public party filters and the empty Builder workspace.
 
-## Recording Integrity
-
-The recording does not submit new transactions, use placeholder URLs, or fabricate agreement history. It reads the final Bradbury contract and demonstrates the two already-finalized settlement outcomes. The Create view remains empty; no sample form is presented as a real transaction.
+The recorder uses the rendered on-chain scores rather than hard-coded demo values. It does not submit writes or fabricate history.

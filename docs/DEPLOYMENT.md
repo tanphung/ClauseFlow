@@ -1,105 +1,48 @@
-# ClauseFlow Bradbury Deployment Notes
+# ClauseFlow Bradbury Deployment Proof
 
-## Validator Review vNext
-
-The detailed validator-review release was clean-deployed to Bradbury on 2026-07-29. Its schema and clean public view are verified; the two-wallet payment and refund smoke histories will be appended after their terminal settlement states are confirmed.
-
-- Network: GenLayer Testnet Bradbury, chain ID `4221`
-- Contract: `0x1BcFc0dD38915Dd2CBBA32616fE94935249b6545`
-- Explorer: `https://explorer-bradbury.genlayer.com/address/0x1BcFc0dD38915Dd2CBBA32616fE94935249b6545`
-- Deployer: `0xe78def025cE53c9b46ac56cF19f720391119fa5b`
-- Deploy activation transaction: `0x3c28978cfd55c237c65ae106d9d3418ecfc5a9a86221451dbf682d6c8e6fca22`
-- Deploy GenLayer transaction: `0x15b83bfed242b347bcb96733a17c5041fd12fd2de2ab31b4882681cfad7d4d66`
-- Result: `FINALIZED / AGREE / FINISHED_WITH_RETURN`
-- Schema: 18 methods
-- Basic clean view: `get_offer_ids=[]`
-
-The prior deployment below is retained only as pre-vNext history.
-
-## Previous Deployment Archive
-
-## Target Network
+## Canonical Deployment
 
 - Network: GenLayer Testnet Bradbury
 - Chain ID: `4221`
-- Explorer: `https://explorer-bradbury.genlayer.com`
-- Frontend config: `public/config.js`
-- Final candidate contract: `0x993D37D07e31d8e3853B8702919f4d805299B124`
-- Deploy activation tx: `0x6cc64c3d775401a0d57b0225f480d7b52dea34efdf13933c8753afd09e90c478`
-- Deploy GenLayer tx: `0xeb762c3f00ebf8cc518e1c2a394b57f18b1d17cad0be4b61ad833a7b77f23d02`
-- Deploy result: `ACCEPTED / AGREE / FINISHED_WITH_RETURN`
-- Verified schema: 18 methods
-- Verified clean view: `get_offer_ids=[]`
-- Payment deal: `1`, `PAID`, `0.02 GEN`
-- Payment claim tx: `0xda2dac1efbf088119b7088fbd698626ec9634d9e8f8b19ebb13187351f0682b7`
-- Payment confirmation tx: `0x8286ae6293cb60c59a90ee80f3ada87de69bbd4a747155a28d6b13e32e38f5b7`
-- Refund deal: `2`, `REFUNDED`, `0.015 GEN`
-- Refund review tx: `0x53e8f2894cd74696df30af351d6c8d0a004a3a8a00b35ef347b6eb0ac6df3453`
-- Refund claim tx: `0xcf6c8b5615924a70bd899ce09f81975d1571cada3779d067606652b35dffc1a7`
-- Refund confirmation tx: `0xfda4b3b10ec345aec82205d986ca3eb5e75fc4ba56acca54b6b282e54d3c23e1`
-- Final dashboard totals: 2 offers, 2 deals, 2 completed, `0.02 GEN` paid, `0.015 GEN` refunded
-- Final contract balance and accounted escrow: `0 GEN`
-- Production alias: `https://clauseflow-two.vercel.app`
+- Contract: `0x90ef8Bc9f3AF76861Da8FeC0502aA045e697AAd3`
+- Deployer: `0xe78def025cE53c9b46ac56cF19f720391119fa5b`
+- EVM activation: `0xb70f4b8c06405e7ecff98e10e75d089ec38723bd2d500740f52a8931f8fd877b`
+- GenLayer deployment: `0x5288569c15e0238ef8e037f01645cd2d3657604ead786370852c1f704d8b4e71`
+- Result: `FINALIZED / AGREE / FINISHED_WITH_RETURN`
+- Schema: 18 methods, 9 writes and 9 views
+- Initial final view: `get_offer_ids=[]`
+- Normalized source SHA-256: `32DFF0ED0C3E4A198412DF46CD2437F5651CD5BF10EDBB3BB5D8FD788D229718`
 
-The previous integration contract `0xA851b0D3cD85f5Abc91E459C172bc326d5A41bdf` is retained only as development history. The frontend and submission materials use the final contract above.
+## Pilot Settlement Proof
 
-## Preflight
+Payment and refund transaction tables are populated only after every write has the expected lifecycle, consensus, execution result, refreshed deal state, and balance-backed settlement confirmation.
 
-Run these before deploy:
+Expected terminal totals:
+
+| Metric | Expected |
+| --- | ---: |
+| Offers | `2` |
+| Deals | `2` |
+| Completed | `2` |
+| Funded | `0.035 GEN` |
+| Paid | `0.02 GEN` |
+| Refunded | `0.015 GEN` |
+| Active/accounted escrow | `0 GEN` |
+| Contract balance | `0 GEN` |
+
+## Verification Commands
 
 ```powershell
+npm audit --omit=dev
 npm run lint:contract
-pytest tests/direct/ -v
-npm test -- --run
+py -3.13 -m pytest tests/direct -q
+npm test
 npm run typecheck
 npm run build
 npm run test:e2e
 npm run preflight:bradbury
+genlayer code 0x90ef8Bc9f3AF76861Da8FeC0502aA045e697AAd3
+genlayer schema 0x90ef8Bc9f3AF76861Da8FeC0502aA045e697AAd3
 ```
 
-`npm run preflight:bradbury` confirms `.env` key names, the derived deployer address, active GenLayer network, active account address, balance, and lock status without printing secret values. Unlock the active account before deploy if it reports `ACTIVE_ACCOUNT_STATUS=locked`.
-
-## Deploy
-
-```powershell
-genlayer network testnet-bradbury
-genlayer config get network
-genlayer account
-genlayer deploy --contract contracts/clauseflow.py
-```
-
-Only mark deployment verified after recording:
-
-- deploy command
-- deployer address
-- deploy transaction hash
-- lifecycle status
-- execution result
-- contract address
-- schema output
-- successful basic view call such as `get_deal_ids`
-
-## Smoke Scenario
-
-Use the real Mochi-Game evidence package:
-
-- GitHub: `https://github.com/tanphung/Mochi-Game`
-- Live app: `https://mochi-game-frontend.vercel.app`
-- Docs: `https://github.com/tanphung/Mochi-Game#readme`
-- Agreement title: `Audit and polish Mochi-Game Quest Evaluator demo flow`
-- Test amount: below `0.5 GEN`
-
-Smoke flow:
-
-1. Builder structures clauses with AI drafting.
-2. Builder publishes the reviewed offer.
-3. Client accepts and locks exact GEN.
-4. Builder submits Mochi-Game evidence URLs.
-5. GenLayer reviews the evidence against accepted clauses.
-6. Approved path claims and confirms payment.
-7. Refund path is tested separately with rejected or unreachable evidence.
-8. Dashboard shows completed contracts and paid/refunded totals from contract views.
-
-## Safety
-
-Private keys stay only in local `.env` and GenLayer keystore files. Frontend config must contain only public chain, explorer, and verified contract address values.
+Private keys remain local in `.env` and are never included in this proof.

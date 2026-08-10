@@ -1,47 +1,35 @@
 # ClauseFlow Project Submission Notes
 
-> Submission is intentionally on hold. The repository contains a richer validator-review release that has not yet replaced the documented Bradbury contract. Update the contract address, transaction proof, two-party histories, screenshots, and video only after owner-approved clean deployment and verification.
+## Plain-Language Summary
 
-## What ClauseFlow Does
+ClauseFlow is a two-party service-agreement dApp. A Builder publishes objective terms, a Client locks the exact GEN price, and GenLayer validators inspect public delivery evidence against the funded clauses. Their consensus determines whether the Builder can be paid, must revise, or the Client can receive a refund.
 
-ClauseFlow lets a Builder publish a precise service agreement and lets a Client fund it with GEN. The funded clauses become the immutable review standard. After delivery, GenLayer validators fetch the submitted public evidence, compare it with those exact clauses, and decide whether the Builder may receive payment, must revise the work, or the Client may receive a refund.
+## Why GenLayer Is Required
 
-The public Dashboard shows the full agreement, evidence review, and final GEN movement from contract views. It does not rely on a private database or a mocked history.
+Deterministic code handles addresses, amounts, deadlines, revisions, and one-time settlement. The unresolved trust problem is whether public web, source, demo, and documentation evidence actually satisfies natural-language obligations. ClauseFlow validators independently fetch that evidence and verify material criterion and deliverable findings. The result changes escrow eligibility, so this is not advice or an AI answer product.
 
-## The Trust Problem
+## Reviewer Path
 
-Remote work escrow has a difficult boundary: deterministic code can enforce amounts, roles, deadlines, and one-time settlement, but it cannot establish whether a live website, documentation set, demo, or public repository actually satisfies a written delivery agreement.
+1. Open the [public Dashboard](https://clauseflow-two.vercel.app) without a wallet.
+2. Compare its totals with the final proof in [DEPLOYMENT.md](DEPLOYMENT.md).
+3. Open the paid agreement and inspect accepted terms, evidence, detailed validator reasoning, transfer, and terminal history.
+4. Open the refunded agreement and inspect the missing audit evidence, rejection reasoning, refund, and terminal history.
+5. Filter by Builder and Client address.
+6. Open **New offer** and confirm the workspace starts empty.
+7. Follow contract and transaction links to verify Bradbury state independently.
 
-ClauseFlow uses GenLayer only at that boundary. Validators fetch the evidence themselves and compare material findings such as accessibility, deliverable coverage, acceptance-criteria coverage, missing items, score, and decision. The result controls escrow eligibility, so consensus protects a real transfer of value rather than producing advice or a better chatbot answer.
-
-## How To Use It
-
-1. The Builder drafts an offer, asks validators to structure complete clauses, reviews them, and publishes the offer.
-2. The Client accepts the exact on-chain clauses and locks the exact GEN amount.
-3. The Builder submits public delivery, demo, documentation, and repository URLs.
-4. Validators fetch the URLs and review the evidence against the funded clauses.
-5. An approved Builder claims payment. A rejected, expired, or revision-exhausted deal can become refundable under deterministic rules.
-6. The Dashboard shows the agreement timeline, review findings, transaction proof, and paid or refunded amount.
-
-## Verified Build
+## Verified Release
 
 - Network: GenLayer Testnet Bradbury, chain ID `4221`
-- Contract: `0x993D37D07e31d8e3853B8702919f4d805299B124`
-- Deploy transaction: `0xeb762c3f00ebf8cc518e1c2a394b57f18b1d17cad0be4b61ad833a7b77f23d02`
-- Contract result: `ACCEPTED / AGREE / FINISHED_WITH_RETURN`
-- Payment smoke: deal `1` reached `PAID` with `0.02 GEN`
-- Refund smoke: deal `2` reached `REFUNDED` with `0.015 GEN`
-- Final contract balance: `0 GEN`
-- Real evidence: [Mochi-Game source](https://github.com/tanphung/Mochi-Game) and [live app](https://mochi-game-frontend.vercel.app/)
-- Automated checks: GenVM lint, five direct contract tests, six frontend component tests, TypeScript, production build, and desktop/mobile browser flows
+- Contract: `0x90ef8Bc9f3AF76861Da8FeC0502aA045e697AAd3`
+- Deployment: `0x5288569c15e0238ef8e037f01645cd2d3657604ead786370852c1f704d8b4e71`
+- Deployment result: `FINALIZED / AGREE / FINISHED_WITH_RETURN`
+- Schema: 18 methods
+- Live frontend: https://clauseflow-two.vercel.app
+- Source: https://github.com/tanphung/ClauseFlow
 
-## Reviewer Links
+The final paid/refunded hashes and aggregate views are appended after the two-wallet Bradbury pilot reaches terminal state. These are testnet pilot transactions, not a claim of external customer adoption.
 
-- Source: [github.com/tanphung/ClauseFlow](https://github.com/tanphung/ClauseFlow)
-- Contract explorer: [Bradbury contract](https://explorer-bradbury.genlayer.com/address/0x993D37D07e31d8e3853B8702919f4d805299B124)
-- Live frontend: [clauseflow-two.vercel.app](https://clauseflow-two.vercel.app)
-- Demo video: generated and QA-verified locally; public upload URL pending
+## Category
 
-## Why This Is A Project
-
-ClauseFlow includes the Intelligent Contract, a contract-connected frontend, wallet and transaction lifecycle handling, public history views, settlement verification, tests, deployment tooling, and a path to real Builder/Client pilots. It should be reviewed as one continuing Project, not as a standalone contract or a collection of small variations.
+Submit the complete repository as one **Project**. Do not submit the contract separately as an Intelligent Contract and do not describe this release as a Milestone.

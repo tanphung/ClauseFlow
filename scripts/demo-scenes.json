@@ -14,7 +14,7 @@
   {
     "id": "payment",
     "caption": "Approved evidence releases escrow to the Builder",
-    "narration": "The first agreement proves the payment path. Its accepted clauses are immutable after funding and define scope, public deliverables, objective acceptance criteria, revisions, payment, and refund rules. Validators fetched the live Mochi Game application and repository, reported criteria-level findings, and approved the evidence. The on-chain timeline then records the payment transfer and verified paid state.",
+    "narration": "The first agreement proves the payment path. Its accepted clauses are immutable after funding and define scope, public deliverables, objective acceptance criteria, revisions, payment, and refund rules. Validators fetched the ClauseFlow release dossier, live application, contract source, and reviewer documentation, then recorded criterion-level findings. The on-chain timeline records the finalized payment transfer and verified paid state.",
     "durationSeconds": 0
   },
   {

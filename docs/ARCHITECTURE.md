@@ -4,25 +4,31 @@
 
 | Layer | Responsibility |
 | --- | --- |
-| Frontend | Wallet connection, transaction progress, public view rendering, filters, explorer links |
-| Intelligent Contract | Agreement terms, escrow accounting, lifecycle state, evidence review, settlement eligibility, history |
-| Public evidence sources | Delivery, demo, documentation, and repository content fetched independently by validators |
-| Bradbury validators | Independent evidence review and agreement on settlement-critical material fields |
+| React dApp | Wallet connection, transaction truth, public views, filters, explorer links |
+| Intelligent Contract | Immutable terms, escrow, evidence review, eligibility, settlement, statistics, history |
+| Public evidence | Delivery, demo, documentation, and source URLs submitted by the Builder |
+| Bradbury validators | Independent fetching and material verification of the settlement report |
 
-## Consensus Boundary
+## Consensus Design
 
-`structure_offer` uses GenLayer AI drafting to convert Builder inputs into canonical clauses and binds the resulting draft to the exact source fields. Validators do not approve by JSON shape alone; they deterministically check material fields such as source coverage, scope specificity, deliverable testability, objective criteria, and exact GEN payment metadata. `publish_offer` rejects changed or reused drafts.
+`structure_offer` converts Builder inputs into canonical clauses. Validators rerun the drafter and compare source coverage, scope specificity, deliverable testability, objective criteria, exact payment metadata, and missing material terms. `publish_offer` rejects incomplete, changed, or reused drafts.
 
-`review_delivery` is nondeterministic because validators fetch public delivery, demo, documentation, and repository URLs from inside the contract. The leader and validators independently fetch those sources and use an LLM to assess each immutable criterion and deliverable semantically. The contract normalizes assessment statuses and deterministically derives the score and settlement decision. Consensus requires agreement on the decision, source accessibility, material coverage, evidence gaps, and score range. An approved result additionally requires every obligation to be `SATISFIED`; free-form prose is never compared exactly.
+`review_delivery` is the settlement trust boundary:
 
-Each stored review includes an executive summary, criterion and deliverable assessments, source findings, evidence URLs, reasoning, strengths, risks, missing items, and a concise consensus basis. The currently published Bradbury address predates this richer review schema and remains documented as historical proof until the owner approves a clean redeploy.
+1. The leader independently fetches all submitted sources and creates a detailed report for every immutable criterion and deliverable.
+2. The contract normalizes assessment statuses and deterministically derives score and result.
+3. Each validator independently refetches the sources.
+4. A compact material verifier checks decision consistency, source accessibility, criterion coverage, deliverable coverage, and missing items against the leader report.
+5. Storage changes occur only after consensus returns.
+
+Validators do not approve JSON format or identical prose. Approval requires every obligation to be `SATISFIED`, a score of 100, accessible supporting evidence, and no missing items.
 
 ## Escrow And Settlement
 
-`accept_offer` requires the exact attoGEN price and increases both total funded and accounted escrow. A payment/refund claim first changes the deal to a pending state, decreases accounted escrow, records the expected post-transfer balance, and emits an external GEN transfer. Confirmation succeeds only when the contract balance is at or below the recorded expected balance.
+`accept_offer` requires the exact attoGEN price and increases funded and accounted escrow. A payment/refund claim checks authorization and eligibility, moves the deal to a pending state, decreases accounted escrow, records the expected post-transfer balance, and emits an external GEN transfer.
 
-This design permits multiple funded deals and concurrent pending settlements without a single global lock. Terminal deals are appended to `completed_deal_ids`, and all totals remain queryable from `get_dashboard_stats`.
+External messages execute after parent finalization. `confirm_payment` and `confirm_refund` reach terminal state only after the contract balance proves the transfer occurred. Paid and refunded paths are mutually exclusive and idempotent.
 
 ## Public History
 
-Each deal stores immutable party/amount fields plus mutable lifecycle fields. `deal_histories` records actor, event type, timestamp, and a concise note for each transition. The Dashboard uses contract views directly as the v1 source of truth; no private database or off-chain indexer is required.
+Each deal keeps immutable parties and amount together with evidence, review, settlement fields, timestamps, and a lifecycle timeline. `get_dashboard_stats` and address-filter views expose canonical history directly; no private database or indexer is required for v1.

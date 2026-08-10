@@ -106,7 +106,7 @@ async function submitConfirm() {
     args: [account.address, contractAddress, testnetBradbury.defaultNumberOfInitialValidators, 5, serializedData, BigInt(Math.floor(Date.now() / 1000) + 3_600)],
   });
   const [nonce, gasPrice] = await Promise.all([
-    publicClient.getTransactionCount({ address: account.address }),
+    publicClient.getTransactionCount({ address: account.address, blockTag: "pending" }),
     publicClient.getGasPrice(),
   ]);
   const serializedTransaction = await account.signTransaction({

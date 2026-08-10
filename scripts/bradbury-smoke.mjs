@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { closeSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { abi, createClient } from "genlayer-js";
 import { testnetBradbury } from "genlayer-js/chains";
 import { TransactionStatus } from "genlayer-js/types";
@@ -11,7 +11,7 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(contractAddress || "")) {
 }
 const mode = process.argv[3] || "full";
 const resumedPaymentDealId = process.argv[4] || "";
-if (!["preflight", "refund-only", "full", "payment-revision", "payment-resume", "finalize"].includes(mode)) throw new Error(`Unknown smoke mode: ${mode}`);
+if (!["preflight", "payment-only", "refund-only", "full", "payment-revision", "payment-resume", "finalize"].includes(mode)) throw new Error(`Unknown smoke mode: ${mode}`);
 if (mode === "payment-revision" && !/^\d+$/.test(resumedPaymentDealId)) {
   throw new Error("Usage: npm run smoke:bradbury -- <contract-address> payment-revision <deal-id>");
 }
@@ -23,6 +23,51 @@ if (mode === "finalize" && !/^0x[a-fA-F0-9]{64}$/.test(resumedPaymentDealId)) {
 }
 
 console.log(`SMOKE_BOOT contract=${contractAddress}`);
+const runtimeDirectory = ".codex-runtime";
+const lockPath = `${runtimeDirectory}/bradbury-smoke.lock`;
+const checkpointPath = `${runtimeDirectory}/bradbury-smoke-${contractAddress.toLowerCase()}.json`;
+mkdirSync(runtimeDirectory, { recursive: true });
+acquireProcessLock();
+process.on("exit", () => rmSync(lockPath, { force: true }));
+
+let checkpoint = { contractAddress, mode, updatedAt: new Date().toISOString(), records: [] };
+try {
+  const stored = JSON.parse(readFileSync(checkpointPath, "utf8"));
+  if (stored.contractAddress?.toLowerCase() === contractAddress.toLowerCase()) checkpoint = stored;
+} catch {
+  // A missing or incomplete checkpoint starts a new append-only local journal.
+}
+
+function acquireProcessLock() {
+  try {
+    const descriptor = openSync(lockPath, "wx");
+    writeFileSync(descriptor, JSON.stringify({ pid: process.pid, contractAddress, mode, startedAt: new Date().toISOString() }));
+    closeSync(descriptor);
+  } catch (error) {
+    let activePid = 0;
+    try {
+      activePid = Number(JSON.parse(readFileSync(lockPath, "utf8")).pid || 0);
+      if (activePid > 0) process.kill(activePid, 0);
+    } catch {
+      rmSync(lockPath, { force: true });
+      const descriptor = openSync(lockPath, "wx");
+      writeFileSync(descriptor, JSON.stringify({ pid: process.pid, contractAddress, mode, startedAt: new Date().toISOString() }));
+      closeSync(descriptor);
+      return;
+    }
+    throw new Error(`Another Bradbury smoke process is active (pid=${activePid})`, { cause: error });
+  }
+}
+
+function recordCheckpoint(record) {
+  checkpoint = {
+    ...checkpoint,
+    mode,
+    updatedAt: new Date().toISOString(),
+    records: [...checkpoint.records, { ...record, recordedAt: new Date().toISOString() }],
+  };
+  writeFileSync(checkpointPath, JSON.stringify(checkpoint, null, 2));
+}
 const env = Object.fromEntries(
   readFileSync(".env", "utf8")
     .split(/\r?\n/)
@@ -86,7 +131,7 @@ async function submitContractWrite(account, functionName, args, value) {
     ]
   });
   const [nonce, gasPrice] = await Promise.all([
-    publicClient.getTransactionCount({ address: account.address }),
+    publicClient.getTransactionCount({ address: account.address, blockTag: "pending" }),
     publicClient.getGasPrice()
   ]);
   const serializedTransaction = await account.signTransaction({
@@ -120,7 +165,7 @@ async function submitContractWrite(account, functionName, args, value) {
   const txId = created?.args?.txId;
   if (typeof txId !== "string") throw new Error(`Consensus activation ${evmHash} did not emit a transaction ID`);
   console.log(`EVM_ACTIVATION ${functionName} ${evmHash} gasUsed=${receipt.gasUsed}`);
-  return txId;
+  return { txId, evmHash };
 }
 
 async function read(functionName, args = []) {
@@ -161,7 +206,9 @@ async function waitForAcceptedExecution(hash, retries = 2160) {
     if (["UNDETERMINED", "CANCELED"].includes(status)) {
       throw new Error(`Transaction ${hash} ended with status=${status} execution=${execution}`);
     }
-    if (["ACCEPTED", "READY_TO_FINALIZE", "FINALIZED"].includes(status) && execution === "FINISHED_WITH_RETURN" && ["AGREE", "MAJORITY_AGREE"].includes(transaction.resultName)) {
+    if (["ACCEPTED", "READY_TO_FINALIZE", "FINALIZED"].includes(status) && execution !== "NOT_VOTED") {
+      if (execution !== "FINISHED_WITH_RETURN") throw new Error(`Transaction ${hash} execution=${execution}`);
+      if (!["AGREE", "MAJORITY_AGREE"].includes(transaction.resultName)) throw new Error(`Transaction ${hash} consensus=${transaction.resultName}`);
       return transaction;
     }
     if (attempt % 12 === 0) console.log(`WAIT execution ${hash} status=${status} execution=${execution}`);
@@ -187,8 +234,10 @@ async function waitForReceipt(hash, status, retries) {
 
 async function write(account, functionName, args = [], value = 0n) {
   console.log(`WRITE_START ${functionName}`);
-  const hash = await submitContractWrite(account, functionName, args, value);
+  const submission = await submitContractWrite(account, functionName, args, value);
+  const hash = submission.txId;
   console.log(`TX ${functionName} ${hash}`);
+  recordCheckpoint({ phase: "SUBMITTED", functionName, evmActivationHash: submission.evmHash, transactionHash: hash });
   const receipt = await waitForAcceptedExecution(hash, 360);
   if (receipt.txExecutionResultName !== "FINISHED_WITH_RETURN") {
     throw new Error(`${functionName} execution=${receipt.txExecutionResultName}`);
@@ -196,6 +245,7 @@ async function write(account, functionName, args = [], value = 0n) {
   if (!["AGREE", "MAJORITY_AGREE"].includes(receipt.resultName)) {
     throw new Error(`${functionName} consensus=${receipt.resultName}`);
   }
+  recordCheckpoint({ phase: "EXECUTED", functionName, transactionHash: hash, lifecycle: receipt.statusName, consensus: receipt.resultName, execution: receipt.txExecutionResultName });
   return { hash, receipt };
 }
 
@@ -258,12 +308,12 @@ const paymentArgs = (title, price) => [
 const refundArgs = (title, price) => [
   title,
   "Deliver a dedicated public accessibility audit for the ClauseFlow agreement dashboard, with independently verifiable findings that determine release of the funded escrow.",
-  "The Builder must publish one dedicated Markdown or HTML audit report for the public ClauseFlow dashboard. The report must separately document tested keyboard navigation, visible focus behavior, color-contrast measurements, and actionable remediation tied to identified interface elements. The Builder submits the report, live dashboard, repository, and reviewer documentation through submit_delivery for Bradbury validator review.",
-  "A dedicated public accessibility audit report with four named sections: keyboard navigation, focus visibility, color contrast, and remediation.\nThe public ClauseFlow dashboard URL.\nPublic repository evidence supporting each finding.",
+  "The Builder must publish one dedicated Markdown or HTML audit report for the public ClauseFlow dashboard. The report must separately document tested keyboard navigation, visible focus behavior, measured color contrast, and actionable remediation tied to identified interface elements. General application, repository, or README pages are supporting context and cannot replace the dedicated report.",
+  "One dedicated public accessibility audit report containing four substantive sections: keyboard navigation, focus visibility, measured color contrast, and actionable remediation.",
   "The dedicated audit-report URL must be fetchable and identify ClauseFlow.\nThe report must contain concrete keyboard test results, visible-focus findings, measured contrast evidence, and actionable remediation tied to the dashboard.\nLinks to only the application, repository, or general README do not satisfy the audit deliverable.\nAPPROVED permits the Builder to claim exactly 0.015 GEN; absence of the dedicated audit report is NOT_SATISFIED and REJECTED permits the Client refund.",
   price,
   2n,
-  1n,
+  0n,
   24n,
   24n,
   refundRule,
@@ -387,13 +437,14 @@ async function completePayment(dealId) {
     state = await waitForDealStatus(dealId, "PAID");
   }
   if (state.status !== "PAID") throw new Error(`Expected PAID, received ${state.status}`);
+  recordCheckpoint({ phase: "DEAL_STATE", dealId, expectedStatus: "PAID", actualStatus: state.status, amountAtto: state.lockedAttoGen });
   return state;
 }
 
 async function completeRefund(dealId) {
   let state = await readJson("get_deal", [dealId]);
   if (state.status === "FUNDED" || state.status === "REVISION_REQUIRED") {
-    await write(builder, "submit_delivery", [dealId, "https://clauseflow-two.vercel.app", "https://github.com/tanphung/ClauseFlow", "https://clauseflow-two.vercel.app", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/README.md", "The live dashboard and source are public, but no dedicated accessibility audit report has been published. This evidence package is intentionally submitted for the Client's evidence-based refund decision."]);
+    await write(builder, "submit_delivery", [dealId, "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/docs/ACCESSIBILITY_AUDIT_STATUS.md", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/contracts/clauseflow.py", "https://clauseflow-two.vercel.app", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/README.md", "The public delivery-status artifact truthfully records that the contracted dedicated accessibility audit was not delivered. The live app, source, and README are supporting context only and do not contain the required keyboard, focus, measured contrast, and remediation audit."]);
     state = await waitForDealStatus(dealId, "SUBMITTED");
   }
   if (state.status === "SUBMITTED") {
@@ -411,6 +462,7 @@ async function completeRefund(dealId) {
     state = await waitForDealStatus(dealId, "REFUNDED");
   }
   if (state.status !== "REFUNDED") throw new Error(`Expected REFUNDED, received ${state.status}`);
+  recordCheckpoint({ phase: "DEAL_STATE", dealId, expectedStatus: "REFUNDED", actualStatus: state.status, amountAtto: state.lockedAttoGen });
   return state;
 }
 
@@ -430,10 +482,20 @@ const baselineRefunded = BigInt(baselineStats.totalRefundedAtto);
 const paymentPrice = 20_000_000_000_000_000n;
 const paymentTitle = process.env.CLAUSEFLOW_SMOKE_PAYMENT_TITLE || "ClauseFlow release evidence dossier";
 let paymentDeal = "";
-if (mode === "full") {
+if (["full", "payment-only"].includes(mode)) {
   const paymentOffer = await createOffer(paymentTitle, paymentArgs(paymentTitle, paymentPrice));
   paymentDeal = await fundOffer(paymentOffer, paymentPrice);
   await completePayment(paymentDeal);
+}
+
+if (mode === "payment-only") {
+  const stats = await readJson("get_dashboard_stats");
+  if (BigInt(stats.completedDeals) !== baselineCompleted + 1n || BigInt(stats.totalPaidAtto) !== baselinePaid + paymentPrice || BigInt(stats.totalRefundedAtto) !== baselineRefunded) {
+    throw new Error(`Unexpected payment-only stats ${JSON.stringify(stats)}`);
+  }
+  recordCheckpoint({ phase: "MODE_COMPLETE", mode, paymentDeal, stats });
+  console.log(`SMOKE_OK mode=${mode} paymentDeal=${paymentDeal} stats=${JSON.stringify(stats)}`);
+  process.exit(0);
 }
 
 if (mode === "payment-revision") {
@@ -469,4 +531,5 @@ if (BigInt(stats.completedDeals) !== expectedCompleted || BigInt(stats.totalPaid
   throw new Error(`Unexpected final stats ${JSON.stringify(stats)}`);
 }
 console.log(`SMOKE_OK mode=${mode} paymentDeal=${paymentDeal || "skipped"} refundDeal=${refundDeal} stats=${JSON.stringify(stats)}`);
+recordCheckpoint({ phase: "MODE_COMPLETE", mode, paymentDeal: paymentDeal || "", refundDeal, stats });
 }

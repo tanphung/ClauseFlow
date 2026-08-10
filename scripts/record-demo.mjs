@@ -151,13 +151,13 @@ async function runDashboard(target, seconds, text) {
 
 async function runPayment(target, seconds, text) {
   await runTimed(seconds, async () => {
-    const row = target.locator("button.ledgerRow").filter({ hasText: "ClauseFlow verified payment flow" });
+    const row = target.locator("button.ledgerRow").filter({ hasText: "ClauseFlow release evidence dossier" });
     await click(target, row);
     await target.evaluate(() => window.scrollTo({ top: 0, behavior: "smooth" }));
     await setCaption(target, text);
     await wait(target, seconds * 0.18);
     await click(target, target.getByRole("tab", { name: "Evidence & review", exact: true }));
-    await point(target, target.getByText("75/100", { exact: true }));
+    await point(target, target.locator(".reviewScore"));
     await wait(target, seconds * 0.28);
     await click(target, target.getByRole("tab", { name: "On-chain history", exact: true }));
     await wait(target, seconds * 0.24);
@@ -167,13 +167,13 @@ async function runPayment(target, seconds, text) {
 async function runRefund(target, seconds, text) {
   await runTimed(seconds, async () => {
     await click(target, target.getByRole("button", { name: "Dashboard", exact: true }));
-    const row = target.locator("button.ledgerRow").filter({ hasText: "Mochi-Game accessibility audit agreement" });
+    const row = target.locator("button.ledgerRow").filter({ hasText: "ClauseFlow accessibility audit agreement" });
     await click(target, row);
     await target.evaluate(() => window.scrollTo({ top: 0, behavior: "smooth" }));
     await setCaption(target, text);
     await wait(target, seconds * 0.16);
     await click(target, target.getByRole("tab", { name: "Evidence & review", exact: true }));
-    await point(target, target.getByText("50/100", { exact: true }));
+    await point(target, target.locator(".reviewScore"));
     await wait(target, seconds * 0.28);
     await click(target, target.getByRole("tab", { name: "On-chain history", exact: true }));
     await wait(target, seconds * 0.22);
@@ -204,7 +204,7 @@ async function runWorkspace(target, seconds, text) {
     await point(target, target.getByRole("textbox", { name: "Offer title", exact: true }));
     await wait(target, seconds * 0.26);
     await click(target, target.getByRole("button", { name: "Offers", exact: true }));
-    const offer = target.locator("article").filter({ hasText: "ClauseFlow verified payment flow" });
+    const offer = target.locator("article").filter({ hasText: "ClauseFlow release evidence dossier" });
     const summary = offer.locator("summary");
     await click(target, summary);
     await wait(target, seconds * 0.28);

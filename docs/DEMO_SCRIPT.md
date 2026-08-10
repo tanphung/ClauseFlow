@@ -7,7 +7,7 @@ The produced reviewer video and upload copy are documented in [`DEMO_VIDEO.md`](
 - Open the public ClauseFlow URL and the Bradbury explorer.
 - Use two test wallets, one Builder and one Client.
 - Keep the offer below `0.5 GEN`.
-- Use only real, publicly accessible evidence. The verified example uses Mochi-Game, not `example.com` or placeholder content.
+- Use only real, publicly accessible ClauseFlow release evidence. Never use `example.com`, placeholder content, or fabricated customer claims.
 
 ## Demo Flow
 
