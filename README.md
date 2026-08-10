@@ -2,9 +2,20 @@
 
 **Evidence-based service agreements settled by GenLayer consensus.**
 
-ClauseFlow lets a Builder publish objective service terms and a Client lock the exact GEN price. After delivery, Bradbury validators independently fetch the submitted public evidence and decide whether the funded obligations are approved, require revision, or justify a refund. The decision changes on-chain settlement rights; ClauseFlow is not an AI advice interface.
+ClauseFlow lets a Builder publish objective service terms and a Client lock the exact GEN price. Bradbury validators fetch public delivery evidence, assess it against immutable clauses, and change on-chain settlement rights. This public README is the reviewer documentation for the funded release; ClauseFlow is not an AI advice interface.
 
-**Lifecycle evidence:** `publish_offer` = New offer; `accept_offer` = exact funding; `submit_delivery` = evidence delivery; `review_delivery` = validator review; `claim_payment` + `confirm_payment` = Builder payment; `claim_refund` + `confirm_refund` = Client refund; `get_deal_history` = On-chain history; `get_dashboard_stats` = Protocol summary. These labels are visible in the live interface and explained below.
+**Funded release rules:** the Client locked exactly `0.02 GEN`; `APPROVED` permits Builder payment; one revision is allowed within 24 hours; `REJECTED` or deadline plus the 24-hour grace period permits Client refund; external transfers execute after parent finalization; `PAID` or `REFUNDED` requires balance confirmation.
+
+| Method | Live interface | README consequence |
+| --- | --- | --- |
+| `publish_offer` | New offer | publish immutable terms |
+| `accept_offer` | Fund exact GEN | lock the exact displayed amount |
+| `submit_delivery` | Evidence submission | store public delivery URLs |
+| `review_delivery` | Validator review | decide approval, revision, or rejection |
+| `claim_payment` + `confirm_payment` | Builder payment | finalize transfer, then balance-prove `PAID` |
+| `claim_refund` + `confirm_refund` | Client refund | finalize transfer, then balance-prove `REFUNDED` |
+| `get_deal_history` | On-chain history | read canonical lifecycle events |
+| `get_dashboard_stats` | Protocol summary | read funded, paid, and refunded totals |
 
 ![ClauseFlow public agreement dashboard](docs/assets/clauseflow-dashboard.png)
 

@@ -1,8 +1,19 @@
 # ClauseFlow Release Evidence Dossier
 
-This versioned dossier is the Builder's public deliverable for the `ClauseFlow release evidence dossier` Bradbury pilot agreement.
+This versioned dossier is the Builder's public Markdown deliverable and cross-source reviewer matrix for the `ClauseFlow release evidence dossier` Bradbury pilot agreement.
 
-**Complete mapping:** `publish_offer` -> New offer -> README publish terms; `accept_offer` -> exact funding -> README exact escrow lock; `submit_delivery` -> Evidence submission -> README public evidence; `review_delivery` -> Validator review -> README consensus decision; `claim_payment` + `confirm_payment` -> Builder payment -> README balance-proved `PAID`; `claim_refund` + `confirm_refund` -> Client refund -> README balance-proved `REFUNDED`; `get_deal_history` -> On-chain history -> README lifecycle events; `get_dashboard_stats` -> Protocol summary -> README public totals.
+| Contract method | Live interface | README consequence |
+| --- | --- | --- |
+| `publish_offer` | New offer | publish immutable terms |
+| `accept_offer` | Fund exact GEN | lock the exact displayed amount |
+| `submit_delivery` | Evidence submission | store public delivery URLs |
+| `review_delivery` | Validator review | decide approval, revision, or rejection |
+| `claim_payment` + `confirm_payment` | Builder payment | finalize transfer, then balance-prove `PAID` |
+| `claim_refund` + `confirm_refund` | Client refund | finalize transfer, then balance-prove `REFUNDED` |
+| `get_deal_history` | On-chain history | read canonical lifecycle events |
+| `get_dashboard_stats` | Protocol summary | read funded, paid, and refunded totals |
+
+**Funded release rules:** the Client locked exactly `0.02 GEN`; `APPROVED` permits Builder payment; one revision is allowed within 24 hours; `REJECTED` or deadline plus the 24-hour grace period permits Client refund; external transfers execute after parent finalization; `PAID` or `REFUNDED` requires balance confirmation.
 
 ## Release Identity
 
