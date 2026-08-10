@@ -188,7 +188,7 @@ const readJson = async (functionName, args = []) => {
   return typeof value === "string" ? JSON.parse(value) : value;
 };
 
-async function waitForAcceptedExecution(hash, retries = 2160) {
+async function waitForAcceptedExecution(hash, retries = 2160, functionName = "unknown") {
   let transientFailures = 0;
   for (let attempt = 1; attempt <= retries; attempt += 1) {
     let transaction;
@@ -204,11 +204,29 @@ async function waitForAcceptedExecution(hash, retries = 2160) {
     const status = transaction.statusName;
     const execution = transaction.txExecutionResultName;
     if (["UNDETERMINED", "CANCELED"].includes(status)) {
+      recordCheckpoint({
+        phase: "TERMINAL_FAILURE",
+        functionName,
+        transactionHash: hash,
+        lifecycle: status,
+        consensus: transaction.resultName,
+        execution,
+      });
       throw new Error(`Transaction ${hash} ended with status=${status} execution=${execution}`);
     }
     if (["ACCEPTED", "READY_TO_FINALIZE", "FINALIZED"].includes(status) && execution !== "NOT_VOTED") {
-      if (execution !== "FINISHED_WITH_RETURN") throw new Error(`Transaction ${hash} execution=${execution}`);
-      if (!["AGREE", "MAJORITY_AGREE"].includes(transaction.resultName)) throw new Error(`Transaction ${hash} consensus=${transaction.resultName}`);
+      if (execution !== "FINISHED_WITH_RETURN" || !["AGREE", "MAJORITY_AGREE"].includes(transaction.resultName)) {
+        recordCheckpoint({
+          phase: "TERMINAL_FAILURE",
+          functionName,
+          transactionHash: hash,
+          lifecycle: status,
+          consensus: transaction.resultName,
+          execution,
+        });
+        if (execution !== "FINISHED_WITH_RETURN") throw new Error(`Transaction ${hash} execution=${execution}`);
+        throw new Error(`Transaction ${hash} consensus=${transaction.resultName}`);
+      }
       return transaction;
     }
     if (attempt % 12 === 0) console.log(`WAIT execution ${hash} status=${status} execution=${execution}`);
@@ -238,7 +256,7 @@ async function write(account, functionName, args = [], value = 0n) {
   const hash = submission.txId;
   console.log(`TX ${functionName} ${hash}`);
   recordCheckpoint({ phase: "SUBMITTED", functionName, evmActivationHash: submission.evmHash, transactionHash: hash });
-  const receipt = await waitForAcceptedExecution(hash, 360);
+  const receipt = await waitForAcceptedExecution(hash, 360, functionName);
   if (receipt.txExecutionResultName !== "FINISHED_WITH_RETURN") {
     throw new Error(`${functionName} execution=${receipt.txExecutionResultName}`);
   }
