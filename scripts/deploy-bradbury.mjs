@@ -27,7 +27,7 @@ const publicClient = createPublicClient({
 });
 const sdk = createClient({ chain: testnetBradbury });
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
-const isTransientRpcError = (error) => /internal error|fetch failed|timeout|timed out|econnreset|etimedout|network error|socket hang up|pipeline backpressure|not currently accepting transactions/i.test(
+const isTransientRpcError = (error) => /internal error|fetch failed|timeout|timed out|econnreset|etimedout|network error|socket hang up|pipeline backpressure|not currently accepting transactions|request exceeds defined limit|gas rate limit exceeded|node is at capacity/i.test(
   error instanceof Error ? error.message : String(error)
 );
 async function retryRpc(label, operation, attempts = 12) {
