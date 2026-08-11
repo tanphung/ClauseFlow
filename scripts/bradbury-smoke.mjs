@@ -426,7 +426,7 @@ const canaryArgs = (title, price) => [
   title,
   "Verify the deployed ClauseFlow review design from its public contract source and architecture document before it is used for final submission history.",
   "The Builder must provide the direct public ClauseFlow contract source and architecture document. Validators must verify that the leader creates a detailed criterion and deliverable report, each validator independently refetches evidence without seeing the leader report, the contract derives outcomes deterministically, and consensus compares material statuses and cited evidence rather than JSON shape or identical prose.",
-  "The direct public intelligent contract source at commit 593645b.\nThe public architecture document describing the same independent material-assessment flow.",
+  "The direct public intelligent contract source at commit 2d0c179.\nThe public architecture document describing the same independent material-assessment flow.",
   "The contract source must contain separate detailed leader and compact independent validator prompts.\nThe validator prompt must explicitly require assessment of actual observable artifacts and prohibit trusting the leader report.\nThe comparator must check result, score, every criterion and deliverable status, and supporting evidence URLs while allowing free-form wording to differ.\nThe architecture document must describe the same trust boundary without claiming format-only validation.",
   price,
   1n,
@@ -537,7 +537,7 @@ async function completePayment(dealId, canary = false) {
   let state = await readJson("get_deal", [dealId]);
   if (state.status === "FUNDED" || state.status === "REVISION_REQUIRED") {
     const evidence = canary
-      ? [dealId, "https://raw.githubusercontent.com/tanphung/ClauseFlow/593645b/contracts/clauseflow.py", "https://raw.githubusercontent.com/tanphung/ClauseFlow/593645b/docs/ARCHITECTURE.md", "https://raw.githubusercontent.com/tanphung/ClauseFlow/593645b/README.md", "https://github.com/tanphung/ClauseFlow/tree/593645b", "Canary delivery: the version-pinned contract source and architecture document expose the independent material validator design. The README and immutable GitHub tree corroborate the reviewed commit; settlement is permitted only if validators substantively confirm every accepted design obligation."]
+      ? [dealId, "https://raw.githubusercontent.com/tanphung/ClauseFlow/2d0c179/contracts/clauseflow.py", "https://raw.githubusercontent.com/tanphung/ClauseFlow/2d0c179/docs/ARCHITECTURE.md", "https://raw.githubusercontent.com/tanphung/ClauseFlow/2d0c179/README.md", "https://github.com/tanphung/ClauseFlow/tree/2d0c179", "Canary delivery: the version-pinned contract source and architecture document expose the independent material validator design. The README and immutable GitHub tree corroborate the reviewed commit; settlement is permitted only if validators substantively confirm every accepted design obligation."]
       : [dealId, "https://clauseflow-two.vercel.app", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/contracts/clauseflow.py", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/docs/RELEASE_EVIDENCE.md", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/README.md", "ClauseFlow evidence dossier delivery: the public dossier maps the submitted live dashboard, direct intelligent contract source, and this README. The README is the standalone reviewer documentation for independent validator verification."];
     await write(builder, "submit_delivery", evidence);
     state = await waitForDealStatus(dealId, "SUBMITTED");
@@ -635,7 +635,7 @@ const baselineRefunded = BigInt(baselineStats.totalRefundedAtto);
 
 if (mode === "canary") {
   const canaryPrice = 1_000_000_000_000_000n;
-  const canaryTitle = "ClauseFlow validator consensus canary 593645b";
+  const canaryTitle = "ClauseFlow validator consensus canary 2d0c179";
   const canaryOffer = await createOffer(canaryTitle, canaryArgs(canaryTitle, canaryPrice));
   const canaryDeal = await fundOffer(canaryOffer, canaryPrice);
   await completePayment(canaryDeal, true);
