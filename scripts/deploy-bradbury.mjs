@@ -68,7 +68,7 @@ const encodedData = encodeFunctionData({
   ]
 });
 const [nonce, gasPrice, estimatedGas] = await Promise.all([
-  retryRpc("NONCE", () => publicClient.getTransactionCount({ address: deployer.address })),
+  retryRpc("NONCE", () => publicClient.getTransactionCount({ address: deployer.address, blockTag: "pending" })),
   retryRpc("GAS_PRICE", () => publicClient.getGasPrice()),
   retryRpc("GAS_ESTIMATE", () => publicClient.estimateGas({ account: deployer.address, to: consensus.address, data: encodedData, value: 0n }))
 ]);
