@@ -579,18 +579,13 @@ def _is_url(value: str) -> bool:
 def _fetch_url_text(url: str, label: str) -> dict:
     if not _is_url(url):
         return {"label": label, "url": url, "accessible": False, "text": "", "error": "missing_or_invalid_url"}
-    last_error = ""
-    for _attempt in range(2):
-        try:
-            response = gl.nondet.web.get(url)
-            text = response.body.decode("utf-8")
-            clipped = _evidence_excerpt(str(text), url)
-            if len(clipped) > 0:
-                return {"label": label, "url": url, "accessible": True, "text": clipped, "error": ""}
-            last_error = "empty_response"
-        except Exception as exc:
-            last_error = str(exc)[:240]
-    return {"label": label, "url": url, "accessible": False, "text": "", "error": last_error}
+    try:
+        response = gl.nondet.web.get(url)
+        text = response.body.decode("utf-8")
+        clipped = _evidence_excerpt(str(text), url)
+        return {"label": label, "url": url, "accessible": len(clipped) > 0, "text": clipped, "error": "" if len(clipped) > 0 else "empty_response"}
+    except Exception as exc:
+        return {"label": label, "url": url, "accessible": False, "text": "", "error": str(exc)[:240]}
 
 
 def _evidence_excerpt(text: str, url: str) -> str:
@@ -627,13 +622,6 @@ def _evidence_excerpt(text: str, url: str) -> str:
         "get_deal_history",
         "get_dashboard_stats",
     ]
-    review_helpers = [
-        "_review_prompt",
-        "_review_material_assessment_prompt",
-        "_derive_material_outcome",
-        "_review_result_materially_valid",
-        "_reviews_materially_equivalent",
-    ]
     lines = text.splitlines()
     excerpt = ["Direct contract source: lifecycle and material consensus excerpt."]
     for index, line in enumerate(lines):
@@ -642,17 +630,25 @@ def _evidence_excerpt(text: str, url: str) -> str:
             if index > 0 and lines[index - 1].strip().startswith("@gl.public"):
                 excerpt.append(lines[index - 1].strip())
             excerpt.append(stripped)
-        if any(stripped.startswith(f"def {name}(") for name in review_helpers):
-            excerpt.extend(item.strip() for item in lines[index:index + 12] if len(item.strip()) > 0)
-        if any(term in stripped for term in [
-            "cannot see or trust the leader's report",
-            "actual observable artifacts",
-            'stable_fields = ["result"',
-            'leader_row["status"]',
-            'evidenceUrls',
+        if any(stripped.startswith(f"def {name}(") for name in [
+            "_review_prompt",
+            "_review_material_assessment_prompt",
+            "_derive_material_outcome",
+            "_review_result_materially_valid",
+            "_reviews_materially_equivalent",
         ]):
             excerpt.append(stripped)
-    return "\n".join(excerpt)[:3600]
+        if any(term in stripped for term in [
+            "independent GenLayer settlement validator for ClauseFlow",
+            "independent GenLayer settlement material assessor",
+            "cannot see or trust the leader's report",
+            "actual observable artifacts",
+            'leader.get("result"',
+            'leader_row["status"]',
+            'leader_row.get("evidenceUrls"',
+        ]):
+            excerpt.append(stripped)
+    return "\n".join(excerpt)[:1800]
 
 
 def _fetch_delivery_evidence(deal: dict) -> dict:

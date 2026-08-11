@@ -1,5 +1,6 @@
 import copy
 import json
+from pathlib import Path
 import sys
 
 
@@ -316,3 +317,20 @@ def test_material_comparator_accepts_nonmaterial_variance_and_rejects_outcome_di
     revision_validator["score"] = "50"
     revision_validator["criteriaSatisfied"] = "0"
     assert module._reviews_materially_equivalent(revision_leader, revision_validator) is True
+
+
+def test_contract_source_excerpt_is_compact_and_material(direct_vm, direct_deploy):
+    contract = direct_deploy("contracts/clauseflow.py")
+    module = sys.modules[type(contract._instance).__module__]
+    source = Path("contracts/clauseflow.py").read_text(encoding="utf-8")
+    excerpt = module._evidence_excerpt(source, "https://example.test/contracts/clauseflow.py")
+    assert len(excerpt) <= 1800
+    for term in [
+        "_review_prompt",
+        "_review_material_assessment_prompt",
+        "cannot see or trust the leader's report",
+        "actual observable artifacts",
+        "_reviews_materially_equivalent",
+        "evidenceUrls",
+    ]:
+        assert term in excerpt

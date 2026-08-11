@@ -605,7 +605,18 @@ if (mode === "finalize-idle") {
   if (!["UNDETERMINED", "VALIDATORS_TIMEOUT", "LEADER_TIMEOUT"].includes(before.statusName)) {
     throw new Error(`Idleness finalization requires a stuck transaction, received ${before.statusName}`);
   }
-  const evmHash = await sdk.finalizeIdlenessTxs({ account: builder, txIds: [resumedPaymentDealId] });
+  let evmHash;
+  for (let attempt = 1; attempt <= 12; attempt += 1) {
+    try {
+      evmHash = await sdk.finalizeIdlenessTxs({ account: builder, txIds: [resumedPaymentDealId] });
+      break;
+    } catch (error) {
+      if (!isTransientRpcError(error) || attempt === 12) throw error;
+      console.log(`RETRY finalize-idle ${resumedPaymentDealId} after transient RPC backpressure (${attempt}/12)`);
+      await delay(5_000);
+    }
+  }
+  if (!evmHash) throw new Error(`Idleness finalization was not submitted for ${resumedPaymentDealId}`);
   recordCheckpoint({
     phase: "IDLENESS_FINALIZED",
     functionName: "review_delivery",
