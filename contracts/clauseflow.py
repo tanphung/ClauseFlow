@@ -624,30 +624,53 @@ def _evidence_excerpt(text: str, url: str) -> str:
     ]
     lines = text.splitlines()
     excerpt = ["Direct contract source: lifecycle and material consensus excerpt."]
+
+    # Put the settlement trust boundary first so the bounded excerpt proves the
+    # material comparison itself instead of truncating it after ABI signatures.
+    material_terms = [
+        "independent GenLayer settlement validator for ClauseFlow",
+        "independent GenLayer settlement material assessor",
+        "cannot see or trust the leader's report",
+        "actual observable artifacts",
+        'if str(leader.get("result"',
+        'if str(leader.get("score"',
+        'for key in ["criterionAssessments", "deliverableAssessments"]',
+        "if len(leader_rows) != len(validator_rows)",
+        'if leader_row["id"] != validator_row["id"]',
+        'if leader_row["status"] != "SATISFIED"',
+        'validator_urls = validator_row.get("evidenceUrls"',
+        "if not any(url in validator_urls for url in leader_urls)",
+        'return bool(_clean(leader.get("missingItems"',
+    ]
+    review_functions = [
+        "_review_prompt",
+        "_review_material_assessment_prompt",
+        "_derive_material_outcome",
+        "_review_result_materially_valid",
+        "_reviews_materially_equivalent",
+    ]
+    inside_excerpt_helper = False
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("def _evidence_excerpt("):
+            inside_excerpt_helper = True
+            continue
+        if inside_excerpt_helper and stripped.startswith("def _fetch_delivery_evidence("):
+            inside_excerpt_helper = False
+        if inside_excerpt_helper:
+            continue
+        if any(stripped.startswith(f"def {name}(") for name in review_functions) or any(term in stripped for term in material_terms):
+            if stripped not in excerpt:
+                excerpt.append(stripped)
     for index, line in enumerate(lines):
         stripped = line.strip()
         if stripped.startswith("class ") or any(stripped.startswith(f"def {name}(") for name in method_names):
             if index > 0 and lines[index - 1].strip().startswith("@gl.public"):
-                excerpt.append(lines[index - 1].strip())
-            excerpt.append(stripped)
-        if any(stripped.startswith(f"def {name}(") for name in [
-            "_review_prompt",
-            "_review_material_assessment_prompt",
-            "_derive_material_outcome",
-            "_review_result_materially_valid",
-            "_reviews_materially_equivalent",
-        ]):
-            excerpt.append(stripped)
-        if any(term in stripped for term in [
-            "independent GenLayer settlement validator for ClauseFlow",
-            "independent GenLayer settlement material assessor",
-            "cannot see or trust the leader's report",
-            "actual observable artifacts",
-            'leader.get("result"',
-            'leader_row["status"]',
-            'leader_row.get("evidenceUrls"',
-        ]):
-            excerpt.append(stripped)
+                decorator = lines[index - 1].strip()
+                if decorator not in excerpt:
+                    excerpt.append(decorator)
+            if stripped not in excerpt:
+                excerpt.append(stripped)
     return "\n".join(excerpt)[:1800]
 
 

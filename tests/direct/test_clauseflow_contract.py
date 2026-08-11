@@ -332,5 +332,9 @@ def test_contract_source_excerpt_is_compact_and_material(direct_vm, direct_deplo
         "actual observable artifacts",
         "_reviews_materially_equivalent",
         "evidenceUrls",
+        'if str(leader.get("score"',
+        'for key in ["criterionAssessments", "deliverableAssessments"]',
+        'if leader_row["status"] != "SATISFIED"',
+        "if not any(url in validator_urls for url in leader_urls)",
     ]:
         assert term in excerpt
