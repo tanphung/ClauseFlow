@@ -11,7 +11,7 @@
 
 ## Consensus Design
 
-`structure_offer` converts Builder inputs into canonical clauses. Validators rerun the drafter and compare source coverage, scope specificity, deliverable testability, objective criteria, exact payment metadata, and missing material terms. `publish_offer` rejects incomplete, changed, or reused drafts.
+`structure_offer` deterministically canonicalizes the Builder's complete inputs, exact payment, deadline, revision, and refund metadata without asking an LLM to invent or reinterpret obligations. `publish_offer` rejects empty, changed, or reused drafts. Consensus is reserved for the evidence-dependent settlement decision where it solves the actual trust problem.
 
 `review_delivery` is the settlement trust boundary:
 

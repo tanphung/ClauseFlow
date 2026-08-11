@@ -25,27 +25,6 @@ def _structure(contract, vm, builder) -> dict:
     vm.sender = builder
     vm.value = 0
     vm.clear_mocks()
-    vm.mock_llm(
-        r"ClauseFlow's GenLayer contract drafter",
-        json.dumps({
-            "scope": "Builder must audit and polish the Mochi-Game Quest Evaluator demo flow using the public live app and GitHub repository as evidence.",
-            "deliverables": "- Public live app URL\n- GitHub repository link\n- README/docs evidence\n- Delivery note with reviewer path",
-            "acceptanceCriteria": "- Live app is publicly accessible\n- README describes Quest Evaluator and GenLayer consensus\n- Reviewer can identify transaction/result states\n- Evidence links match the accepted scope",
-            "milestones": "- Evidence inventory\n- Reviewer-path polish\n- Final public delivery package",
-            "evidenceRequirements": "- Live app URL\n- GitHub repository URL\n- README/docs URL\n- Delivery note",
-            "verificationPlan": "- Fetch the live app\n- Fetch GitHub README\n- Compare visible evidence against accepted criteria",
-            "deadline": "3 day(s) after funding plus a 24 hour grace period.",
-            "revisionRules": "Maximum 1 revision round(s), each within 24 hour(s).",
-            "paymentTerms": "Release 0.02 GEN after an APPROVED evidence review.",
-            "refundConditions": "Client may claim a refund after deadline plus grace period if no valid delivery exists.",
-            "summary": "Mochi-Game Quest Evaluator reviewer-ready evidence agreement.",
-            "sourceCoverage": "COMPLETE",
-            "scopeSpecific": False,
-            "deliverablesTestable": False,
-            "criteriaObjective": False,
-            "missingMaterialTerms": "None.",
-        }),
-    )
     result = json.loads(contract.structure_offer(
         *BUILDER_INPUTS,
         PRICE,
@@ -201,27 +180,13 @@ def test_structured_draft_is_material_and_bound_to_source(direct_vm, direct_depl
         )
 
 
-def test_incomplete_clause_draft_is_stored_but_cannot_be_published(direct_vm, direct_deploy, direct_alice):
+def test_structuring_does_not_depend_on_llm_output(direct_vm, direct_deploy, direct_alice):
     contract = direct_deploy("contracts/clauseflow.py")
     direct_vm.sender = direct_alice
     direct_vm.value = 0
     direct_vm.mock_llm(
-        r"ClauseFlow's GenLayer contract drafter",
-        json.dumps({
-            "scope": "The Builder will publish a reviewer evidence package for the named application workflow.",
-            "deliverables": "A public application and supporting reviewer documentation will be submitted as evidence.",
-            "acceptanceCriteria": "Validators can fetch the public application and supporting reviewer documentation.",
-            "evidenceRequirements": "Public application and documentation URLs are required for validator review.",
-            "verificationPlan": "Validators fetch each submitted source and compare it with the funded agreement.",
-            "paymentTerms": "Release 0.02 GEN after an APPROVED evidence review.",
-            "refundConditions": "Client may claim a refund after rejected evidence.",
-            "summary": "The source terms require clarification before publication.",
-            "sourceCoverage": "INCOMPLETE",
-            "scopeSpecific": False,
-            "deliverablesTestable": True,
-            "criteriaObjective": True,
-            "missingMaterialTerms": "Name the exact workflow and its observable acceptance behavior.",
-        }),
+        r".*",
+        json.dumps({"sourceCoverage": "INCOMPLETE", "missingMaterialTerms": "Invented LLM requirement."}),
     )
     clauses = json.loads(contract.structure_offer(
         *BUILDER_INPUTS,
@@ -232,21 +197,11 @@ def test_incomplete_clause_draft_is_stored_but_cannot_be_published(direct_vm, di
         24,
         "Refund after deadline plus grace period if no valid delivery exists.",
     ))
-    assert clauses["sourceCoverage"] == "INCOMPLETE"
-    assert "exact workflow" in clauses["missingMaterialTerms"]
+    assert clauses["sourceCoverage"] == "COMPLETE"
+    assert clauses["missingMaterialTerms"] == ""
+    assert clauses["scope"] == BUILDER_INPUTS[2]
     stored = json.loads(contract.get_structured_offer(_wallet(direct_alice)))
-    assert stored["clauses"]["missingMaterialTerms"] == clauses["missingMaterialTerms"]
-    with direct_vm.expect_revert("Structured draft is incomplete"):
-        contract.publish_offer(
-            *BUILDER_INPUTS,
-            PRICE,
-            3,
-            1,
-            24,
-            24,
-            "Refund after deadline plus grace period if no valid delivery exists.",
-            "https://github.com/tanphung/Mochi-Game",
-        )
+    assert stored["clauses"] == clauses
 
 
 def test_exact_funding_history_and_address_views(direct_vm, direct_deploy, direct_alice, direct_bob):

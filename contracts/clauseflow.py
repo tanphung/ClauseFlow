@@ -99,18 +99,7 @@ class ClauseFlow(gl.Contract):
             "refundRule": _clean_limit(refund_rule, 700),
         }
 
-        def leader_fn():
-            result = gl.nondet.exec_prompt(_clause_prompt(source), response_format="json")
-            return _normalize_structured_clauses(result, source)
-
-        def validator_fn(leaders_res: gl.vm.Result) -> bool:
-            if not isinstance(leaders_res, gl.vm.Return):
-                return False
-            leader = leaders_res.calldata
-            validator = leader_fn()
-            return _structured_clauses_compatible(leader, validator, source)
-
-        structured = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
+        structured = _normalize_structured_clauses({}, source)
         builder = str(gl.message.sender_address)
         builder_key = builder.lower()
         draft = {
@@ -715,39 +704,6 @@ def _material_items(value: str, maximum: int) -> list:
     return items
 
 
-def _clause_prompt(source: dict) -> str:
-    return f"""
-You are ClauseFlow's GenLayer contract drafter.
-Draft the exact on-chain work agreement a Client will accept and fund.
-
-Return JSON only with these keys:
-scope, deliverables, acceptanceCriteria, milestones, evidenceRequirements,
-verificationPlan, deadline, revisionRules, paymentTerms, refundConditions,
-summary, sourceCoverage, scopeSpecific, deliverablesTestable,
-criteriaObjective, missingMaterialTerms.
-
-Use paragraphs for scope/summary and newline-separated testable items for
-deliverables, criteria, milestones, evidence, and verification.
-sourceCoverage: COMPLETE or INCOMPLETE
-
-Builder offer source:
-{json.dumps(source, sort_keys=True)}
-
-Drafting rules:
-- Preserve scope. Never invent implementation, audit, PR, commit, or
-  documentation obligations absent from the source.
-- Rewrite criteria objectively without making them stricter.
-- A verification offer remains verification work, not implementation work.
-- Every deliverable must be testable from submitted public evidence.
-- Mention exact payment as {source["priceDisplay"]} GEN.
-- Evaluate completeness from the accepted source terms, not from whether the
-  Builder has already delivered the evidence.
-- Mark vague or incomplete terms INCOMPLETE and list concrete missing terms.
-- When terms are complete, use COMPLETE and an empty string for
-  missingMaterialTerms. Never write "None", "N/A", or similar placeholders.
-"""
-
-
 def _normalize_structured_clauses(value, source: dict) -> dict:
     if not isinstance(value, dict):
         raise gl.vm.UserError("[LLM_ERROR] Clause draft returned non-object")
@@ -787,26 +743,6 @@ def _normalize_structured_clauses(value, source: dict) -> dict:
     return structured
 
 
-def _structured_clauses_well_formed(value: dict, source: dict) -> bool:
-    if not isinstance(value, dict):
-        return False
-    if str(value.get("priceAttoGen", "")) != source["priceAttoGen"]:
-        return False
-    if source["priceDisplay"].lower() not in _clean(value.get("paymentTerms", "")).lower():
-        return False
-    if value.get("sourceCoverage") not in ["COMPLETE", "INCOMPLETE"]:
-        return False
-    return (
-        len(_clean(value.get("scope", ""))) >= 40
-        and len(_clean(value.get("deliverables", ""))) >= 40
-        and len(_clean(value.get("acceptanceCriteria", ""))) >= 40
-        and len(_clean(value.get("evidenceRequirements", ""))) >= 30
-        and len(_clean(value.get("verificationPlan", ""))) >= 30
-        and len(_clean(value.get("paymentTerms", ""))) >= 20
-        and len(_clean(value.get("refundConditions", ""))) >= 20
-    )
-
-
 def _structured_clauses_ready(value: dict) -> bool:
     return (
         value.get("sourceCoverage") == "COMPLETE"
@@ -815,14 +751,6 @@ def _structured_clauses_ready(value: dict) -> bool:
         and bool(value.get("criteriaObjective"))
         and len(_clean(value.get("missingMaterialTerms", ""))) == 0
     )
-
-
-def _structured_clauses_compatible(leader: dict, validator: dict, source: dict) -> bool:
-    if not _structured_clauses_well_formed(leader, source) or not _structured_clauses_well_formed(validator, source):
-        return False
-    return _structured_clauses_ready(leader) == _structured_clauses_ready(validator)
-
-
 def _review_prompt(offer: dict, deal: dict, evidence: dict, criteria: list, deliverables: list) -> str:
     criterion_rows = [{"id": f"C{index + 1}", "text": text} for index, text in enumerate(criteria)]
     deliverable_rows = [{"id": f"D{index + 1}", "text": text} for index, text in enumerate(deliverables)]
@@ -1058,7 +986,7 @@ def _clean_limit(value, limit: int) -> str:
 
 
 def _fallback_text(value, fallback: str, limit: int) -> str:
-    cleaned = _clean_limit(value, limit)
+    cleaned = "" if value is None else _clean_limit(value, limit)
     if len(cleaned) == 0:
         return _clean_limit(fallback, limit)
     return cleaned

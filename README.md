@@ -39,7 +39,7 @@ A deterministic escrow can enforce roles, exact amounts, deadlines, revision lim
 
 ClauseFlow uses GenLayer only at that boundary:
 
-1. The Builder structures complete clauses and publishes the offer.
+1. The Builder deterministically structures complete clauses and publishes the offer without AI rewriting the accepted obligations.
 2. The Client funds the exact immutable price.
 3. The Builder submits public delivery, source, demo, and documentation URLs.
 4. The contract fetches those sources inside `review_delivery`.
