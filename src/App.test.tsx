@@ -153,6 +153,26 @@ describe("ClauseFlow", () => {
     await waitFor(() => expect(vi.mocked(genlayer.readJsonView)).toHaveBeenCalled());
   });
 
+  it("uses a fresh verified snapshot without repeating Bradbury reads on reopen", async () => {
+    window.localStorage.setItem("clauseflow:dashboard:0x3333333333333333333333333333333333333333", JSON.stringify({
+      contractAddress: "0x3333333333333333333333333333333333333333",
+      offers: [offer],
+      deals: [deal],
+      stats,
+      histories: {
+        "1": [
+          { eventType: "PAID", note: "GEN payment verified", timestamp: deal.paidAt, actor: builder }
+        ]
+      },
+      savedAt: new Date().toISOString()
+    }));
+    render(<App />);
+    expect(screen.getByText(/Mochi-Game Quest Evaluator polish/i)).toBeTruthy();
+    expect(screen.getByText("PAID")).toBeTruthy();
+    await Promise.resolve();
+    expect(vi.mocked(genlayer.readJsonView)).not.toHaveBeenCalled();
+  });
+
   it("filters history by both party addresses", async () => {
     render(<App />);
     await screen.findByText(/Mochi-Game Quest Evaluator polish/i);

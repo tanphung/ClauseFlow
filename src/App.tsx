@@ -24,7 +24,7 @@ import {
   X
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { connectWallet, createReadClient, explorerAddressUrl, explorerTxUrl, hasContractAddress, normalizeError, readJsonView, writeAndVerify, type ClauseFlowConfig } from "./lib/genlayer";
 import type { CalldataEncodable } from "genlayer-js/types";
 
@@ -181,6 +181,17 @@ type DashboardSnapshot = {
 };
 
 const DASHBOARD_CACHE_PREFIX = "clauseflow:dashboard:";
+const DASHBOARD_CACHE_FRESH_MS = 5 * 60 * 1000;
+
+function isDashboardSnapshotFresh(snapshot: DashboardSnapshot | null) {
+  if (!snapshot) return false;
+  const savedAt = Date.parse(snapshot.savedAt);
+  return Number.isFinite(savedAt) && Date.now() - savedAt < DASHBOARD_CACHE_FRESH_MS;
+}
+
+function sameIds(ids: string[], records: Array<{ id: string }>) {
+  return ids.length === records.length && ids.every((id, index) => records[index]?.id === id);
+}
 
 function runtimeConfig(): ClauseFlowConfig {
   const configured = (window as unknown as { CLAUSEFLOW_CONFIG?: ClauseFlowConfig }).CLAUSEFLOW_CONFIG || {
@@ -239,6 +250,7 @@ export function App() {
   const [refreshing, setRefreshing] = useState(Boolean(initialSnapshot));
   const [loadError, setLoadError] = useState("");
   const [walletAddress, setWalletAddress] = useState("");
+  const refreshInFlight = useRef(false);
   const [txState, setTxState] = useState<TxState>({
     hash: "",
     label: "No transaction submitted in this browser session.",
@@ -263,10 +275,11 @@ export function App() {
   }, [builderFilter, clientFilter, deals, filter]);
 
   useEffect(() => {
-    void refreshFromChain();
+    void refreshFromChain(false);
   }, []);
 
-  async function refreshFromChain() {
+  async function refreshFromChain(force = true) {
+    if (refreshInFlight.current) return;
     const cfg = runtimeConfig();
     setConfig(cfg);
     if (!hasContractAddress(cfg)) {
@@ -275,6 +288,13 @@ export function App() {
       setRefreshing(false);
       return;
     }
+    const cachedSnapshot = readDashboardSnapshot(cfg);
+    if (!force && isDashboardSnapshotFresh(cachedSnapshot)) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+    refreshInFlight.current = true;
     if (deals.length === 0) setLoading(true);
     setRefreshing(true);
     setLoadError("");
@@ -285,12 +305,19 @@ export function App() {
         readJsonView<string[]>(client, cfg, "get_deal_ids", []),
         readJsonView<Stats>(client, cfg, "get_dashboard_stats", [])
       ]);
-      const chainOffers = await Promise.all(offerIds.map((id) => readJsonView<Offer>(client, cfg, "get_offer", [id])));
+      const chainOffers = cachedSnapshot && sameIds(offerIds, cachedSnapshot.offers)
+        ? cachedSnapshot.offers
+        : await Promise.all(offerIds.map((id) => readJsonView<Offer>(client, cfg, "get_offer", [id])));
       const chainDeals = await Promise.all(dealIds.map((id) => readJsonView<Deal>(client, cfg, "get_deal", [id])));
       const chainHistories: Record<string, HistoryEvent[]> = {};
       await Promise.all(
         dealIds.map(async (id) => {
-          chainHistories[id] = await readJsonView<HistoryEvent[]>(client, cfg, "get_deal_history", [id]);
+          const chainDeal = chainDeals.find((deal) => deal.id === id);
+          const cachedDeal = cachedSnapshot?.deals.find((deal) => deal.id === id);
+          const cachedHistory = cachedSnapshot?.histories[id];
+          chainHistories[id] = chainDeal && cachedDeal && cachedHistory && JSON.stringify(chainDeal) === JSON.stringify(cachedDeal)
+            ? cachedHistory
+            : await readJsonView<HistoryEvent[]>(client, cfg, "get_deal_history", [id]);
         })
       );
       setOffers(chainOffers);
@@ -302,6 +329,7 @@ export function App() {
     } catch (error) {
       setLoadError(`Could not read Bradbury contract state: ${normalizeError(error)}`);
     } finally {
+      refreshInFlight.current = false;
       setLoading(false);
       setRefreshing(false);
     }
@@ -327,7 +355,7 @@ export function App() {
       });
       setWalletAddress(result.address);
       setTxState({ hash: result.hash, label, lifecycle: result.lifecycle === "FINALIZED" ? "finalized" : "accepted", executionResult: result.executionResult, consensusResult: result.consensusResult, message: result.childTransactions.length ? "Parent execution succeeded. Child GEN transfer IDs are shown below for independent verification." : "Execution and consensus succeeded; on-chain state is being refreshed.", childTransactions: result.childTransactions });
-      await refreshFromChain();
+      await refreshFromChain(true);
       return result;
     } catch (error) {
       const message = normalizeError(error);
@@ -383,7 +411,7 @@ export function App() {
             </div>
           </div>
           <div className="headerActions">
-            <button className="iconButton" aria-label="Refresh on-chain data" title="Refresh on-chain data" onClick={refreshFromChain}><RefreshCcw size={17} className={refreshing ? "spin" : ""} /></button>
+            <button className="iconButton" aria-label="Refresh on-chain data" title="Refresh on-chain data" onClick={() => void refreshFromChain(true)}><RefreshCcw size={17} className={refreshing ? "spin" : ""} /></button>
             <button className="walletButton" onClick={handleConnectWallet}><Wallet size={16} /> {walletAddress ? short(walletAddress) : "Connect wallet"}</button>
           </div>
         </header>
