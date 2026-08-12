@@ -336,5 +336,6 @@ def test_contract_source_excerpt_is_compact_and_material(direct_vm, direct_deplo
         'for key in ["criterionAssessments", "deliverableAssessments"]',
         'if leader_row["status"] != "SATISFIED"',
         "if not any(url in validator_urls for url in leader_urls)",
+        "Free-form finding and reasoning text may differ",
     ]:
         assert term in excerpt

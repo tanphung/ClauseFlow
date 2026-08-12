@@ -640,6 +640,7 @@ def _evidence_excerpt(text: str, url: str) -> str:
         'if leader_row["status"] != "SATISFIED"',
         'validator_urls = validator_row.get("evidenceUrls"',
         "if not any(url in validator_urls for url in leader_urls)",
+        "Free-form finding and reasoning text may differ",
         'return bool(_clean(leader.get("missingItems"',
     ]
     review_functions = [
@@ -1128,6 +1129,9 @@ def _review_result_materially_valid(review: dict) -> bool:
 
 
 def _reviews_materially_equivalent(leader: dict, validator: dict) -> bool:
+    # Free-form finding and reasoning text may differ. Settlement consensus is
+    # based only on the normalized result, score, row IDs/statuses, and cited
+    # evidence URLs checked below.
     if not _review_result_materially_valid(leader) or not _review_result_materially_valid(validator):
         return False
     if str(leader.get("result", "")) != str(validator.get("result", "")):
