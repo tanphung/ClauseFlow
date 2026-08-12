@@ -45,7 +45,7 @@ ClauseFlow uses GenLayer only at that boundary:
 4. The contract fetches those sources inside `review_delivery`.
 5. A leader produces a detailed criterion-by-criterion settlement report.
 6. Without seeing the leader report, validators independently refetch the evidence and assess every immutable criterion and deliverable.
-7. The contract derives both outcomes and requires the same settlement decision and obligation structure. Approval additionally requires both reviews to score 100, satisfy every item, and cite common evidence URLs; prose may differ.
+7. The contract derives both outcomes and requires the same result, score, source-access count, and status for every criterion and deliverable. Every `SATISFIED` or `PARTIAL` item must cite at least one common independently fetched evidence URL; free-form prose may differ.
 8. The agreed result determines whether the Builder can claim payment or the Client can claim a refund.
 
 Valid JSON is not enough. URL accessibility is not enough. The public content must materially support the funded obligations.

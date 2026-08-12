@@ -237,6 +237,7 @@ def test_only_builder_can_submit_and_approved_payment_is_idempotent(direct_vm, d
     stored = json.loads(contract.get_deal(deal_id))
     assert json.loads(stored["reviewCriterionAssessments"])[0]["reasoning"].startswith("The live interface")
     assert "independently fetched" in stored["reviewConsensusBasis"]
+    assert "free-form wording was not compared" in stored["reviewConsensusBasis"]
     assert len(stored["reviewExecutiveSummary"]) <= 720
     assert len(json.loads(stored["reviewSourceAssessments"])[0]["finding"]) <= 260
     direct_vm.sender = direct_alice
@@ -316,7 +317,12 @@ def test_material_comparator_accepts_nonmaterial_variance_and_rejects_outcome_di
     revision_validator["criterionAssessments"][0]["status"] = "PARTIAL"
     revision_validator["score"] = "50"
     revision_validator["criteriaSatisfied"] = "0"
-    assert module._reviews_materially_equivalent(revision_leader, revision_validator) is True
+    assert module._reviews_materially_equivalent(revision_leader, revision_validator) is False
+
+    matching_revision = copy.deepcopy(revision_leader)
+    matching_revision["deliverableAssessments"][0]["finding"] = "The second assessor found the same material gap using different wording."
+    matching_revision["deliverableAssessments"][0]["reasoning"] = "Independent evidence supports only part of the accepted deliverable."
+    assert module._reviews_materially_equivalent(revision_leader, matching_revision) is True
 
 
 def test_contract_source_excerpt_is_compact_and_material(direct_vm, direct_deploy):
@@ -334,8 +340,32 @@ def test_contract_source_excerpt_is_compact_and_material(direct_vm, direct_deplo
         "evidenceUrls",
         'if str(leader.get("score"',
         'for key in ["criterionAssessments", "deliverableAssessments"]',
-        'if leader_row["status"] != "SATISFIED"',
+        'if leader_row["status"] != validator_row["status"]',
         "if not any(url in validator_urls for url in leader_urls)",
         "Free-form finding and reasoning text may differ",
     ]:
         assert term in excerpt
+
+
+def test_missing_validator_narrative_is_not_filled_or_accepted(direct_vm, direct_deploy):
+    contract = direct_deploy("contracts/clauseflow.py")
+    module = sys.modules[type(contract._instance).__module__]
+    evidence = {
+        "accessibleCount": "1",
+        "deliveryNote": "Public evidence submitted.",
+        "pages": [{"label": "delivery", "url": "https://example.test/evidence", "accessible": True, "content": "observable artifact"}],
+    }
+    raw = {
+        "executiveSummary": "",
+        "criterionAssessments": [{"status": "SATISFIED", "finding": "", "reasoning": "", "evidenceUrls": ["https://example.test/evidence"]}],
+        "deliverableAssessments": [{"status": "SATISFIED", "finding": "", "reasoning": "", "evidenceUrls": ["https://example.test/evidence"]}],
+        "sourceAssessments": [{"finding": "", "relevance": ""}],
+        "missingItems": [],
+    }
+    review = module._normalize_review(raw, evidence, ["Observable acceptance criterion"], ["Observable delivery artifact"])
+    assert review["executiveSummary"] == ""
+    assert review["criterionAssessments"][0]["finding"] == ""
+    assert review["criterionAssessments"][0]["reasoning"] == ""
+    assert review["sourceAssessments"][0]["finding"] == ""
+    assert review["sourceAssessments"][0]["relevance"] == ""
+    assert module._review_result_materially_valid(review) is False

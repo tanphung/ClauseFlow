@@ -637,7 +637,7 @@ def _evidence_excerpt(text: str, url: str) -> str:
         'for key in ["criterionAssessments", "deliverableAssessments"]',
         "if len(leader_rows) != len(validator_rows)",
         'if leader_row["id"] != validator_row["id"]',
-        'if leader_row["status"] != "SATISFIED"',
+        'if leader_row["status"] != validator_row["status"]',
         'validator_urls = validator_row.get("evidenceUrls"',
         "if not any(url in validator_urls for url in leader_urls)",
         "Free-form finding and reasoning text may differ",
@@ -880,8 +880,6 @@ def _normalize_review(value, evidence: dict, criteria: list, deliverables: list)
     if result == STATUS_APPROVED:
         missing = []
     executive = _clean_limit(value.get("executiveSummary", ""), 720)
-    if len(executive) < 40:
-        executive = f"Independent validators reviewed {len(all_assessments)} material obligations across {accessible_count} accessible public source(s). The normalized outcome is {result.replace('_', ' ').lower()}."
     criteria_lines = []
     for item in criterion_assessments:
         criteria_lines.append(f"{item['id']} | {item['status']} | {item['finding']} | {item['reasoning']}")
@@ -908,7 +906,7 @@ def _normalize_review(value, evidence: dict, criteria: list, deliverables: list)
         "sourceAssessments": source_assessments,
         "strengths": strengths,
         "risks": risks,
-        "consensusBasis": "Leader and validators independently fetched submitted sources and agreed on the settlement decision, source accessibility, material coverage, and normalized evidence gaps.",
+        "consensusBasis": "Protocol-selected validators independently fetched the submitted sources. Consensus required the same normalized result, score, per-obligation statuses, and overlapping cited evidence URLs for every satisfied or partial obligation; free-form wording was not compared.",
     }
 
 
@@ -941,8 +939,8 @@ def _normalize_assessments(value, expected: list, prefix: str, evidence: dict) -
             "id": f"{prefix}{index + 1}",
             "criterion": _clean_limit(criterion, 360),
             "status": status,
-            "finding": finding if len(finding) > 0 else "No direct evidence finding was supplied.",
-            "reasoning": reasoning if len(reasoning) > 0 else "The submitted public evidence does not establish this obligation.",
+            "finding": finding,
+            "reasoning": reasoning,
             "evidenceUrls": urls,
         })
     return normalized
@@ -957,8 +955,8 @@ def _normalize_source_assessments(value, evidence: dict) -> list:
             "label": page["label"],
             "url": page["url"],
             "accessible": bool(page["accessible"]),
-            "finding": _fallback_text(raw.get("finding"), "Source was fetched successfully." if page["accessible"] else "Source could not be fetched.", 260),
-            "relevance": _fallback_text(raw.get("relevance"), "Relevance was not established." if page["accessible"] else "Unavailable for assessment.", 260),
+            "finding": _clean_limit(raw.get("finding", ""), 260),
+            "relevance": _clean_limit(raw.get("relevance", ""), 260),
         })
     return normalized
 
@@ -1130,13 +1128,16 @@ def _review_result_materially_valid(review: dict) -> bool:
 
 def _reviews_materially_equivalent(leader: dict, validator: dict) -> bool:
     # Free-form finding and reasoning text may differ. Settlement consensus is
-    # based only on the normalized result, score, row IDs/statuses, and cited
-    # evidence URLs checked below.
+    # based on normalized material outcomes and independently cited evidence.
     if not _review_result_materially_valid(leader) or not _review_result_materially_valid(validator):
         return False
     if str(leader.get("result", "")) != str(validator.get("result", "")):
         return False
+    if str(leader.get("score", "")) != str(validator.get("score", "")):
+        return False
     if str(leader.get("criteriaTotal", "")) != str(validator.get("criteriaTotal", "")):
+        return False
+    if str(leader.get("accessibleCount", "")) != str(validator.get("accessibleCount", "")):
         return False
     for key in ["criterionAssessments", "deliverableAssessments"]:
         leader_rows = leader[key]
@@ -1147,14 +1148,9 @@ def _reviews_materially_equivalent(leader: dict, validator: dict) -> bool:
             validator_row = validator_rows[index]
             if leader_row["id"] != validator_row["id"]:
                 return False
-    if leader["result"] == STATUS_APPROVED:
-        if str(leader.get("score", "")) != "100" or str(validator.get("score", "")) != "100":
-            return False
-        for key in ["criterionAssessments", "deliverableAssessments"]:
-            for index, leader_row in enumerate(leader[key]):
-                validator_row = validator[key][index]
-                if leader_row["status"] != "SATISFIED" or validator_row["status"] != "SATISFIED":
-                    return False
+            if leader_row["status"] != validator_row["status"]:
+                return False
+            if leader_row["status"] in ["SATISFIED", "PARTIAL"]:
                 leader_urls = leader_row.get("evidenceUrls", [])
                 validator_urls = validator_row.get("evidenceUrls", [])
                 if not any(url in validator_urls for url in leader_urls):

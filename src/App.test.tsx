@@ -227,7 +227,7 @@ describe("ClauseFlow", () => {
     await screen.findByText(/Mochi-Game Quest Evaluator polish/i);
     fireEvent.click(screen.getByRole("button", { name: /Deal Detail/i }));
     fireEvent.click(screen.getByRole("tab", { name: /Evidence & review/i }));
-    expect(screen.getByText("Consensus basis")).toBeTruthy();
+    expect(screen.getByText("On-chain verification rule")).toBeTruthy();
     expect(screen.getByText("Acceptance criteria")).toBeTruthy();
     expect(screen.getAllByText("Validator reasoning")).toHaveLength(2);
     expect(screen.getByText(/independently corroborate/i)).toBeTruthy();

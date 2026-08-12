@@ -846,8 +846,10 @@ function DealDetail({ deal, offer, history, txState, executeWrite, config, walle
         </section>
         <section className={`reviewPanel ${deal.reviewResult.toLowerCase()}`}>
           <div className="reviewHeading"><span className="reviewSeal"><ShieldCheck size={23} /></span><div><p className="eyebrow">Validator outcome</p><h3>{humanReviewResult(deal.reviewResult)}</h3></div><strong className="reviewScore">{deal.reviewScore || "0"}<small>/100</small></strong></div>
-          <p className="reviewReason">{deal.reviewExecutiveSummary || deal.reviewReason || "Evidence has not been reviewed yet."}</p>
-          {deal.reviewConsensusBasis && <div className="consensusNote"><ShieldCheck size={16} /><span><strong>Consensus basis</strong>{deal.reviewConsensusBasis}</span></div>}
+          {(deal.reviewExecutiveSummary || deal.reviewReason) && <p className="reviewReason">{deal.reviewExecutiveSummary || deal.reviewReason}</p>}
+          {!deal.reviewedAt && <p className="reviewReason">No validator report is stored on-chain yet.</p>}
+          {deal.reviewedAt && !deal.reviewExecutiveSummary && !deal.reviewReason && <div className="notice warning"><CircleDotIcon /><span>This review has no narrative report stored in the deal view.</span></div>}
+          {deal.reviewConsensusBasis && <div className="consensusNote"><ShieldCheck size={16} /><span><strong>On-chain verification rule</strong>{deal.reviewConsensusBasis}</span></div>}
           {sourceAssessments.length > 0 ? <ReviewSources sources={sourceAssessments} /> : deal.reviewEvidenceSummary && <div className="reviewBox"><h4>Evidence checked</h4><p>{deal.reviewEvidenceSummary}</p></div>}
           {criterionAssessments.length > 0 && <ReviewAssessments title="Acceptance criteria" assessments={criterionAssessments} />}
           {deliverableAssessments.length > 0 && <ReviewAssessments title="Deliverables" assessments={deliverableAssessments} />}
@@ -908,7 +910,8 @@ function ReviewSources({ sources }: { sources: ReviewSource[] }) {
     <div className="sourceReviewGrid">
       {sources.map((source) => <article key={`${source.label}-${source.url}`} className={source.accessible ? "accessible" : "unavailable"}>
         <header><strong>{source.label}</strong><span>{source.accessible ? "Fetched" : "Unavailable"}</span></header>
-        <p>{source.finding}</p><small>{source.relevance}</small>
+        {source.finding && <p>{source.finding}</p>}
+        {source.relevance && <small>{source.relevance}</small>}
         {source.url && <a href={source.url} target="_blank" rel="noreferrer">Open source <ExternalLink size={11} /></a>}
       </article>)}
     </div>
@@ -1071,11 +1074,13 @@ function friendlyHistoryNote(event: HistoryEvent, deal?: Deal) {
       const review = JSON.parse(event.note) as { result?: string; score?: string; reason?: string; evidenceSummary?: string };
       const outcome = humanReviewResult(review.result || "REVIEWED");
       const score = review.score ? ` (${review.score}/100)` : "";
-      return `${outcome}${score}. ${review.evidenceSummary || review.reason || "Validators completed the evidence review."}`;
+      const storedSummary = review.evidenceSummary || review.reason;
+      return storedSummary ? `${outcome}${score}. ${storedSummary}` : `${outcome}${score}.`;
     } catch {
       const outcome = deal?.reviewResult ? humanReviewResult(deal.reviewResult) : "Review completed";
       const score = deal?.reviewScore ? ` (${deal.reviewScore}/100)` : "";
-      return `${outcome}${score}. ${deal?.reviewEvidenceSummary || deal?.reviewReason || "Validators stored the material evidence result on-chain."}`;
+      const storedSummary = deal?.reviewEvidenceSummary || deal?.reviewReason;
+      return storedSummary ? `${outcome}${score}. ${storedSummary}` : `${outcome}${score}.`;
     }
   }
   return event.note;
