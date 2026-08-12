@@ -21,8 +21,8 @@ Deterministic code handles addresses, amounts, deadlines, revisions, and one-tim
 ## Verified Release
 
 - Network: GenLayer Testnet Bradbury, chain ID `4221`
-- Contract: `0xcD7cD682b3e490cf100e03bBeeC2F0f6a5776b6d`
-- Deployment: `0xcbe2bc80486dafc4833788e99d1a33db71ebfddeb3c5ad0366f8b7e9ef7d77ab`
+- Contract: `0xF85C4460B8195F9ebFD7b376c852aD7E89Ffe63D`
+- Deployment: `0x3e2ad3fd2f4c980dc5d481d253e072b501a0508206a3f6c91245e2dc538e5737`
 - Deployment result: `FINALIZED / AGREE / FINISHED_WITH_RETURN`
 - Schema: 18 methods
 - Live frontend: https://clauseflow-two.vercel.app

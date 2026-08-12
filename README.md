@@ -25,8 +25,8 @@ ClauseFlow lets a Builder publish objective service terms and a Client lock the 
 | --- | --- |
 | Live dApp | [clauseflow-two.vercel.app](https://clauseflow-two.vercel.app) |
 | Source repository | [github.com/tanphung/ClauseFlow](https://github.com/tanphung/ClauseFlow) |
-| Bradbury contract | [`0xcD7c...6b6d`](https://explorer-bradbury.genlayer.com/address/0xcD7cD682b3e490cf100e03bBeeC2F0f6a5776b6d) |
-| Deployment transaction | [`0xcbe2...77ab`](https://explorer-bradbury.genlayer.com/tx/0xcbe2bc80486dafc4833788e99d1a33db71ebfddeb3c5ad0366f8b7e9ef7d77ab) |
+| Bradbury contract | [`0xF85C...e63D`](https://explorer-bradbury.genlayer.com/address/0xF85C4460B8195F9ebFD7b376c852aD7E89Ffe63D) |
+| Deployment transaction | [`0x3e2a...e5737`](https://explorer-bradbury.genlayer.com/tx/0x3e2ad3fd2f4c980dc5d481d253e072b501a0508206a3f6c91245e2dc538e5737) |
 | Contract source | [contracts/clauseflow.py](contracts/clauseflow.py) |
 | Release evidence matrix | [docs/RELEASE_EVIDENCE.md](docs/RELEASE_EVIDENCE.md) |
 | Reviewer notes | [docs/SUBMISSION.md](docs/SUBMISSION.md) |

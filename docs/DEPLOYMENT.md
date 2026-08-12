@@ -4,10 +4,10 @@
 
 - Network: GenLayer Testnet Bradbury
 - Chain ID: `4221`
-- Contract: `0xcD7cD682b3e490cf100e03bBeeC2F0f6a5776b6d`
+- Contract: `0xF85C4460B8195F9ebFD7b376c852aD7E89Ffe63D`
 - Deployer: `0xe78def025cE53c9b46ac56cF19f720391119fa5b`
 - EVM activation: `0x7609207c201506536393adbb406a4c4f1388501b297c0439ae7b44cd60d7be31`
-- GenLayer deployment: `0xcbe2bc80486dafc4833788e99d1a33db71ebfddeb3c5ad0366f8b7e9ef7d77ab`
+- GenLayer deployment: `0x3e2ad3fd2f4c980dc5d481d253e072b501a0508206a3f6c91245e2dc538e5737`
 - Result: `FINALIZED / AGREE / FINISHED_WITH_RETURN`
 - Schema: 18 methods, 9 writes and 9 views
 - Initial final view: `get_offer_ids=[]`
@@ -41,8 +41,8 @@ npm run typecheck
 npm run build
 npm run test:e2e
 npm run preflight:bradbury
-genlayer code 0xcD7cD682b3e490cf100e03bBeeC2F0f6a5776b6d
-genlayer schema 0xcD7cD682b3e490cf100e03bBeeC2F0f6a5776b6d
+genlayer code 0xF85C4460B8195F9ebFD7b376c852aD7E89Ffe63D
+genlayer schema 0xF85C4460B8195F9ebFD7b376c852aD7E89Ffe63D
 ```
 
 Private keys remain local in `.env` and are never included in this proof.

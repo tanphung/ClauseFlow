@@ -19,8 +19,8 @@ This versioned dossier is the Builder's public Markdown deliverable and cross-so
 
 - Live app: https://clauseflow-two.vercel.app
 - Source: https://github.com/tanphung/ClauseFlow
-- Contract: https://explorer-bradbury.genlayer.com/address/0xcD7cD682b3e490cf100e03bBeeC2F0f6a5776b6d
-- Deployment: https://explorer-bradbury.genlayer.com/tx/0xcbe2bc80486dafc4833788e99d1a33db71ebfddeb3c5ad0366f8b7e9ef7d77ab
+- Contract: https://explorer-bradbury.genlayer.com/address/0xF85C4460B8195F9ebFD7b376c852aD7E89Ffe63D
+- Deployment: https://explorer-bradbury.genlayer.com/tx/0x3e2ad3fd2f4c980dc5d481d253e072b501a0508206a3f6c91245e2dc538e5737
 - Direct contract source: https://raw.githubusercontent.com/tanphung/ClauseFlow/main/contracts/clauseflow.py
 - Reviewer documentation: https://raw.githubusercontent.com/tanphung/ClauseFlow/main/README.md
 
