@@ -12,8 +12,10 @@ ClauseFlow lets a Builder publish objective service terms and a Client lock the 
 | `accept_offer` | Fund exact GEN | lock the exact displayed amount |
 | `submit_delivery` | Evidence submission | store public delivery URLs |
 | `review_delivery` | Validator review | decide approval, revision, or rejection |
-| `claim_payment` + `confirm_payment` | Builder payment | finalize transfer, then balance-prove `PAID` |
-| `claim_refund` + `confirm_refund` | Client refund | finalize transfer, then balance-prove `REFUNDED` |
+| `claim_payment` | Deal Detail / Settlement / Claim payment | emit Builder transfer after `APPROVED` |
+| `confirm_payment` | Deal Detail / Settlement / Confirm payment | balance-prove terminal `PAID` |
+| `claim_refund` | Deal Detail / Settlement / Claim refund | emit Client transfer after `REJECTED` or deadline eligibility |
+| `confirm_refund` | Deal Detail / Settlement / Confirm refund | balance-prove terminal `REFUNDED` |
 | `get_deal_history` | On-chain history | read canonical lifecycle events |
 | `get_dashboard_stats` | Protocol summary | read funded, paid, and refunded totals |
 

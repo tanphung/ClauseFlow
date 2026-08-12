@@ -8,8 +8,10 @@ This versioned dossier is the Builder's public Markdown deliverable and cross-so
 | `accept_offer` | Fund exact GEN | lock the exact displayed amount |
 | `submit_delivery` | Evidence submission | store public delivery URLs |
 | `review_delivery` | Validator review | decide approval, revision, or rejection |
-| `claim_payment` + `confirm_payment` | Builder payment | finalize transfer, then balance-prove `PAID` |
-| `claim_refund` + `confirm_refund` | Client refund | finalize transfer, then balance-prove `REFUNDED` |
+| `claim_payment` | Deal Detail -> Settlement -> Claim payment | emit Builder transfer after `APPROVED` |
+| `confirm_payment` | Deal Detail -> Settlement -> Confirm payment | balance-prove terminal `PAID` |
+| `claim_refund` | Deal Detail -> Settlement -> Claim refund | emit Client transfer after `REJECTED` or deadline eligibility |
+| `confirm_refund` | Deal Detail -> Settlement -> Confirm refund | balance-prove terminal `REFUNDED` |
 | `get_deal_history` | On-chain history | read canonical lifecycle events |
 | `get_dashboard_stats` | Protocol summary | read funded, paid, and refunded totals |
 
@@ -30,24 +32,24 @@ The deployment is `FINALIZED / AGREE / FINISHED_WITH_RETURN`, exposes 18 public 
 
 | Contract method | Live dApp action | README explanation |
 | --- | --- | --- |
-| `publish_offer` | New offer -> Publish reviewed offer | Publish immutable terms |
-| `accept_offer` | Offer -> Fund exact displayed GEN | Exact escrow lock |
-| `submit_delivery` | Deal Detail -> Submit delivery | Public evidence package |
-| `review_delivery` | Evidence & review -> Run validator review | Evidence-based consensus decision |
-| `claim_payment` | Settlement -> Claim payment | Builder payment emission |
-| `confirm_payment` | Settlement -> Confirm payment | Balance-proved `PAID` state |
-| `claim_refund` | Settlement -> Claim refund | Client refund emission |
-| `confirm_refund` | Settlement -> Confirm refund | Balance-proved `REFUNDED` state |
-| `get_deal_history` | On-chain history tab | Canonical lifecycle events |
-| `get_dashboard_stats` | Protocol summary | Public funded/paid/refunded totals |
+| `publish_offer` | Workspace / New offer / Publish reviewed offer | Publish immutable terms after clause review |
+| `accept_offer` | Workspace / Offers / Fund exact displayed GEN | Exact escrow lock; wrong value is rejected |
+| `submit_delivery` | Workspace / Deal Detail / Evidence & review / Submit delivery | Store delivery, demo, docs, source, and Builder note |
+| `review_delivery` | Workspace / Deal Detail / Evidence & review / Run validator review | Fetch sources and reach an evidence-based consensus decision |
+| `claim_payment` | Workspace / Deal Detail / Settlement / Claim payment | Emit the exact Builder transfer only after `APPROVED` |
+| `confirm_payment` | Workspace / Deal Detail / Settlement / Confirm payment | Require escrow balance reduction before terminal `PAID` |
+| `claim_refund` | Workspace / Deal Detail / Settlement / Claim refund | Emit the exact Client transfer after `REJECTED` or deadline eligibility |
+| `confirm_refund` | Workspace / Deal Detail / Settlement / Confirm refund | Require escrow balance reduction before terminal `REFUNDED` |
+| `get_deal_history` | Workspace / Deal Detail / On-chain history | Read canonical funded, submitted, reviewed, and settlement events |
+| `get_dashboard_stats` | Workspace / Dashboard / Protocol summary | Read offers, deals, completed, funded, paid, refunded, and active escrow totals |
 
 ## Material Verification
 
 Reviewers and validators can independently verify:
 
-1. The live application exposes publishing, exact funding, evidence submission, validator review, payment, refund, and public history.
+1. The live application returns pre-rendered workflow text and an actual interface image to non-JavaScript evidence fetchers, then hydrates the complete interactive React dashboard for browser users.
 2. The direct source exposes every method named in the matrix.
 3. The README describes the same lifecycle and settlement consequences.
-4. The contract address in the live runtime config matches this dossier.
+4. The contract address in the live runtime config and pre-rendered release evidence matches this dossier.
 
 Access alone is insufficient. The four sources must materially agree on the lifecycle, and any contradiction should prevent approval.

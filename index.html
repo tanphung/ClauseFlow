@@ -12,7 +12,33 @@
     <script src="/config.js"></script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main aria-label="ClauseFlow pre-rendered application evidence">
+        <h1>ClauseFlow public on-chain agreement dashboard</h1>
+        <p>Live Bradbury contract: 0xF85C4460B8195F9ebFD7b376c852aD7E89Ffe63D</p>
+        <nav aria-label="Application navigation">
+          <a href="/">Dashboard</a>
+          <a href="/?view=offers">Offers</a>
+          <a href="/?view=create">New offer</a>
+          <a href="/?view=deal">Deal Detail</a>
+        </nav>
+        <section aria-labelledby="workflow-proof">
+          <h2 id="workflow-proof">Rendered workflow controls</h2>
+          <p>New offer contains Structure clauses and Publish reviewed offer controls for immutable terms.</p>
+          <p>Offers contains Fund exact displayed GEN. Deal Detail contains Submit delivery, Run validator review, Claim payment, Confirm payment, Claim refund, and Confirm refund controls.</p>
+          <p>Deal Detail displays Agreement, Evidence &amp; review, and On-chain history. Dashboard displays Protocol summary totals from get_dashboard_stats.</p>
+        </section>
+        <section aria-labelledby="settlement-proof">
+          <h2 id="settlement-proof">Settlement rules rendered by this release</h2>
+          <p>The Client locks exactly 0.02 GEN. APPROVED permits Builder payment. One revision round is allowed within 24 hours. REJECTED, or deadline plus the 24-hour grace period, permits Client refund.</p>
+          <p>External transfers execute after parent finalization. PAID or REFUNDED is shown only after balance-backed confirmation. Public history remains canonical on-chain contract data.</p>
+        </section>
+        <figure>
+          <img src="/assets/clauseflow-agreement-studio.png" alt="ClauseFlow agreement workspace with dashboard, evidence review, and on-chain history" width="1536" height="1024" />
+          <figcaption>Pre-rendered fallback for public evidence fetchers. The interactive React application replaces this markup after JavaScript loads.</figcaption>
+        </figure>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
