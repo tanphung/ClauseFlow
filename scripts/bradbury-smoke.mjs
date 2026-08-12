@@ -386,6 +386,13 @@ async function finalizeParentTransaction(hash, account) {
       evmHash = await sdk.finalizeTransaction({ account, txId: hash });
       break;
     } catch (error) {
+      const current = await sdk.getTransaction({ hash });
+      if (current.statusName === TransactionStatus.FINALIZED
+        && current.txExecutionResultName === "FINISHED_WITH_RETURN"
+        && ["AGREE", "MAJORITY_AGREE"].includes(current.resultName)) {
+        console.log(`FINALIZE_RACE_RESOLVED ${hash} status=${current.statusName}`);
+        return;
+      }
       const message = error instanceof Error ? error.message : String(error);
       if (!isTransientRpcError(error) || attempt === 12) throw error;
       console.log(`RETRY finalize ${hash} after transient RPC error (${attempt}/12)`);

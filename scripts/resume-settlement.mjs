@@ -68,8 +68,18 @@ async function waitForClaimFinalization() {
     }
     if (statusName === TransactionStatus.FINALIZED) return transaction;
     if (statusName === TransactionStatus.READY_TO_FINALIZE) {
-      const evmHash = await retry("finalize", () => sdk.finalizeTransaction({ account, txId: claimHash }));
-      console.log(`FINALIZE claim=${claimHash} evm=${evmHash}`);
+      try {
+        const evmHash = await retry("finalize", () => sdk.finalizeTransaction({ account, txId: claimHash }));
+        console.log(`FINALIZE claim=${claimHash} evm=${evmHash}`);
+      } catch (error) {
+        const current = await retry("claim status after finalize race", () => sdk.getTransaction({ hash: claimHash }));
+        if (current.statusName !== TransactionStatus.FINALIZED
+          || current.txExecutionResultName !== "FINISHED_WITH_RETURN"
+          || !["AGREE", "MAJORITY_AGREE"].includes(current.resultName)) {
+          throw error;
+        }
+        console.log(`FINALIZE_RACE_RESOLVED claim=${claimHash} status=${current.statusName}`);
+      }
       await retry("finalized receipt", () => sdk.waitForTransactionReceipt({
         hash: claimHash,
         status: TransactionStatus.FINALIZED,
