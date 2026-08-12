@@ -125,29 +125,17 @@ def _submit_and_review(contract, vm, builder, deal_id: str, result: str, validat
             "nextAction": "Builder can claim payment." if approved else "Builder should submit the documented correction." if revision else "Client can claim a refund under the accepted agreement.",
         }),
     )
-    independent_criterion_status = validator_status or criterion_status
-    independent_deliverable_status = validator_status or deliverable_status
-    independent_missing = [] if independent_criterion_status == "SATISFIED" and independent_deliverable_status == "SATISFIED" else [
-        "The independently assessed material obligation remains unresolved."
-    ]
+    verification_supported = not validator_status
     vm.mock_llm(
-        r"independent GenLayer settlement material assessor",
+        r"independent GenLayer settlement report verifier",
         json.dumps({
-            "criterionAssessments": [{
-                "id": "C1",
-                "status": independent_criterion_status,
-                "finding": "Independent retrieval confirms the observable accepted workflow." if independent_criterion_status == "SATISFIED" else "Independent retrieval does not establish the accepted workflow.",
-                "reasoning": "The fetched public artifact directly demonstrates the required behavior without relying on the Builder note." if independent_criterion_status == "SATISFIED" else "The fetched artifact lacks direct observable support for this immutable acceptance obligation.",
-                "evidenceUrls": evidence_urls if independent_criterion_status in ["SATISFIED", "PARTIAL"] else [],
-            }],
-            "deliverableAssessments": [{
-                "id": "D1",
-                "status": independent_deliverable_status,
-                "finding": "Independent retrieval confirms the complete contracted evidence package." if independent_deliverable_status == "SATISFIED" else "Independent retrieval identifies a material deliverable gap.",
-                "reasoning": "The public sources expose each promised artifact and allow independent cross-checking." if independent_deliverable_status == "SATISFIED" else "The available sources do not prove that every promised delivery artifact was supplied.",
-                "evidenceUrls": evidence_urls if independent_deliverable_status in ["SATISFIED", "PARTIAL"] else [],
-            }],
-            "missingItems": independent_missing,
+            "sourceAccessibilitySupported": verification_supported,
+            "criteriaCoverageSupported": verification_supported,
+            "deliverableCoverageSupported": verification_supported,
+            "missingItemsSupported": verification_supported,
+            "scoreSupported": verification_supported,
+            "decisionSupported": verification_supported,
+            "unsupportedClaims": [] if verification_supported else ["Independent evidence does not support the leader decision."],
         }),
     )
     return json.loads(contract.review_delivery(deal_id))
@@ -237,7 +225,7 @@ def test_only_builder_can_submit_and_approved_payment_is_idempotent(direct_vm, d
     stored = json.loads(contract.get_deal(deal_id))
     assert json.loads(stored["reviewCriterionAssessments"])[0]["reasoning"].startswith("The live interface")
     assert "independently fetched" in stored["reviewConsensusBasis"]
-    assert "free-form wording was not compared" in stored["reviewConsensusBasis"]
+    assert "Valid JSON or matching prose alone was insufficient" in stored["reviewConsensusBasis"]
     assert len(stored["reviewExecutiveSummary"]) <= 720
     assert len(json.loads(stored["reviewSourceAssessments"])[0]["finding"]) <= 260
     direct_vm.sender = direct_alice
@@ -287,42 +275,32 @@ def test_one_revision_round_allows_one_corrected_submission(direct_vm, direct_de
     assert json.loads(contract.get_deal(deal_id))["status"] == "SUBMITTED"
 
 
-def test_material_comparator_accepts_nonmaterial_variance_and_rejects_outcome_disagreement(direct_vm, direct_deploy, direct_alice, direct_bob):
+def test_material_verifier_requires_every_supported_field(direct_vm, direct_deploy, direct_alice, direct_bob):
     contract = direct_deploy("contracts/clauseflow.py")
     deal_id = _fund(contract, direct_vm, direct_alice, direct_bob)
     leader = _submit_and_review(contract, direct_vm, direct_alice, deal_id, "APPROVED")
     module = sys.modules[type(contract._instance).__module__]
 
-    independent = copy.deepcopy(leader)
-    independent["criterionAssessments"][0]["finding"] = "A second assessor independently observed the contracted workflow."
-    independent["criterionAssessments"][0]["reasoning"] = "The cited public application exposes the required behavior without relying on matching prose."
-    independent["deliverableAssessments"][0]["finding"] = "A second assessor independently found every promised artifact."
-    independent["deliverableAssessments"][0]["reasoning"] = "The same public source directly supports the complete immutable delivery obligation."
-    assert module._reviews_materially_equivalent(leader, independent) is True
-
-    disagreement = copy.deepcopy(independent)
-    disagreement["deliverableAssessments"][0]["status"] = "NOT_SATISFIED"
-    disagreement["deliverableAssessments"][0]["evidenceUrls"] = []
-    disagreement["result"] = "REVISION_REQUIRED"
-    disagreement["score"] = "75"
-    disagreement["missingItems"] = "The promised evidence package remains incomplete."
-    assert module._reviews_materially_equivalent(leader, disagreement) is False
-
-    revision_leader = copy.deepcopy(leader)
-    revision_leader["deliverableAssessments"][0]["status"] = "PARTIAL"
-    revision_leader["result"] = "REVISION_REQUIRED"
-    revision_leader["score"] = "75"
-    revision_leader["missingItems"] = "Complete the remaining deliverable evidence."
-    revision_validator = copy.deepcopy(revision_leader)
-    revision_validator["criterionAssessments"][0]["status"] = "PARTIAL"
-    revision_validator["score"] = "50"
-    revision_validator["criteriaSatisfied"] = "0"
-    assert module._reviews_materially_equivalent(revision_leader, revision_validator) is False
-
-    matching_revision = copy.deepcopy(revision_leader)
-    matching_revision["deliverableAssessments"][0]["finding"] = "The second assessor found the same material gap using different wording."
-    matching_revision["deliverableAssessments"][0]["reasoning"] = "Independent evidence supports only part of the accepted deliverable."
-    assert module._reviews_materially_equivalent(revision_leader, matching_revision) is True
+    evidence = {"accessibleCount": leader["accessibleCount"]}
+    verification = {
+        "sourceAccessibilitySupported": True,
+        "criteriaCoverageSupported": True,
+        "deliverableCoverageSupported": True,
+        "missingItemsSupported": True,
+        "scoreSupported": True,
+        "decisionSupported": True,
+        "unsupportedClaims": [],
+    }
+    assert module._verification_accepts_report(leader, verification, evidence) is True
+    for key in ["sourceAccessibilitySupported", "criteriaCoverageSupported", "deliverableCoverageSupported", "missingItemsSupported", "scoreSupported", "decisionSupported"]:
+        disagreement = copy.deepcopy(verification)
+        disagreement[key] = False
+        assert module._verification_accepts_report(leader, disagreement, evidence) is False
+    unsupported = copy.deepcopy(verification)
+    unsupported["unsupportedClaims"] = ["The cited source does not prove D1."]
+    assert module._verification_accepts_report(leader, unsupported, evidence) is False
+    changed_accessibility = {"accessibleCount": str(int(leader["accessibleCount"]) - 1)}
+    assert module._verification_accepts_report(leader, verification, changed_accessibility) is False
 
 
 def test_contract_source_excerpt_is_compact_and_material(direct_vm, direct_deploy):
@@ -333,16 +311,15 @@ def test_contract_source_excerpt_is_compact_and_material(direct_vm, direct_deplo
     assert len(excerpt) <= 1800
     for term in [
         "_review_prompt",
-        "_review_material_assessment_prompt",
-        "cannot see or trust the leader's report",
+        "_review_verification_prompt",
+        "Treat the leader report as an untrusted claim",
         "actual observable artifacts",
-        "_reviews_materially_equivalent",
+        "_verification_accepts_report",
         "evidenceUrls",
-        'if str(leader.get("score"',
-        'for key in ["criterionAssessments", "deliverableAssessments"]',
-        'if leader_row["status"] != validator_row["status"]',
-        "if not any(url in validator_urls for url in leader_urls)",
-        "Free-form finding and reasoning text may differ",
+        'result, score, satisfied = _derive_material_outcome',
+        '_bounded_int(review.get("score"',
+        'if not all(verification.get(key) is True for key in required)',
+        'unsupported = verification.get("unsupportedClaims"',
     ]:
         assert term in excerpt
 

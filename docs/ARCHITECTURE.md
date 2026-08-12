@@ -18,11 +18,11 @@
 1. The leader independently fetches all submitted sources and creates a detailed report for every immutable criterion and deliverable.
 2. The contract normalizes assessment statuses and deterministically derives score and result.
 3. Each validator independently refetches the sources.
-4. Without seeing the leader report, each validator produces its own compact assessment for every criterion and deliverable from its independently fetched evidence.
-5. The contract derives each side's result from full criterion and deliverable coverage, then requires the same result, score, source-access count, and status for every criterion and deliverable. Every `SATISFIED` or `PARTIAL` item must cite at least one common independently fetched evidence URL. Free-form finding and reasoning text may differ.
+4. Each validator treats the leader report as untrusted and verifies every criterion and deliverable claim against its independently fetched evidence.
+5. A validator separately verifies source accessibility, criterion coverage, deliverable coverage, missing items, score, and settlement decision. Consensus accepts the report only when all six material checks pass and no unsupported claim remains; valid JSON or matching prose alone is insufficient.
 6. Storage changes occur only after consensus returns.
 
-Validators do not approve JSON format or identical prose. Approval requires every obligation to be `SATISFIED`, a score of 100, accessible supporting evidence, and no missing items.
+Validators do not approve JSON format or identical prose. Approval requires every obligation to be `SATISFIED`, a score of 100, accessible supporting evidence, no missing items, and independent verification of those material claims.
 
 ## Escrow And Settlement
 

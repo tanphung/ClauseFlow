@@ -318,11 +318,10 @@ class ClauseFlow(gl.Contract):
             if not _review_result_materially_valid(leader):
                 return False
             validator_raw = gl.nondet.exec_prompt(
-                _review_material_assessment_prompt(offer, deal, validator_evidence, criteria, deliverables),
+                _review_verification_prompt(offer, deal, validator_evidence, criteria, deliverables, leader),
                 response_format="json",
             )
-            validator_review = _normalize_review(validator_raw, validator_evidence, criteria, deliverables)
-            return _reviews_materially_equivalent(leader, validator_review)
+            return _verification_accepts_report(leader, validator_raw, validator_evidence)
 
         review = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
         result = str(review["result"])
@@ -629,26 +628,22 @@ def _evidence_excerpt(text: str, url: str) -> str:
     # material comparison itself instead of truncating it after ABI signatures.
     material_terms = [
         "independent GenLayer settlement validator for ClauseFlow",
-        "independent GenLayer settlement material assessor",
-        "cannot see or trust the leader's report",
-        "actual observable artifacts",
+        "independent GenLayer settlement report verifier",
+        "Treat the leader report as an untrusted claim",
+        "Re-fetching and judging actual observable artifacts",
         'if str(leader.get("result"',
-        'if str(leader.get("score"',
-        'for key in ["criterionAssessments", "deliverableAssessments"]',
-        "if len(leader_rows) != len(validator_rows)",
-        'if leader_row["id"] != validator_row["id"]',
-        'if leader_row["status"] != validator_row["status"]',
-        'validator_urls = validator_row.get("evidenceUrls"',
-        "if not any(url in validator_urls for url in leader_urls)",
-        "Free-form finding and reasoning text may differ",
-        'return bool(_clean(leader.get("missingItems"',
+        'result, score, satisfied = _derive_material_outcome',
+        '_bounded_int(review.get("score"',
+        'urls = assessment.get("evidenceUrls"',
+        'if not all(verification.get(key) is True for key in required)',
+        'unsupported = verification.get("unsupportedClaims"',
     ]
     review_functions = [
         "_review_prompt",
-        "_review_material_assessment_prompt",
+        "_review_verification_prompt",
         "_derive_material_outcome",
         "_review_result_materially_valid",
-        "_reviews_materially_equivalent",
+        "_verification_accepts_report",
     ]
     inside_excerpt_helper = False
     for line in lines:
@@ -817,21 +812,21 @@ Rules:
 """
 
 
-def _review_material_assessment_prompt(offer: dict, deal: dict, evidence: dict, criteria: list, deliverables: list) -> str:
+def _review_verification_prompt(offer: dict, deal: dict, evidence: dict, criteria: list, deliverables: list, leader: dict) -> str:
     criterion_rows = [{"id": f"C{index + 1}", "text": text} for index, text in enumerate(criteria)]
     deliverable_rows = [{"id": f"D{index + 1}", "text": text} for index, text in enumerate(deliverables)]
     return f"""
-You are an independent GenLayer settlement material assessor. Derive your own compact
-material assessment from the immutable agreement and independently fetched
-public evidence. You cannot see or trust the leader's report.
+You are an independent GenLayer settlement report verifier. Treat the leader report as an untrusted claim. Independently check it against the immutable
+agreement and your independently fetched public evidence.
 
 Return JSON only with these keys:
-criterionAssessments, deliverableAssessments, missingItems.
+sourceAccessibilitySupported, criteriaCoverageSupported,
+deliverableCoverageSupported, missingItemsSupported, scoreSupported,
+decisionSupported, unsupportedClaims.
 
-Each assessment must be in supplied order with keys id, status, finding,
-reasoning, evidenceUrls. Allowed statuses are SATISFIED, PARTIAL,
-NOT_SATISFIED, UNVERIFIABLE. Use only independently fetched URLs in
-evidenceUrls. Keep finding and reasoning concise but materially specific.
+The six *Supported fields must be JSON booleans. unsupportedClaims must be a
+list of concise material claims in the leader report that the independently
+fetched evidence does not support.
 
 Immutable criteria with stable IDs:
 {json.dumps(criterion_rows, sort_keys=True)}
@@ -848,16 +843,18 @@ Submitted deal:
 Independently fetched evidence:
 {json.dumps(evidence, sort_keys=True)}
 
+Untrusted leader report:
+{json.dumps(leader, sort_keys=True)}
+
 Rules:
-- Judge actual observable artifacts, behavior, and source content; keyword or
-  format matches alone are never sufficient.
-- SATISFIED requires direct public proof and at least one fetched evidence URL.
-- PARTIAL identifies a concrete remaining gap and its available proof.
-- NOT_SATISFIED means the obligation is absent or contradicted.
-- UNVERIFIABLE means independently fetched evidence cannot establish it.
-- missingItems is empty only when every criterion and deliverable is satisfied.
-- Do not choose a settlement result or score; the contract derives both from
-  your independent assessment.
+- Re-fetching and judging actual observable artifacts is mandatory. Valid JSON,
+  URL accessibility, keyword overlap, or polished prose alone prove nothing.
+- Check every criterion and deliverable finding against its cited fetched URL.
+- A SATISFIED or PARTIAL claim requires direct support in fetched evidence.
+- Check that missingItems accurately captures every unsupported obligation.
+- Check that score and decision follow the statuses in the report.
+- Set a field true only when the corresponding material claim is supported.
+- Do not require identical wording; verify factual and settlement meaning.
 """
 
 
@@ -906,7 +903,7 @@ def _normalize_review(value, evidence: dict, criteria: list, deliverables: list)
         "sourceAssessments": source_assessments,
         "strengths": strengths,
         "risks": risks,
-        "consensusBasis": "Protocol-selected validators independently fetched the submitted sources. Consensus required the same normalized result, score, per-obligation statuses, and overlapping cited evidence URLs for every satisfied or partial obligation; free-form wording was not compared.",
+        "consensusBasis": "Protocol-selected validators independently fetched submitted sources and verified the leader report's source accessibility, criterion coverage, deliverable coverage, missing items, score, and settlement decision. Valid JSON or matching prose alone was insufficient.",
     }
 
 
@@ -1126,33 +1123,20 @@ def _review_result_materially_valid(review: dict) -> bool:
     return (result == STATUS_APPROVED and len(missing_items) == 0) or (result != STATUS_APPROVED and len(missing_items) > 0)
 
 
-def _reviews_materially_equivalent(leader: dict, validator: dict) -> bool:
-    # Free-form finding and reasoning text may differ. Settlement consensus is
-    # based on normalized material outcomes and independently cited evidence.
-    if not _review_result_materially_valid(leader) or not _review_result_materially_valid(validator):
+def _verification_accepts_report(leader: dict, verification: dict, evidence: dict) -> bool:
+    if not _review_result_materially_valid(leader) or not isinstance(verification, dict):
         return False
-    if str(leader.get("result", "")) != str(validator.get("result", "")):
+    if _bounded_int(leader.get("accessibleCount", 0)) != _bounded_int(evidence.get("accessibleCount", 0)):
         return False
-    if str(leader.get("score", "")) != str(validator.get("score", "")):
+    required = [
+        "sourceAccessibilitySupported",
+        "criteriaCoverageSupported",
+        "deliverableCoverageSupported",
+        "missingItemsSupported",
+        "scoreSupported",
+        "decisionSupported",
+    ]
+    if not all(verification.get(key) is True for key in required):
         return False
-    if str(leader.get("criteriaTotal", "")) != str(validator.get("criteriaTotal", "")):
-        return False
-    if str(leader.get("accessibleCount", "")) != str(validator.get("accessibleCount", "")):
-        return False
-    for key in ["criterionAssessments", "deliverableAssessments"]:
-        leader_rows = leader[key]
-        validator_rows = validator[key]
-        if len(leader_rows) != len(validator_rows):
-            return False
-        for index, leader_row in enumerate(leader_rows):
-            validator_row = validator_rows[index]
-            if leader_row["id"] != validator_row["id"]:
-                return False
-            if leader_row["status"] != validator_row["status"]:
-                return False
-            if leader_row["status"] in ["SATISFIED", "PARTIAL"]:
-                leader_urls = leader_row.get("evidenceUrls", [])
-                validator_urls = validator_row.get("evidenceUrls", [])
-                if not any(url in validator_urls for url in leader_urls):
-                    return False
-    return bool(_clean(leader.get("missingItems", ""))) == bool(_clean(validator.get("missingItems", "")))
+    unsupported = verification.get("unsupportedClaims", [])
+    return isinstance(unsupported, list) and len(unsupported) == 0

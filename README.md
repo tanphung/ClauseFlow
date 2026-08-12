@@ -44,8 +44,8 @@ ClauseFlow uses GenLayer only at that boundary:
 3. The Builder submits public delivery, source, demo, and documentation URLs.
 4. The contract fetches those sources inside `review_delivery`.
 5. A leader produces a detailed criterion-by-criterion settlement report.
-6. Without seeing the leader report, validators independently refetch the evidence and assess every immutable criterion and deliverable.
-7. The contract derives both outcomes and requires the same result, score, source-access count, and status for every criterion and deliverable. Every `SATISFIED` or `PARTIAL` item must cite at least one common independently fetched evidence URL; free-form prose may differ.
+6. Validators treat the leader report as untrusted, independently refetch the evidence, and verify its source accessibility, criterion coverage, deliverable coverage, missing items, score, and settlement decision.
+7. Consensus accepts the detailed report only when every material verification flag is true and no unsupported claim remains. Valid JSON, URL accessibility, keyword overlap, or matching prose alone is insufficient.
 8. The agreed result determines whether the Builder can claim payment or the Client can claim a refund.
 
 Valid JSON is not enough. URL accessibility is not enough. The public content must materially support the funded obligations.

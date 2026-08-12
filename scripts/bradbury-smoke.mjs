@@ -435,9 +435,9 @@ const refundArgs = (title, price) => [
 const canaryArgs = (title, price) => [
   title,
   "Verify the deployed ClauseFlow review design from its public contract source and architecture document before it is used for final submission history.",
-  "The Builder must provide the direct public ClauseFlow contract source and architecture document. Validators must verify that the leader creates a detailed criterion and deliverable report, each validator independently refetches evidence without seeing the leader report, the contract derives outcomes deterministically, and consensus compares material statuses and cited evidence rather than JSON shape or identical prose.",
+  "The Builder must provide the direct public ClauseFlow contract source and architecture document. Validators must verify that the leader creates a detailed criterion and deliverable report, each validator treats that report as untrusted and independently refetches evidence, the contract derives outcomes deterministically, and consensus verifies material claims rather than JSON shape or identical prose.",
   "The direct public intelligent contract source at commit e91987b.\nThe public architecture document describing the same independent material-assessment flow.",
-  "The contract source must contain separate detailed leader and compact independent validator prompts.\nThe validator prompt must explicitly require assessment of actual observable artifacts and prohibit trusting the leader report.\nThe comparator must check result, score, every criterion and deliverable status, and supporting evidence URLs while allowing free-form wording to differ.\nThe architecture document must describe the same trust boundary without claiming format-only validation.",
+  "The contract source must contain separate detailed leader and independent report-verifier prompts.\nThe validator prompt must require independently fetched observable evidence and prohibit trusting the leader report.\nThe verifier must separately check source accessibility, criterion coverage, deliverable coverage, missing items, score, decision, and unsupported claims.\nThe architecture document must describe the same trust boundary without claiming format-only validation.",
   price,
   1n,
   0n,
