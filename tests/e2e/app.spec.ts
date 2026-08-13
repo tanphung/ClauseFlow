@@ -31,6 +31,18 @@ test("renders dashboard shell without blank screen or fake success", async ({ pa
   await expect(page.getByText("[object Object]")).toHaveCount(0);
 });
 
+test("renders the exact-contract snapshot immediately with full on-chain validator fields", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByText("ClauseFlow release evidence dossier", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status")).toContainText(/Verified on-chain snapshot|Live on-chain data/);
+  await page.locator("button.ledgerRow").filter({ hasText: "ClauseFlow release evidence dossier" }).click();
+  await page.getByRole("tab", { name: "Evidence & review", exact: true }).click();
+  await expect(page.getByText("Full validator report", { exact: true })).toBeVisible();
+  await expect(page.getByText("Acceptance criteria", { exact: true })).toBeVisible();
+  await expect(page.getByText("Validator reasoning", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("On-chain verification rule", { exact: true })).toBeVisible();
+});
+
 test("create form starts empty without a seeded demo agreement", async ({ page }) => {
   await openLocalPreview(page);
   await openCreateView(page);

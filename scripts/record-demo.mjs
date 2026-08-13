@@ -140,12 +140,23 @@ async function runTimed(seconds, action) {
 
 async function runDashboard(target, seconds, text) {
   await runTimed(seconds, async () => {
+    await target.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
+    await target.getByRole("heading", { name: "Public on-chain agreement dashboard", exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+    await installRecordingOverlay(target);
     await setCaption(target, text);
+    const snapshotStatus = target.getByRole("status").filter({ hasText: /Verified on-chain snapshot/ });
+    await snapshotStatus.waitFor({ state: "visible", timeout: 5_000 });
+    await point(target, snapshotStatus);
+    await wait(target, seconds * 0.16);
+    const liveStatus = target.getByRole("status").filter({ hasText: /Live on-chain data synced/ });
+    await liveStatus.waitFor({ state: "visible", timeout: 20_000 });
+    await point(target, liveStatus);
+    await wait(target, seconds * 0.12);
     await point(target, target.getByRole("region", { name: "Protocol summary", exact: true }));
-    await wait(target, seconds * 0.35);
+    await wait(target, seconds * 0.2);
     const rows = target.locator("button.ledgerRow");
     await point(target, rows.first());
-    await wait(target, seconds * 0.35);
+    await wait(target, seconds * 0.16);
   });
 }
 
@@ -158,9 +169,16 @@ async function runPayment(target, seconds, text) {
     await wait(target, seconds * 0.18);
     await click(target, target.getByRole("tab", { name: "Evidence & review", exact: true }));
     await point(target, target.locator(".reviewScore"));
-    await wait(target, seconds * 0.28);
+    await wait(target, seconds * 0.1);
+    await point(target, target.locator(".fullReportCue"));
+    await wait(target, seconds * 0.1);
+    await point(target, target.locator(".assessmentCard").first());
+    await wait(target, seconds * 0.2);
+    await point(target, target.locator(".assessmentCard").nth(1));
+    await wait(target, seconds * 0.12);
     await click(target, target.getByRole("tab", { name: "On-chain history", exact: true }));
-    await wait(target, seconds * 0.24);
+    await point(target, target.locator(".historyList"));
+    await wait(target, seconds * 0.14);
   });
 }
 
@@ -174,9 +192,14 @@ async function runRefund(target, seconds, text) {
     await wait(target, seconds * 0.16);
     await click(target, target.getByRole("tab", { name: "Evidence & review", exact: true }));
     await point(target, target.locator(".reviewScore"));
-    await wait(target, seconds * 0.28);
+    await wait(target, seconds * 0.1);
+    await point(target, target.locator(".assessmentCard").first());
+    await wait(target, seconds * 0.18);
+    await point(target, target.locator(".reviewPanel .clause").filter({ hasText: "Missing items" }));
+    await wait(target, seconds * 0.16);
     await click(target, target.getByRole("tab", { name: "On-chain history", exact: true }));
-    await wait(target, seconds * 0.22);
+    await point(target, target.locator(".historyList"));
+    await wait(target, seconds * 0.15);
   });
 }
 

@@ -114,9 +114,11 @@ The Dashboard reads contract views directly and requires no wallet. It exposes:
 - accepted clauses expanded by default;
 - submitted evidence and detailed validator reasoning;
 - lifecycle events and explorer links;
-- cached data during background refresh without mixing snapshots between contract addresses.
+- a versioned, timestamped release snapshot for immediate first paint while live Bradbury views refresh in the background;
+- lazy offer and history reads only when those views are opened;
+- strict network and contract-address validation so snapshots never cross deployments.
 
-No private database or seeded payment ledger is used.
+Live contract views always replace the snapshot after a successful refresh. If Bradbury is temporarily unavailable, the UI keeps the verified snapshot visible and labels the degraded state instead of showing an empty or fabricated ledger. No private database or seeded payment ledger is used.
 
 ## Run Locally
 
@@ -150,6 +152,7 @@ src/                          React dApp and transaction lifecycle integration
 tests/direct/                 Contract state, authorization, and settlement tests
 tests/e2e/                    Desktop and mobile browser checks
 scripts/                      Bradbury deploy, smoke, resume, and video tooling
+src/data/onchain-snapshot.json Versioned read-only snapshot of the final contract views
 docs/                         Architecture, deployment, evidence, and reviewer notes
 ```
 

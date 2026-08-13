@@ -17,3 +17,4 @@ The media directory is intentionally ignored by Git. The final recording must sh
 - public party filters and the empty Builder workspace.
 
 The recorder uses the rendered on-chain scores rather than hard-coded demo values. It does not submit writes or fabricate history.
+The narration states the validator trust boundary explicitly: the leader prepares a detailed report, protocol-selected validators independently refetch the submitted URLs, and consensus checks material fields rather than accepting matching JSON or prose.

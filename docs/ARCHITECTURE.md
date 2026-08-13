@@ -33,3 +33,5 @@ External messages execute after parent finalization. `confirm_payment` and `conf
 ## Public History
 
 Each deal keeps immutable parties and amount together with evidence, review, settlement fields, timestamps, and a lifecycle timeline. `get_dashboard_stats` and address-filter views expose canonical history directly; no private database or indexer is required for v1.
+
+The production bundle includes a timestamped snapshot exported from the final Bradbury contract. The frontend accepts it only when both network and contract address exactly match runtime configuration, renders it immediately, and refreshes canonical stats and deals in the background. Offers and deal histories are re-read only when their views are opened; a deal-state change invalidates its history verification. Live views always take precedence, while a transient RPC failure leaves the labeled snapshot visible.

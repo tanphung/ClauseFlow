@@ -538,6 +538,25 @@ legend { width: 100%; padding: 0 0 12px; color: var(--ink); font-size: 11px; fon
 }
 .validationDot { flex: 0 0 auto; width: 7px; height: 7px; margin-top: 4px; background: currentColor; border-radius: 50%; }
 .errorNotice { margin-bottom: 14px; color: var(--danger); background: #fff0ee; border-color: #efcbc6; }
+.dataSyncStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  min-height: 30px;
+  margin: -9px 0 14px;
+  padding: 6px 10px;
+  color: var(--forest-2);
+  background: #edf6f2;
+  border: 1px solid #c9e1d8;
+  border-radius: 6px;
+}
+.dataSyncStatus.degraded { color: #7a5b17; background: #fff8e8; border-color: #edddb8; }
+.dataSyncStatus > span { display: flex; align-items: baseline; gap: 7px; }
+.dataSyncStatus strong { font-size: 10px; }
+.dataSyncStatus small { color: var(--ink-faint); font-size: 8px; }
+.syncWarning { display: grid; gap: 2px; margin: -7px 0 14px; color: #7a5b17; font-size: 9px; }
+.syncWarning small { color: var(--ink-faint); overflow-wrap: anywhere; }
 .formActions { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-top: 19px; border-top: 1px solid var(--line); }
 .formActions > span { display: flex; align-items: center; gap: 6px; max-width: 290px; color: var(--ink-faint); font-size: 9px; }
 .draftPanel { position: sticky; top: 112px; overflow: hidden; }
@@ -648,6 +667,11 @@ legend { width: 100%; padding: 0 0 12px; color: var(--ink); font-size: 11px; fon
 .reviewScore { font-size: 27px; }
 .reviewScore small { font-size: 10px; }
 .reviewReason { margin: 18px 0 0; padding: 15px; background: var(--paper-soft); border-radius: 7px; font-size: 12px; line-height: 1.6; }
+.fullReportCue { display: flex; align-items: center; gap: 9px; margin-top: 13px; padding: 12px 13px; color: var(--forest-2); background: #fff; border: 1px solid #c9d9d3; border-radius: 7px; }
+.fullReportCue > span { display: grid; gap: 2px; }
+.fullReportCue strong { font-size: 11px; }
+.fullReportCue small { color: var(--ink-soft); font-size: 9px; line-height: 1.5; }
+.structuredReportNotice { margin-top: 14px; }
 .reviewBox { margin-top: 12px; padding: 13px; background: var(--mint); border: 1px solid #c9e1d8; border-radius: 7px; }
 .reviewBox h4 { margin-bottom: 5px; color: var(--forest-2); }
 .reviewBox p { margin: 0; font-size: 11px; line-height: 1.55; }

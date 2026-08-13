@@ -8,19 +8,19 @@
   {
     "id": "dashboard",
     "caption": "Canonical agreement and settlement history from Bradbury",
-    "narration": "ClauseFlow is a two-party service agreement application on GenLayer. This public dashboard reads directly from the Bradbury contract. It shows two funded agreements, two completed outcomes, point zero two GEN paid, and point zero one five GEN refunded.",
+    "narration": "ClauseFlow is a two-party service agreement application on GenLayer. A contract-verified snapshot renders the public ledger immediately, while Bradbury views synchronize in the background and replace it with live on-chain data. The final ledger shows two completed outcomes, point zero two GEN paid, point zero one five GEN refunded, and zero active escrow.",
     "durationSeconds": 0
   },
   {
     "id": "payment",
     "caption": "Approved evidence releases escrow to the Builder",
-    "narration": "The first agreement proves the payment path. Its accepted clauses are immutable after funding and define scope, public deliverables, objective acceptance criteria, revisions, payment, and refund rules. Validators fetched the ClauseFlow release dossier, live application, contract source, and reviewer documentation, then recorded criterion-level findings. The on-chain timeline records the finalized payment transfer and verified paid state.",
+    "narration": "The first agreement proves the payment path. Its accepted clauses are immutable after funding. The leader creates a detailed report from the submitted public evidence. Protocol-selected validators treat that report as untrusted and independently refetch every submitted URL. They verify source accessibility, each acceptance criterion, deliverable coverage, missing items, score, and settlement decision. Matching JSON or matching prose alone is not enough for consensus. The on-chain report records each finding and validator reasoning, followed by the finalized point zero two GEN payment.",
     "durationSeconds": 0
   },
   {
     "id": "refund",
     "caption": "Missing evidence produces a verifiable refund outcome",
-    "narration": "The second agreement proves the refund path. It required a public accessibility audit with keyboard, focus, contrast, and remediation findings. Validators fetched the submitted sources, found that the funded evidence criteria were not satisfied, listed the missing items, and rejected delivery. The Client refund was finalized and the contract escrow balance returned to zero.",
+    "narration": "The second agreement proves the refund path. It required one dedicated accessibility audit with keyboard, focus, measured contrast, and remediation findings. Independent validators refetched the submitted sources, recorded why every material criterion failed, identified the absent deliverable, and rejected the delivery. That genuine non-delivery outcome enabled the Client refund. The timeline confirms point zero one five GEN refunded and contract escrow returned to zero.",
     "durationSeconds": 0
   },
   {
@@ -38,7 +38,7 @@
   {
     "id": "close",
     "caption": "One agreement. Public evidence. Verifiable settlement.",
-    "narration": "ClauseFlow uses validator consensus for a genuine trust decision that controls real escrow, not for generic advice. The live application, complete source repository, and verified Bradbury contract are ready for review.",
+    "narration": "ClauseFlow uses independent validator consensus for a genuine trust decision that controls testnet escrow, not for generic advice. This is an honest two-wallet Bradbury pilot. The live application, complete source repository, detailed on-chain reports, and verified contract are ready for Project review.",
     "durationSeconds": 0
   }
 ]

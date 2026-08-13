@@ -27,6 +27,7 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { connectWallet, createReadClient, explorerAddressUrl, explorerTxUrl, hasContractAddress, normalizeError, readJsonView, writeAndVerify, type ClauseFlowConfig } from "./lib/genlayer";
 import type { CalldataEncodable } from "genlayer-js/types";
+import bundledOnChainSnapshot from "./data/onchain-snapshot.json";
 
 type DealStatus = "FUNDED" | "SUBMITTED" | "APPROVED" | "REVISION_REQUIRED" | "REJECTED" | "PAYMENT_PENDING" | "REFUND_PENDING" | "PAID" | "REFUNDED";
 
@@ -172,25 +173,35 @@ type TxState = {
 };
 
 type DashboardSnapshot = {
+  version: number;
+  network: ClauseFlowConfig["chain"];
   contractAddress: string;
   offers: Offer[];
   deals: Deal[];
   stats: Stats;
   histories: Record<string, HistoryEvent[]>;
-  savedAt: string;
+  generatedAt: string;
 };
 
+type DataSource = "empty" | "snapshot" | "cache" | "live";
+
 const DASHBOARD_CACHE_PREFIX = "clauseflow:dashboard:";
-const DASHBOARD_CACHE_FRESH_MS = 5 * 60 * 1000;
-
-function isDashboardSnapshotFresh(snapshot: DashboardSnapshot | null) {
-  if (!snapshot) return false;
-  const savedAt = Date.parse(snapshot.savedAt);
-  return Number.isFinite(savedAt) && Date.now() - savedAt < DASHBOARD_CACHE_FRESH_MS;
-}
-
 function sameIds(ids: string[], records: Array<{ id: string }>) {
   return ids.length === records.length && ids.every((id, index) => records[index]?.id === id);
+}
+
+function isSnapshotForConfig(snapshot: DashboardSnapshot | null, config: ClauseFlowConfig) {
+  return Boolean(
+    snapshot
+    && snapshot.version === 1
+    && snapshot.network === config.chain
+    && snapshot.contractAddress.toLowerCase() === config.contractAddress.toLowerCase()
+    && Array.isArray(snapshot.offers)
+    && Array.isArray(snapshot.deals)
+    && snapshot.stats
+    && snapshot.histories
+    && Number.isFinite(Date.parse(snapshot.generatedAt))
+  );
 }
 
 function runtimeConfig(): ClauseFlowConfig {
@@ -213,19 +224,26 @@ function readDashboardSnapshot(config: ClauseFlowConfig): DashboardSnapshot | nu
     const raw = window.localStorage.getItem(`${DASHBOARD_CACHE_PREFIX}${config.contractAddress.toLowerCase()}`);
     if (!raw) return null;
     const snapshot = JSON.parse(raw) as DashboardSnapshot;
-    return snapshot.contractAddress.toLowerCase() === config.contractAddress.toLowerCase() ? snapshot : null;
+    return isSnapshotForConfig(snapshot, config) ? snapshot : null;
   } catch {
     return null;
   }
 }
 
-function storeDashboardSnapshot(config: ClauseFlowConfig, snapshot: Omit<DashboardSnapshot, "contractAddress" | "savedAt">) {
+function readBundledDashboardSnapshot(config: ClauseFlowConfig): DashboardSnapshot | null {
+  const snapshot = bundledOnChainSnapshot as unknown as DashboardSnapshot;
+  return isSnapshotForConfig(snapshot, config) ? snapshot : null;
+}
+
+function storeDashboardSnapshot(config: ClauseFlowConfig, snapshot: Omit<DashboardSnapshot, "version" | "network" | "contractAddress" | "generatedAt">) {
   if (!hasContractAddress(config)) return;
   try {
     window.localStorage.setItem(`${DASHBOARD_CACHE_PREFIX}${config.contractAddress.toLowerCase()}`, JSON.stringify({
       ...snapshot,
+      version: 1,
+      network: config.chain,
       contractAddress: config.contractAddress,
-      savedAt: new Date().toISOString()
+      generatedAt: new Date().toISOString()
     }));
   } catch {
     // A read-only dashboard remains usable when browser storage is unavailable.
@@ -234,7 +252,9 @@ function storeDashboardSnapshot(config: ClauseFlowConfig, snapshot: Omit<Dashboa
 
 export function App() {
   const initialConfig = runtimeConfig();
-  const initialSnapshot = readDashboardSnapshot(initialConfig);
+  const cachedSnapshot = readDashboardSnapshot(initialConfig);
+  const initialSnapshot = cachedSnapshot || readBundledDashboardSnapshot(initialConfig);
+  const initialDataSource: DataSource = cachedSnapshot ? "cache" : initialSnapshot ? "snapshot" : "empty";
   const [view, setView] = useState<"dashboard" | "offers" | "create" | "deal">("dashboard");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [config, setConfig] = useState<ClauseFlowConfig | null>(initialConfig);
@@ -249,8 +269,14 @@ export function App() {
   const [loading, setLoading] = useState(!initialSnapshot);
   const [refreshing, setRefreshing] = useState(Boolean(initialSnapshot));
   const [loadError, setLoadError] = useState("");
+  const [dataSource, setDataSource] = useState<DataSource>(initialDataSource);
+  const [dataTimestamp, setDataTimestamp] = useState(initialSnapshot?.generatedAt || "");
   const [walletAddress, setWalletAddress] = useState("");
   const refreshInFlight = useRef(false);
+  const offersRefreshInFlight = useRef(false);
+  const historyRefreshInFlight = useRef(new Set<string>());
+  const verifiedOfferContract = useRef("");
+  const verifiedHistoryFingerprints = useRef(new Map<string, string>());
   const [txState, setTxState] = useState<TxState>({
     hash: "",
     label: "No transaction submitted in this browser session.",
@@ -262,6 +288,12 @@ export function App() {
   });
 
   const selectedDeal = deals.find((deal) => deal.id === selectedDealId) || deals[0];
+  const selectedDealFingerprint = selectedDeal ? JSON.stringify(selectedDeal) : "";
+  const syncLabel = dataSource === "live"
+    ? refreshing ? "Live on-chain data • checking latest state" : "Live on-chain data synced"
+    : initialSnapshot
+      ? refreshing ? "Verified on-chain snapshot • syncing latest data" : "Verified on-chain snapshot"
+      : "Reading agreements from Bradbury";
   const filteredDeals = useMemo(() => {
     const query = filter.trim().toLowerCase();
     const builder = builderFilter.trim().toLowerCase();
@@ -278,18 +310,20 @@ export function App() {
     void refreshFromChain(false);
   }, []);
 
-  async function refreshFromChain(force = true) {
+  useEffect(() => {
+    if (view === "offers") void refreshOffersFromChain();
+    if (view === "deal" && selectedDeal) {
+      void refreshOffersFromChain();
+      void refreshHistoryFromChain(selectedDeal);
+    }
+  }, [view, selectedDeal?.id, selectedDealFingerprint]);
+
+  async function refreshFromChain(_force = true) {
     if (refreshInFlight.current) return;
     const cfg = runtimeConfig();
     setConfig(cfg);
     if (!hasContractAddress(cfg)) {
       setLoadError("No verified Bradbury contract address is configured. On-chain data is unavailable.");
-      setLoading(false);
-      setRefreshing(false);
-      return;
-    }
-    const cachedSnapshot = readDashboardSnapshot(cfg);
-    if (!force && isDashboardSnapshotFresh(cachedSnapshot)) {
       setLoading(false);
       setRefreshing(false);
       return;
@@ -300,39 +334,78 @@ export function App() {
     setLoadError("");
     try {
       const client = createReadClient(cfg);
-      const [offerIds, dealIds, chainStats] = await Promise.all([
-        readJsonView<string[]>(client, cfg, "get_offer_ids", []),
+      const [dealIds, chainStats] = await Promise.all([
         readJsonView<string[]>(client, cfg, "get_deal_ids", []),
         readJsonView<Stats>(client, cfg, "get_dashboard_stats", [])
       ]);
-      const chainOffers = cachedSnapshot && sameIds(offerIds, cachedSnapshot.offers)
-        ? cachedSnapshot.offers
-        : await Promise.all(offerIds.map((id) => readJsonView<Offer>(client, cfg, "get_offer", [id])));
       const chainDeals = await Promise.all(dealIds.map((id) => readJsonView<Deal>(client, cfg, "get_deal", [id])));
-      const chainHistories: Record<string, HistoryEvent[]> = {};
-      await Promise.all(
-        dealIds.map(async (id) => {
-          const chainDeal = chainDeals.find((deal) => deal.id === id);
-          const cachedDeal = cachedSnapshot?.deals.find((deal) => deal.id === id);
-          const cachedHistory = cachedSnapshot?.histories[id];
-          chainHistories[id] = chainDeal && cachedDeal && cachedHistory && JSON.stringify(chainDeal) === JSON.stringify(cachedDeal)
-            ? cachedHistory
-            : await readJsonView<HistoryEvent[]>(client, cfg, "get_deal_history", [id]);
-        })
-      );
-      setOffers(chainOffers);
+      for (const chainDeal of chainDeals) {
+        const previousDeal = deals.find((deal) => deal.id === chainDeal.id);
+        if (!previousDeal || JSON.stringify(previousDeal) !== JSON.stringify(chainDeal)) {
+          verifiedHistoryFingerprints.current.delete(chainDeal.id);
+        }
+      }
       setDeals(chainDeals);
       setStats(chainStats);
-      setHistories(chainHistories);
-      if (chainDeals[0]) setSelectedDealId(chainDeals[0].id);
-      storeDashboardSnapshot(cfg, { offers: chainOffers, deals: chainDeals, stats: chainStats, histories: chainHistories });
+      if (chainDeals[0] && !chainDeals.some((deal) => deal.id === selectedDealId)) setSelectedDealId(chainDeals[0].id);
+      const syncedAt = new Date().toISOString();
+      setDataSource("live");
+      setDataTimestamp(syncedAt);
+      storeDashboardSnapshot(cfg, { offers, deals: chainDeals, stats: chainStats, histories });
     } catch (error) {
-      setLoadError(`Could not read Bradbury contract state: ${normalizeError(error)}`);
+      setLoadError(`Could not refresh Bradbury contract state: ${normalizeError(error)}`);
     } finally {
       refreshInFlight.current = false;
       setLoading(false);
       setRefreshing(false);
     }
+  }
+
+  async function refreshOffersFromChain(force = false) {
+    const cfg = runtimeConfig();
+    const contractKey = cfg.contractAddress.toLowerCase();
+    if (!hasContractAddress(cfg) || offersRefreshInFlight.current || (!force && verifiedOfferContract.current === contractKey)) return;
+    offersRefreshInFlight.current = true;
+    try {
+      const client = createReadClient(cfg);
+      const offerIds = await readJsonView<string[]>(client, cfg, "get_offer_ids", []);
+      const chainOffers = sameIds(offerIds, offers)
+        ? offers
+        : await Promise.all(offerIds.map((id) => readJsonView<Offer>(client, cfg, "get_offer", [id])));
+      setOffers(chainOffers);
+      verifiedOfferContract.current = contractKey;
+      if (stats) storeDashboardSnapshot(cfg, { offers: chainOffers, deals, stats, histories });
+    } catch (error) {
+      setLoadError(`Could not refresh Bradbury offers: ${normalizeError(error)}`);
+    } finally {
+      offersRefreshInFlight.current = false;
+    }
+  }
+
+  async function refreshHistoryFromChain(deal: Deal) {
+    const cfg = runtimeConfig();
+    if (!hasContractAddress(cfg) || historyRefreshInFlight.current.has(deal.id)) return;
+    const fingerprint = JSON.stringify(deal);
+    if (verifiedHistoryFingerprints.current.get(deal.id) === fingerprint) return;
+    historyRefreshInFlight.current.add(deal.id);
+    try {
+      const client = createReadClient(cfg);
+      const chainHistory = await readJsonView<HistoryEvent[]>(client, cfg, "get_deal_history", [deal.id]);
+      const nextHistories = { ...histories, [deal.id]: chainHistory };
+      setHistories(nextHistories);
+      verifiedHistoryFingerprints.current.set(deal.id, fingerprint);
+      if (stats) storeDashboardSnapshot(cfg, { offers, deals, stats, histories: nextHistories });
+    } catch (error) {
+      setLoadError(`Could not refresh agreement history: ${normalizeError(error)}`);
+    } finally {
+      historyRefreshInFlight.current.delete(deal.id);
+    }
+  }
+
+  async function refreshVisibleData() {
+    await refreshFromChain(true);
+    if (view === "offers") await refreshOffersFromChain(true);
+    if (view === "deal" && selectedDeal) await refreshHistoryFromChain(selectedDeal);
   }
 
   async function handleConnectWallet() {
@@ -411,12 +484,17 @@ export function App() {
             </div>
           </div>
           <div className="headerActions">
-            <button className="iconButton" aria-label="Refresh on-chain data" title="Refresh on-chain data" onClick={() => void refreshFromChain(true)}><RefreshCcw size={17} className={refreshing ? "spin" : ""} /></button>
+            <button className="iconButton" aria-label="Refresh on-chain data" title="Refresh on-chain data" onClick={() => void refreshVisibleData()}><RefreshCcw size={17} className={refreshing ? "spin" : ""} /></button>
             <button className="walletButton" onClick={handleConnectWallet}><Wallet size={16} /> {walletAddress ? short(walletAddress) : "Connect wallet"}</button>
           </div>
         </header>
 
-        {loadError && <div className="notice errorNotice"><ShieldCheck size={17} /><span>{loadError}</span></div>}
+        <div className={`dataSyncStatus ${loadError && stats ? "degraded" : ""}`} role="status" aria-live="polite">
+          {refreshing ? <RefreshCcw size={14} className="spin" /> : <BadgeCheck size={14} />}
+          <span><strong>{syncLabel}</strong>{dataTimestamp && <small>Snapshot/view time {formatDate(dataTimestamp)}</small>}</span>
+        </div>
+        {loadError && !stats && <div className="notice errorNotice"><ShieldCheck size={17} /><span>{loadError}</span></div>}
+        {loadError && stats && <div className="syncWarning"><span>Live refresh unavailable. Verified data remains visible.</span><small>{loadError}</small></div>}
         {refreshing && <div className="loadingBar" aria-label="Updating Bradbury contract views" />}
         {txState.lifecycle !== "idle" && <TransactionBanner txState={txState} config={config} onDismiss={() => setTxState({ hash: "", label: "No transaction submitted in this browser session.", lifecycle: "idle", executionResult: "NOT_SUBMITTED", consensusResult: "IDLE", message: "Read-only dashboard is available without connecting a wallet.", childTransactions: [] })} />}
 
@@ -849,10 +927,12 @@ function DealDetail({ deal, offer, history, txState, executeWrite, config, walle
           {(deal.reviewExecutiveSummary || deal.reviewReason) && <p className="reviewReason">{deal.reviewExecutiveSummary || deal.reviewReason}</p>}
           {!deal.reviewedAt && <p className="reviewReason">No validator report is stored on-chain yet.</p>}
           {deal.reviewedAt && !deal.reviewExecutiveSummary && !deal.reviewReason && <div className="notice warning"><CircleDotIcon /><span>This review has no narrative report stored in the deal view.</span></div>}
-          {deal.reviewConsensusBasis && <div className="consensusNote"><ShieldCheck size={16} /><span><strong>On-chain verification rule</strong>{deal.reviewConsensusBasis}</span></div>}
-          {sourceAssessments.length > 0 ? <ReviewSources sources={sourceAssessments} /> : deal.reviewEvidenceSummary && <div className="reviewBox"><h4>Evidence checked</h4><p>{deal.reviewEvidenceSummary}</p></div>}
+          {deal.reviewedAt && <div className="fullReportCue"><ClipboardCheck size={16} /><span><strong>Full validator report</strong><small>{criterionAssessments.length} criteria, {deliverableAssessments.length} deliverables, and {sourceAssessments.length} evidence sources stored in this on-chain deal.</small></span></div>}
           {criterionAssessments.length > 0 && <ReviewAssessments title="Acceptance criteria" assessments={criterionAssessments} />}
+          {deal.reviewedAt && criterionAssessments.length === 0 && <div className="notice warning structuredReportNotice"><CircleDotIcon /><span>Criterion-level structured validator data was not stored in this on-chain deal. ClauseFlow will not infer replacement findings or reasoning.</span></div>}
           {deliverableAssessments.length > 0 && <ReviewAssessments title="Deliverables" assessments={deliverableAssessments} />}
+          {deal.reviewedAt && deliverableAssessments.length === 0 && <div className="notice warning structuredReportNotice"><CircleDotIcon /><span>Deliverable-level structured validator data was not stored in this on-chain deal. ClauseFlow will not infer replacement findings or reasoning.</span></div>}
+          {sourceAssessments.length > 0 ? <ReviewSources sources={sourceAssessments} /> : deal.reviewEvidenceSummary && <div className="reviewBox"><h4>Evidence sources</h4><p>{deal.reviewEvidenceSummary}</p></div>}
           {!hasDetailedReview && deal.reviewCriteriaResults && <ClauseBlock title="Criteria results" items={splitLines(deal.reviewCriteriaResults)} />}
           {(reviewStrengths.length > 0 || reviewRisks.length > 0) && <div className="reviewSignals">
             {reviewStrengths.length > 0 && <ClauseBlock title="Verified strengths" items={reviewStrengths} />}
@@ -860,6 +940,7 @@ function DealDetail({ deal, offer, history, txState, executeWrite, config, walle
           </div>}
           {deal.reviewMissingItems && <ClauseBlock title="Missing items" items={splitLines(deal.reviewMissingItems)} />}
           {deal.revisionChecklist && <ClauseBlock title="Revision checklist" items={[deal.revisionChecklist]} />}
+          {deal.reviewConsensusBasis && <div className="consensusNote"><ShieldCheck size={16} /><span><strong>On-chain verification rule</strong>{deal.reviewConsensusBasis}</span></div>}
           <button className="primary wide" onClick={() => void executeWrite("Run Review", "review_delivery", [deal.id]).catch(() => undefined)} disabled={deal.status !== "SUBMITTED"}><Sparkles size={16} /> Run validator review</button>
         </section>
       </div>}

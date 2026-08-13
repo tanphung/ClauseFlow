@@ -11,23 +11,20 @@ The produced reviewer video and upload copy are documented in [`DEMO_VIDEO.md`](
 
 ## Demo Flow
 
-1. **Dashboard, 20 seconds**
-   Show that totals and agreement rows load from the Bradbury contract. Open paid deal `1` and point out the accepted clauses, evidence package, validator findings, payment transaction, and lifecycle timeline.
+1. **Dashboard**
+   Reload production with browser cache available. Show the verified snapshot immediately, then the status transition to `Live on-chain data synced`. Point out the two terminal agreements and balance-backed totals.
 
-2. **Create an offer, 40 seconds**
-   As the Builder, enter a concrete request for a real public project. Structure the clauses, review every generated section, and publish only after the scope, deliverables, acceptance criteria, evidence requirements, deadline, revisions, payment, and refund terms are specific.
+2. **Paid agreement**
+   Open `ClauseFlow release evidence dossier`, show immutable terms, then the full validator report. Explain that the leader creates the detailed report while protocol-selected validators independently refetch every URL and verify accessibility, criteria, deliverables, missing items, score, and settlement decision. Point at individual Finding and Validator reasoning fields before showing the `PAID 0.02 GEN` timeline.
 
-3. **Fund the agreement, 30 seconds**
-   Switch to the Client wallet, accept the offer, and lock the exact GEN amount. Show the pending transaction, consensus state, execution result, and refreshed `FUNDED` deal state.
+3. **Refunded agreement**
+   Open `ClauseFlow accessibility audit agreement`. Show the `REJECTED 0/100` report, failed criteria, missing dedicated audit deliverable, and the `REFUNDED 0.015 GEN` timeline with zero active escrow.
 
-4. **Submit and review evidence, 50 seconds**
-   Switch back to the Builder. Submit the real live URL, demo URL, docs URL, and repository URL. Trigger review and show that validators fetch those sources and return criteria-level findings rather than validating JSON format alone.
+4. **Discovery and workspace**
+   Demonstrate public title and address filters. Open the empty Create workspace, then the accepted published offer terms. Do not connect a wallet or submit a transaction during recording.
 
-5. **Settle and verify, 30 seconds**
-   Claim the eligible payment or refund, then confirm settlement after the transfer finalizes. Show that a second settlement is rejected and the Dashboard amount changes only after contract state confirms the transfer.
-
-6. **Close, 10 seconds**
-   Filter the Dashboard by Builder and Client addresses. Explain that the public history is canonical on-chain data and that validator consensus controls a real escrow outcome.
+5. **Close**
+   Identify the history honestly as a two-wallet Bradbury pilot and show the production and GitHub reviewer links.
 
 ## Recording Rules
 

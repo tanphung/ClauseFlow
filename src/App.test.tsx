@@ -122,7 +122,7 @@ describe("ClauseFlow", () => {
     expect(vi.mocked(genlayer.readJsonView)).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ contractAddress: stagingContract }),
-      "get_offer_ids",
+      "get_deal_ids",
       []
     );
   });
@@ -131,11 +131,13 @@ describe("ClauseFlow", () => {
     vi.mocked(genlayer.readJsonView).mockImplementation(() => new Promise(() => undefined));
     render(<App />);
     expect(screen.getByLabelText("Loading on-chain agreements")).toBeTruthy();
-    expect(screen.getByText(/Reading agreements from Bradbury/i)).toBeTruthy();
+    expect(screen.getAllByText(/Reading agreements from Bradbury/i).length).toBeGreaterThan(0);
   });
 
   it("renders the cached snapshot immediately while Bradbury refreshes in the background", async () => {
     window.localStorage.setItem("clauseflow:dashboard:0x3333333333333333333333333333333333333333", JSON.stringify({
+      version: 1,
+      network: "testnetBradbury",
       contractAddress: "0x3333333333333333333333333333333333333333",
       offers: [offer],
       deals: [deal],
@@ -145,7 +147,7 @@ describe("ClauseFlow", () => {
           { eventType: "PAID", note: "GEN payment verified", timestamp: deal.paidAt, actor: builder }
         ]
       },
-      savedAt: "2026-07-24T00:00:00Z"
+      generatedAt: "2026-07-24T00:00:00Z"
     }));
     render(<App />);
     expect(screen.getByText(/Mochi-Game Quest Evaluator polish/i)).toBeTruthy();
@@ -153,8 +155,10 @@ describe("ClauseFlow", () => {
     await waitFor(() => expect(vi.mocked(genlayer.readJsonView)).toHaveBeenCalled());
   });
 
-  it("uses a fresh verified snapshot without repeating Bradbury reads on reopen", async () => {
+  it("renders a fresh cache immediately and still verifies live Bradbury data in the background", async () => {
     window.localStorage.setItem("clauseflow:dashboard:0x3333333333333333333333333333333333333333", JSON.stringify({
+      version: 1,
+      network: "testnetBradbury",
       contractAddress: "0x3333333333333333333333333333333333333333",
       offers: [offer],
       deals: [deal],
@@ -164,13 +168,69 @@ describe("ClauseFlow", () => {
           { eventType: "PAID", note: "GEN payment verified", timestamp: deal.paidAt, actor: builder }
         ]
       },
-      savedAt: new Date().toISOString()
+      generatedAt: new Date().toISOString()
     }));
     render(<App />);
     expect(screen.getByText(/Mochi-Game Quest Evaluator polish/i)).toBeTruthy();
     expect(screen.getByText("PAID")).toBeTruthy();
-    await Promise.resolve();
-    expect(vi.mocked(genlayer.readJsonView)).not.toHaveBeenCalled();
+    await waitFor(() => expect(vi.mocked(genlayer.readJsonView)).toHaveBeenCalledWith(expect.anything(), expect.anything(), "get_dashboard_stats", []));
+  });
+
+  it("uses the bundled snapshot only for its exact Bradbury contract", async () => {
+    window.CLAUSEFLOW_CONFIG = { contractAddress: "0xF85C4460B8195F9ebFD7b376c852aD7E89Ffe63D", chain: "testnetBradbury", explorerUrl: "https://explorer-bradbury.genlayer.com" };
+    vi.mocked(genlayer.readJsonView).mockImplementation(() => new Promise(() => undefined));
+    render(<App />);
+    expect(screen.getByText("ClauseFlow release evidence dossier")).toBeTruthy();
+    expect(screen.getByText(/Verified on-chain snapshot • syncing latest data/i)).toBeTruthy();
+  });
+
+  it("keeps verified cached rows visible when a background Bradbury refresh fails", async () => {
+    window.localStorage.setItem("clauseflow:dashboard:0x3333333333333333333333333333333333333333", JSON.stringify({
+      version: 1,
+      network: "testnetBradbury",
+      contractAddress: "0x3333333333333333333333333333333333333333",
+      offers: [offer],
+      deals: [deal],
+      stats,
+      histories: { "1": [{ eventType: "PAID", note: "GEN payment verified", timestamp: deal.paidAt, actor: builder }] },
+      generatedAt: "2026-07-24T00:00:00Z"
+    }));
+    vi.mocked(genlayer.readJsonView).mockRejectedValue(new Error("get_deal_ids timed out while reading Bradbury state"));
+    render(<App />);
+    expect(screen.getByText(/Mochi-Game Quest Evaluator polish/i)).toBeTruthy();
+    expect(await screen.findByText(/Live refresh unavailable. Verified data remains visible./i)).toBeTruthy();
+    expect(screen.getByText("PAID")).toBeTruthy();
+  });
+
+  it("defers offer and history reads until a view needs them", async () => {
+    render(<App />);
+    await screen.findByText(/Mochi-Game Quest Evaluator polish/i);
+    expect(vi.mocked(genlayer.readJsonView)).not.toHaveBeenCalledWith(expect.anything(), expect.anything(), "get_offer_ids", []);
+    expect(vi.mocked(genlayer.readJsonView)).not.toHaveBeenCalledWith(expect.anything(), expect.anything(), "get_deal_history", expect.anything());
+    fireEvent.click(screen.getByRole("button", { name: "Offers" }));
+    await waitFor(() => expect(vi.mocked(genlayer.readJsonView)).toHaveBeenCalledWith(expect.anything(), expect.anything(), "get_offer_ids", []));
+    fireEvent.click(screen.getByRole("button", { name: /Deal Detail/i }));
+    await waitFor(() => expect(vi.mocked(genlayer.readJsonView)).toHaveBeenCalledWith(expect.anything(), expect.anything(), "get_deal_history", ["1"]));
+  });
+
+  it("invalidates a verified history cache when the live deal state changes", async () => {
+    let chainDeal = { ...deal, status: "SUBMITTED", completedAt: "", paidAt: "", paid: "false" };
+    vi.mocked(genlayer.readJsonView).mockImplementation(async (_client, _config, functionName) => {
+      if (functionName === "get_deal_ids") return ["1"];
+      if (functionName === "get_dashboard_stats") return stats;
+      if (functionName === "get_deal") return chainDeal;
+      if (functionName === "get_offer_ids") return ["1"];
+      if (functionName === "get_offer") return offer;
+      if (functionName === "get_deal_history") return [{ eventType: chainDeal.status, note: chainDeal.status, timestamp: deal.reviewedAt, actor: client }];
+      throw new Error(`Unexpected view ${functionName}`);
+    });
+    render(<App />);
+    await screen.findByText(/Mochi-Game Quest Evaluator polish/i);
+    fireEvent.click(screen.getByRole("button", { name: /Deal Detail/i }));
+    await waitFor(() => expect(vi.mocked(genlayer.readJsonView).mock.calls.filter((call) => call[2] === "get_deal_history")).toHaveLength(1));
+    chainDeal = deal;
+    fireEvent.click(screen.getByRole("button", { name: /Refresh on-chain data/i }));
+    await waitFor(() => expect(vi.mocked(genlayer.readJsonView).mock.calls.filter((call) => call[2] === "get_deal_history")).toHaveLength(2));
   });
 
   it("filters history by both party addresses", async () => {
@@ -208,7 +268,7 @@ describe("ClauseFlow", () => {
     await screen.findByText(/Mochi-Game Quest Evaluator polish/i);
     fireEvent.click(screen.getByRole("button", { name: /Deal Detail/i }));
     fireEvent.click(screen.getByRole("tab", { name: /On-chain history/i }));
-    expect(screen.getByText(/Approved \(100\/100\)\. Fetched live app and README\./i)).toBeTruthy();
+    expect(await screen.findByText(/Approved \(100\/100\)\. Fetched live app and README\./i)).toBeTruthy();
     expect(screen.queryByText(/\{legacy-review-payload\}/i)).toBeNull();
     expect(screen.getByRole("link", { name: /Actor 0x2222\.\.\.2222/i }).getAttribute("href")).toBe(`https://explorer-bradbury.genlayer.com/address/${client}`);
     expect(screen.getAllByRole("link", { name: /Contract record/i })[0].getAttribute("href")).toBe("https://explorer-bradbury.genlayer.com/address/0x3333333333333333333333333333333333333333");
@@ -218,7 +278,7 @@ describe("ClauseFlow", () => {
     render(<App />);
     await screen.findByText(/Mochi-Game Quest Evaluator polish/i);
     fireEvent.click(screen.getByRole("button", { name: /Deal Detail/i }));
-    const summary = screen.getByText("Full accepted terms");
+    const summary = await screen.findByText("Full accepted terms");
     expect((summary.closest("details") as HTMLDetailsElement).open).toBe(true);
   });
 
@@ -227,12 +287,32 @@ describe("ClauseFlow", () => {
     await screen.findByText(/Mochi-Game Quest Evaluator polish/i);
     fireEvent.click(screen.getByRole("button", { name: /Deal Detail/i }));
     fireEvent.click(screen.getByRole("tab", { name: /Evidence & review/i }));
+    expect(screen.getByText("Full validator report")).toBeTruthy();
     expect(screen.getByText("On-chain verification rule")).toBeTruthy();
     expect(screen.getByText("Acceptance criteria")).toBeTruthy();
     expect(screen.getAllByText("Validator reasoning")).toHaveLength(2);
     expect(screen.getByText(/independently corroborate/i)).toBeTruthy();
     expect(screen.getAllByRole("link", { name: /mochi-game-frontend.vercel.app/i }).length).toBeGreaterThan(0);
     expect(screen.queryByText(/public evidence contains/i)).toBeNull();
+  });
+
+  it("does not invent detailed reasoning when structured review fields are absent", async () => {
+    vi.mocked(genlayer.readJsonView).mockImplementation(async (_client, _config, functionName) => {
+      if (functionName === "get_deal_ids") return ["1"];
+      if (functionName === "get_dashboard_stats") return stats;
+      if (functionName === "get_deal") return { ...deal, reviewCriterionAssessments: "", reviewDeliverableAssessments: "", reviewSourceAssessments: "" };
+      if (functionName === "get_offer_ids") return ["1"];
+      if (functionName === "get_offer") return offer;
+      if (functionName === "get_deal_history") return [];
+      throw new Error(`Unexpected view ${functionName}`);
+    });
+    render(<App />);
+    await screen.findByText(/Mochi-Game Quest Evaluator polish/i);
+    fireEvent.click(screen.getByRole("button", { name: /Deal Detail/i }));
+    fireEvent.click(screen.getByRole("tab", { name: /Evidence & review/i }));
+    expect(screen.getByText(/Criterion-level structured validator data was not stored/i)).toBeTruthy();
+    expect(screen.getByText(/Deliverable-level structured validator data was not stored/i)).toBeTruthy();
+    expect(screen.getAllByText(/will not infer replacement findings or reasoning/i)).toHaveLength(2);
   });
 });
 

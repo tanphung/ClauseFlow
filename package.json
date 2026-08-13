@@ -11,6 +11,7 @@
     "deploy:bradbury": "node scripts/deploy-bradbury.mjs",
     "smoke:bradbury": "node scripts/bradbury-smoke.mjs",
     "resume:settlement": "node scripts/resume-settlement.mjs",
+    "snapshot:onchain": "node scripts/export-onchain-snapshot.mjs",
     "demo:video": "powershell -ExecutionPolicy Bypass -File scripts/build-demo-video.ps1"
   },
   "dependencies": {
