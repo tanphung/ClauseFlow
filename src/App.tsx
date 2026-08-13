@@ -307,7 +307,7 @@ export function App() {
   }, [builderFilter, clientFilter, deals, filter]);
 
   useEffect(() => {
-    void refreshFromChain(false);
+    void refreshFromChain();
   }, []);
 
   useEffect(() => {
@@ -318,7 +318,7 @@ export function App() {
     }
   }, [view, selectedDeal?.id, selectedDealFingerprint]);
 
-  async function refreshFromChain(_force = true) {
+  async function refreshFromChain() {
     if (refreshInFlight.current) return;
     const cfg = runtimeConfig();
     setConfig(cfg);
@@ -403,7 +403,7 @@ export function App() {
   }
 
   async function refreshVisibleData() {
-    await refreshFromChain(true);
+    await refreshFromChain();
     if (view === "offers") await refreshOffersFromChain(true);
     if (view === "deal" && selectedDeal) await refreshHistoryFromChain(selectedDeal);
   }
@@ -428,7 +428,7 @@ export function App() {
       });
       setWalletAddress(result.address);
       setTxState({ hash: result.hash, label, lifecycle: result.lifecycle === "FINALIZED" ? "finalized" : "accepted", executionResult: result.executionResult, consensusResult: result.consensusResult, message: result.childTransactions.length ? "Parent execution succeeded. Child GEN transfer IDs are shown below for independent verification." : "Execution and consensus succeeded; on-chain state is being refreshed.", childTransactions: result.childTransactions });
-      await refreshFromChain(true);
+      await refreshFromChain();
       return result;
     } catch (error) {
       const message = normalizeError(error);

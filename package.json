@@ -1,4 +1,7 @@
 {
+  "name": "clauseflow",
+  "version": "1.0.0",
+  "private": true,
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
@@ -15,22 +18,22 @@
     "demo:video": "powershell -ExecutionPolicy Bypass -File scripts/build-demo-video.ps1"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
     "genlayer-js": "^1.2.0",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "typescript": "^5.7.2",
-    "viem": "^2.55.4",
-    "vite": "^6.0.7"
+    "viem": "^2.55.4"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
     "@testing-library/react": "^16.1.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.3.4",
     "ethers": "^6.17.0",
     "jsdom": "^25.0.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7",
     "vitest": "^4.1.10"
   }
 }

@@ -6,11 +6,11 @@ import sys
 
 PRICE = 20_000_000_000_000_000
 BUILDER_INPUTS = (
-    "Audit and polish Mochi-Game Quest Evaluator demo flow",
-    "Review the public Mochi-Game dApp and make the Quest Evaluator reviewer path clear.",
-    "Inspect the live Mochi-Game app and GitHub README, then deliver a reviewer-ready Quest Evaluator evidence package.",
-    "Public live app URL, GitHub repository, README evidence, and a delivery note explaining the Quest Evaluator flow.",
-    "Validators can fetch the live app and GitHub README and confirm the Quest Evaluator purpose, GenLayer consensus usage, and reviewer demo checklist.",
+    "Verify the ClauseFlow release evidence dossier",
+    "Review the public ClauseFlow dApp and its complete settlement evidence path.",
+    "Inspect the live ClauseFlow app, contract source, and README, then deliver a reviewer-ready evidence package.",
+    "Public live app URL, GitHub repository, README evidence, and a delivery note explaining the agreement flow.",
+    "Validators can fetch the live app and GitHub README and confirm the ClauseFlow purpose, GenLayer consensus usage, and reviewer checklist.",
 )
 
 
@@ -53,7 +53,7 @@ def _publish(contract, vm, builder) -> str:
         24,
         24,
         "Refund after deadline plus grace period if no valid delivery exists.",
-        "https://github.com/tanphung/Mochi-Game\nhttps://mochi-game-frontend.vercel.app",
+        "https://github.com/tanphung/ClauseFlow\nhttps://clauseflow-two.vercel.app",
     )
 
 
@@ -73,26 +73,26 @@ def _submit_and_review(contract, vm, builder, deal_id: str, result: str, validat
     has_relevant_evidence = approved or revision
     contract.submit_delivery(
         deal_id,
-        "https://mochi-game-frontend.vercel.app" if has_relevant_evidence else "https://invalid.example/evidence",
-        "https://github.com/tanphung/Mochi-Game" if has_relevant_evidence else "",
-        "https://mochi-game-frontend.vercel.app" if has_relevant_evidence else "",
-        "https://github.com/tanphung/Mochi-Game#readme" if has_relevant_evidence else "",
-        "Delivered a public Mochi-Game Quest Evaluator evidence package." if has_relevant_evidence else "Submitted unrelated evidence.",
+        "https://clauseflow-two.vercel.app" if has_relevant_evidence else "https://invalid.example/evidence",
+        "https://github.com/tanphung/ClauseFlow" if has_relevant_evidence else "",
+        "https://clauseflow-two.vercel.app" if has_relevant_evidence else "",
+        "https://github.com/tanphung/ClauseFlow#readme" if has_relevant_evidence else "",
+        "Delivered a public ClauseFlow release evidence package." if has_relevant_evidence else "Submitted unrelated evidence.",
     )
     vm.clear_mocks()
-    body = "Mochi-Game Mochi Quest Evaluator GenLayer consensus demo autofill GitHub README live app evidence." if has_relevant_evidence else "Unrelated landing page with no accepted evidence."
+    body = "ClauseFlow agreement protocol GenLayer consensus settlement GitHub README live app evidence." if has_relevant_evidence else "Unrelated landing page with no accepted evidence."
     vm.mock_web(r".*", {"status": 200, "body": body})
     criterion_status = "SATISFIED" if has_relevant_evidence else "NOT_SATISFIED"
     deliverable_status = "SATISFIED" if approved else "PARTIAL" if revision else "NOT_SATISFIED"
-    evidence_urls = ["https://mochi-game-frontend.vercel.app"] if has_relevant_evidence else ["https://invalid.example/evidence"]
+    evidence_urls = ["https://clauseflow-two.vercel.app"] if has_relevant_evidence else ["https://invalid.example/evidence"]
     executive_summary = (
-        "The fetched live application and repository directly demonstrate the accepted Quest Evaluator workflow and its GenLayer integration. "
+        "The fetched live application and repository directly demonstrate the accepted ClauseFlow agreement workflow and its GenLayer integration. "
         "Each accepted obligation is supported by public, independently retrievable evidence."
     ) if approved else (
-        "The public application proves the core Quest Evaluator criterion, but the submitted artifact package is incomplete. "
+        "The public application proves the core ClauseFlow criterion, but the submitted artifact package is incomplete. "
         "A corrected evidence package can resolve the documented deliverable gap."
     ) if revision else (
-        "The submitted public page is unrelated to the accepted Quest Evaluator work and provides no verifiable implementation evidence. "
+        "The submitted public page is unrelated to the accepted ClauseFlow work and provides no verifiable implementation evidence. "
         "The accepted obligations therefore cannot be settled in the Builder's favor."
     )
     vm.mock_llm(
@@ -148,7 +148,7 @@ def test_publish_requires_contract_draft(direct_vm, direct_deploy, direct_alice)
         contract.publish_offer(
             *BUILDER_INPUTS, PRICE, 1, 1, 24, 24,
             "Refund after deadline plus grace period if no valid delivery exists.",
-            "https://github.com/tanphung/Mochi-Game",
+            "https://github.com/tanphung/ClauseFlow",
         )
 
 
@@ -158,14 +158,14 @@ def test_structured_draft_is_material_and_bound_to_source(direct_vm, direct_depl
     assert clauses["deadline"] == "3 day(s) after funding plus a 24 hour grace period."
     assert clauses["paymentTerms"] == "Release 0.02 GEN after an APPROVED evidence review."
     assert "attoGEN" not in clauses["paymentTerms"]
-    assert "Mochi-Game" in clauses["scope"]
+    assert "ClauseFlow" in clauses["scope"]
     draft = json.loads(contract.get_structured_offer(_wallet(direct_alice)))
     assert draft["clauses"] == clauses
     with direct_vm.expect_revert("fields changed after structuring"):
         contract.publish_offer(
             BUILDER_INPUTS[0] + " changed", *BUILDER_INPUTS[1:], PRICE, 1, 1, 24, 24,
             "Refund after deadline plus grace period if no valid delivery exists.",
-            "https://github.com/tanphung/Mochi-Game",
+            "https://github.com/tanphung/ClauseFlow",
         )
 
 
@@ -215,7 +215,7 @@ def test_only_builder_can_submit_and_approved_payment_is_idempotent(direct_vm, d
     deal_id = _fund(contract, direct_vm, direct_alice, direct_bob)
     direct_vm.sender = direct_bob
     with direct_vm.expect_revert("Only the builder"):
-        contract.submit_delivery(deal_id, "https://mochi-game-frontend.vercel.app", "", "", "", "Not builder")
+        contract.submit_delivery(deal_id, "https://clauseflow-two.vercel.app", "", "", "", "Not builder")
     review = _submit_and_review(contract, direct_vm, direct_alice, deal_id, "APPROVED")
     assert review["result"] == "APPROVED"
     assert review["score"] == "100"
@@ -266,10 +266,10 @@ def test_one_revision_round_allows_one_corrected_submission(direct_vm, direct_de
     direct_vm.sender = direct_alice
     contract.submit_delivery(
         deal_id,
-        "https://mochi-game-frontend.vercel.app",
-        "https://github.com/tanphung/Mochi-Game",
+        "https://clauseflow-two.vercel.app",
+        "https://github.com/tanphung/ClauseFlow",
         "",
-        "https://github.com/tanphung/Mochi-Game#readme",
+        "https://github.com/tanphung/ClauseFlow#readme",
         "Corrected evidence package for the allowed revision round.",
     )
     assert json.loads(contract.get_deal(deal_id))["status"] == "SUBMITTED"

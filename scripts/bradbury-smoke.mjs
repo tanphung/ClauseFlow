@@ -7,11 +7,11 @@ import { createPublicClient, encodeFunctionData, formatEther, http, parseEventLo
 
 const contractAddress = process.argv[2];
 if (!/^0x[a-fA-F0-9]{40}$/.test(contractAddress || "")) {
-  throw new Error("Usage: npm run smoke:bradbury -- <contract-address> [preflight|canary|payment-only|refund-only|full]");
+  throw new Error("Usage: npm run smoke:bradbury -- <contract-address> [preflight|payment-only|refund-only|full]");
 }
 const mode = process.argv[3] || "full";
 const resumedPaymentDealId = process.argv[4] || "";
-if (!["preflight", "canary", "payment-only", "refund-only", "full", "payment-revision", "payment-resume", "refund-resume", "appeal", "finalize-idle", "finalize"].includes(mode)) throw new Error(`Unknown smoke mode: ${mode}`);
+if (!["preflight", "payment-only", "refund-only", "full", "payment-revision", "payment-resume", "refund-resume", "appeal", "finalize-idle", "finalize"].includes(mode)) throw new Error(`Unknown smoke mode: ${mode}`);
 if (mode === "payment-revision" && !/^\d+$/.test(resumedPaymentDealId)) {
   throw new Error("Usage: npm run smoke:bradbury -- <contract-address> payment-revision <deal-id>");
 }
@@ -95,6 +95,8 @@ if (!/^0x[a-fA-F0-9]{64}$/.test(builderKey || "") || !/^0x[a-fA-F0-9]{64}$/.test
 const builder = privateKeyToAccount(builderKey);
 const client = privateKeyToAccount(clientKey);
 if (builder.address.toLowerCase() === client.address.toLowerCase()) throw new Error("Builder and Client must use different wallets");
+if (env.EXPECTED_BUILDER_WALLET_ADDRESS && builder.address.toLowerCase() !== env.EXPECTED_BUILDER_WALLET_ADDRESS.toLowerCase()) throw new Error("Builder key does not match EXPECTED_BUILDER_WALLET_ADDRESS");
+if (env.EXPECTED_CLIENT_WALLET_ADDRESS && client.address.toLowerCase() !== env.EXPECTED_CLIENT_WALLET_ADDRESS.toLowerCase()) throw new Error("Client key does not match EXPECTED_CLIENT_WALLET_ADDRESS");
 if (env.ClauseFlow2_ADDRESS && builder.address.toLowerCase() !== env.ClauseFlow2_ADDRESS.toLowerCase()) throw new Error("Builder key does not match ClauseFlow2_ADDRESS");
 if (env.ClauseFlow3_ADDRESS && client.address.toLowerCase() !== env.ClauseFlow3_ADDRESS.toLowerCase()) throw new Error("Client key does not match ClauseFlow3_ADDRESS");
 
@@ -432,20 +434,6 @@ const refundArgs = (title, price) => [
   refundRule,
 ];
 
-const canaryArgs = (title, price) => [
-  title,
-  "Verify the deployed ClauseFlow review design from its public contract source and architecture document before it is used for final submission history.",
-  "The Builder must provide the direct public ClauseFlow contract source and architecture document. Validators must verify that the leader creates a detailed criterion and deliverable report, each validator treats that report as untrusted and independently refetches evidence, the contract derives outcomes deterministically, and consensus verifies material claims rather than JSON shape or identical prose.",
-  "The direct public intelligent contract source at commit e91987b.\nThe public architecture document describing the same independent material-assessment flow.",
-  "The contract source must contain separate detailed leader and independent report-verifier prompts.\nThe validator prompt must require independently fetched observable evidence and prohibit trusting the leader report.\nThe verifier must separately check source accessibility, criterion coverage, deliverable coverage, missing items, score, decision, and unsupported claims.\nThe architecture document must describe the same trust boundary without claiming format-only validation.",
-  price,
-  1n,
-  0n,
-  24n,
-  24n,
-  refundRule,
-];
-
 async function createOffer(title, args) {
   const price = args[5];
   const offerIds = await readJson("get_offer_ids");
@@ -543,12 +531,10 @@ async function waitForLastId(functionName) {
   throw new Error(`${functionName} did not return an id`);
 }
 
-async function completePayment(dealId, canary = false) {
+async function completePayment(dealId) {
   let state = await readJson("get_deal", [dealId]);
   if (state.status === "FUNDED" || state.status === "REVISION_REQUIRED") {
-    const evidence = canary
-      ? [dealId, "https://raw.githubusercontent.com/tanphung/ClauseFlow/e91987b/contracts/clauseflow.py", "https://raw.githubusercontent.com/tanphung/ClauseFlow/e91987b/docs/ARCHITECTURE.md", "https://raw.githubusercontent.com/tanphung/ClauseFlow/e91987b/README.md", "https://github.com/tanphung/ClauseFlow/tree/e91987b", "Canary delivery: the version-pinned contract source and architecture document expose the independent material validator design. The README and immutable GitHub tree corroborate the reviewed commit; settlement is permitted only if validators substantively confirm every accepted design obligation."]
-      : [dealId, "https://clauseflow-two.vercel.app", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/contracts/clauseflow.py", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/docs/RELEASE_EVIDENCE.md", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/README.md", "ClauseFlow evidence dossier delivery: the public dossier maps the submitted live dashboard, direct intelligent contract source, and this README. The README is the standalone reviewer documentation for independent validator verification."];
+    const evidence = [dealId, "https://clauseflow-two.vercel.app", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/contracts/clauseflow.py", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/docs/RELEASE_EVIDENCE.md", "https://raw.githubusercontent.com/tanphung/ClauseFlow/main/README.md", "ClauseFlow evidence dossier delivery: the public dossier maps the submitted live dashboard, direct intelligent contract source, and this README. The README is the standalone reviewer documentation for independent validator verification."];
     await write(builder, "submit_delivery", evidence);
     state = await waitForDealStatus(dealId, "SUBMITTED");
   }
@@ -642,21 +628,6 @@ const baselineStats = await readJson("get_dashboard_stats");
 const baselineCompleted = BigInt(baselineStats.completedDeals);
 const baselinePaid = BigInt(baselineStats.totalPaidAtto);
 const baselineRefunded = BigInt(baselineStats.totalRefundedAtto);
-
-if (mode === "canary") {
-  const canaryPrice = 1_000_000_000_000_000n;
-  const canaryTitle = "ClauseFlow validator consensus canary e91987b";
-  const canaryOffer = await createOffer(canaryTitle, canaryArgs(canaryTitle, canaryPrice));
-  const canaryDeal = await fundOffer(canaryOffer, canaryPrice);
-  await completePayment(canaryDeal, true);
-  const stats = await readJson("get_dashboard_stats");
-  if (BigInt(stats.completedDeals) !== baselineCompleted + 1n || BigInt(stats.totalPaidAtto) !== baselinePaid + canaryPrice || BigInt(stats.totalRefundedAtto) !== baselineRefunded) {
-    throw new Error(`Unexpected canary stats ${JSON.stringify(stats)}`);
-  }
-  recordCheckpoint({ phase: "MODE_COMPLETE", mode, canaryDeal, stats });
-  console.log(`SMOKE_OK mode=${mode} canaryDeal=${canaryDeal} stats=${JSON.stringify(stats)}`);
-  process.exit(0);
-}
 
 const paymentPrice = 20_000_000_000_000_000n;
 const paymentTitle = process.env.CLAUSEFLOW_SMOKE_PAYMENT_TITLE || "ClauseFlow release evidence dossier";

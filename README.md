@@ -4,7 +4,7 @@
 
 ClauseFlow lets a Builder publish objective service terms and a Client lock the exact GEN price. Bradbury validators fetch public delivery evidence, assess it against immutable clauses, and change on-chain settlement rights. This public README is the reviewer documentation for the funded release; ClauseFlow is not an AI advice interface.
 
-**Funded release rules:** the Client locked exactly `0.02 GEN`; `APPROVED` permits Builder payment; one revision is allowed within 24 hours; `REJECTED` or deadline plus the 24-hour grace period permits Client refund; external transfers execute after parent finalization; `PAID` or `REFUNDED` requires balance confirmation.
+**Paid release agreement:** the Client locked exactly `0.02 GEN`; `APPROVED` permits Builder payment; one revision is allowed within 24 hours; and `REJECTED` or deadline plus the 24-hour grace period permits Client refund. A separate `0.015 GEN` accessibility-audit agreement intentionally demonstrates truthful non-delivery, validator rejection, and Client refund. In both paths, external transfers execute after parent finalization, and terminal `PAID` or `REFUNDED` state requires balance confirmation.
 
 | Method | Live interface | README consequence |
 | --- | --- | --- |

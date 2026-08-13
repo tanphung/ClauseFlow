@@ -20,9 +20,9 @@ vi.mock("./lib/genlayer", async () => {
 const builder = "0x1111111111111111111111111111111111111111";
 const client = "0x2222222222222222222222222222222222222222";
 const clauses = {
-  scope: "Audit and polish the Mochi-Game Quest Evaluator reviewer path.",
+  scope: "Verify the ClauseFlow release evidence and settlement path.",
   deliverables: "Live app URL, GitHub repository, README evidence, and delivery note.",
-  acceptanceCriteria: "Validators can fetch Mochi-Game live app and README evidence.",
+  acceptanceCriteria: "Validators can fetch the ClauseFlow live app and README evidence.",
   milestones: "Evidence inventory\nReviewer path polish",
   evidenceRequirements: "Live app URL\nGitHub repository URL\nREADME URL",
   verificationPlan: "Fetch live app\nFetch GitHub README\nCompare evidence with accepted criteria",
@@ -30,27 +30,27 @@ const clauses = {
   revisionRules: "Maximum 1 revision round within 24 hours.",
   paymentTerms: "Release 0.02 GEN after approval.",
   refundConditions: "Refund after deadline and grace period.",
-  summary: "Mochi-Game Quest Evaluator evidence agreement.",
+  summary: "ClauseFlow release evidence agreement.",
   priceDisplay: "0.02"
 };
 const offer = {
-  id: "1", title: "Mochi-Game Quest Evaluator polish", builder, priceAttoGen: "20000000000000000", deadlineDays: "3", revisionRounds: "1",
+  id: "1", title: "ClauseFlow release evidence dossier", builder, priceAttoGen: "20000000000000000", deadlineDays: "3", revisionRounds: "1",
   scope: clauses.scope, deliverables: clauses.deliverables, acceptanceCriteria: clauses.acceptanceCriteria, refundRule: clauses.refundConditions,
-  referenceUrls: "https://github.com/tanphung/Mochi-Game\nhttps://mochi-game-frontend.vercel.app", structuredClauses: JSON.stringify(clauses), status: "OFFER_PUBLISHED"
+  referenceUrls: "https://github.com/tanphung/ClauseFlow\nhttps://clauseflow-two.vercel.app", structuredClauses: JSON.stringify(clauses), status: "OFFER_PUBLISHED"
 };
 const deal = {
   id: "1", offerId: "1", title: offer.title, builder, client, lockedAttoGen: offer.priceAttoGen, status: "PAID",
   fundedAt: "2026-07-12T04:22:40Z", submittedAt: "2026-07-12T04:22:52Z", reviewedAt: "2026-07-12T04:23:43Z", completedAt: "2026-07-12T04:25:57Z",
   paidAt: "2026-07-12T04:25:57Z", refundedAt: "", deadlineAtUnix: "1783916560", refundAvailableAtUnix: "1784002960",
-  deliveryUrl: "https://mochi-game-frontend.vercel.app", githubUrl: "https://github.com/tanphung/Mochi-Game", demoUrl: "https://mochi-game-frontend.vercel.app", documentationUrl: "https://github.com/tanphung/Mochi-Game#readme",
-  deliveryNote: "Delivered Mochi-Game evidence", reviewResult: "APPROVED", reviewScore: "100", reviewReason: "Evidence verified", revisionChecklist: "",
+  deliveryUrl: "https://clauseflow-two.vercel.app", githubUrl: "https://github.com/tanphung/ClauseFlow", demoUrl: "https://clauseflow-two.vercel.app", documentationUrl: "https://github.com/tanphung/ClauseFlow#readme",
+  deliveryNote: "Delivered ClauseFlow release evidence", reviewResult: "APPROVED", reviewScore: "100", reviewReason: "Evidence verified", revisionChecklist: "",
   reviewEvidenceSummary: "Fetched live app and README.",
   reviewCriteriaResults: "Live app: PASS\nGitHub README: PASS",
   reviewMissingItems: "",
   reviewExecutiveSummary: "Independent validators confirmed that the public application and repository prove the accepted reviewer workflow.",
-  reviewCriterionAssessments: JSON.stringify([{ id: "C1", criterion: "Validators can fetch the live app and README evidence.", status: "SATISFIED", finding: "The live interface exposes the contracted reviewer workflow.", reasoning: "The fetched app and README independently corroborate the expected behavior.", evidenceUrls: ["https://mochi-game-frontend.vercel.app"] }]),
-  reviewDeliverableAssessments: JSON.stringify([{ id: "D1", criterion: "Live app URL and repository evidence.", status: "SATISFIED", finding: "Both public artifacts are present.", reasoning: "Validators fetched both artifacts and found them mutually consistent.", evidenceUrls: ["https://github.com/tanphung/Mochi-Game"] }]),
-  reviewSourceAssessments: JSON.stringify([{ label: "delivery", url: "https://mochi-game-frontend.vercel.app", accessible: true, finding: "Live application fetched successfully.", relevance: "Directly demonstrates the accepted workflow." }]),
+  reviewCriterionAssessments: JSON.stringify([{ id: "C1", criterion: "Validators can fetch the live app and README evidence.", status: "SATISFIED", finding: "The live interface exposes the contracted reviewer workflow.", reasoning: "The fetched app and README independently corroborate the expected behavior.", evidenceUrls: ["https://clauseflow-two.vercel.app"] }]),
+  reviewDeliverableAssessments: JSON.stringify([{ id: "D1", criterion: "Live app URL and repository evidence.", status: "SATISFIED", finding: "Both public artifacts are present.", reasoning: "Validators fetched both artifacts and found them mutually consistent.", evidenceUrls: ["https://github.com/tanphung/ClauseFlow"] }]),
+  reviewSourceAssessments: JSON.stringify([{ label: "delivery", url: "https://clauseflow-two.vercel.app", accessible: true, finding: "Live application fetched successfully.", relevance: "Directly demonstrates the accepted workflow." }]),
   reviewStrengths: JSON.stringify(["Public artifacts are independently retrievable."]),
   reviewRisks: JSON.stringify([]),
   reviewConsensusBasis: "Leader and validators independently fetched submitted sources and agreed on every material status.",
@@ -65,7 +65,7 @@ function fillValidOfferForm() {
     "Detailed scope": "Review the public interface, source code, and documentation.",
     "Deliverables": "Live app, contract source, and reviewer documentation.",
     "Acceptance criteria": "Validators can independently fetch and compare each public artifact.",
-    "Reference URLs": "https://example.com",
+    "Reference URLs": "https://clauseflow-two.vercel.app",
     "Price in GEN": "0.02",
     "Deadline days": "3",
     "Revision rounds": "1",
@@ -107,7 +107,7 @@ describe("ClauseFlow", () => {
   it("loads canonical on-chain dashboard data without seeded payment rows", async () => {
     render(<App />);
     expect(screen.queryByText(/Implement a grant dashboard MVP/i)).toBeNull();
-    expect(await screen.findByText(/Mochi-Game Quest Evaluator polish/i)).toBeTruthy();
+    expect(await screen.findByText(/ClauseFlow release evidence dossier/i)).toBeTruthy();
     expect(screen.getAllByText("0.02").length).toBeGreaterThan(0);
     expect(screen.getByText("PAID")).toBeTruthy();
     expect(screen.queryByText(/Example Domain/i)).toBeNull();
@@ -118,7 +118,7 @@ describe("ClauseFlow", () => {
     const stagingContract = "0x4444444444444444444444444444444444444444";
     window.history.replaceState({}, "", `/?contract=${stagingContract}`);
     render(<App />);
-    await screen.findByText(/Mochi-Game Quest Evaluator polish/i);
+    await screen.findByText(/ClauseFlow release evidence dossier/i);
     expect(vi.mocked(genlayer.readJsonView)).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ contractAddress: stagingContract }),
@@ -150,7 +150,7 @@ describe("ClauseFlow", () => {
       generatedAt: "2026-07-24T00:00:00Z"
     }));
     render(<App />);
-    expect(screen.getByText(/Mochi-Game Quest Evaluator polish/i)).toBeTruthy();
+    expect(screen.getByText(/ClauseFlow release evidence dossier/i)).toBeTruthy();
     expect(screen.getByText("PAID")).toBeTruthy();
     await waitFor(() => expect(vi.mocked(genlayer.readJsonView)).toHaveBeenCalled());
   });
@@ -171,7 +171,7 @@ describe("ClauseFlow", () => {
       generatedAt: new Date().toISOString()
     }));
     render(<App />);
-    expect(screen.getByText(/Mochi-Game Quest Evaluator polish/i)).toBeTruthy();
+    expect(screen.getByText(/ClauseFlow release evidence dossier/i)).toBeTruthy();
     expect(screen.getByText("PAID")).toBeTruthy();
     await waitFor(() => expect(vi.mocked(genlayer.readJsonView)).toHaveBeenCalledWith(expect.anything(), expect.anything(), "get_dashboard_stats", []));
   });
@@ -197,14 +197,14 @@ describe("ClauseFlow", () => {
     }));
     vi.mocked(genlayer.readJsonView).mockRejectedValue(new Error("get_deal_ids timed out while reading Bradbury state"));
     render(<App />);
-    expect(screen.getByText(/Mochi-Game Quest Evaluator polish/i)).toBeTruthy();
+    expect(screen.getByText(/ClauseFlow release evidence dossier/i)).toBeTruthy();
     expect(await screen.findByText(/Live refresh unavailable. Verified data remains visible./i)).toBeTruthy();
     expect(screen.getByText("PAID")).toBeTruthy();
   });
 
   it("defers offer and history reads until a view needs them", async () => {
     render(<App />);
-    await screen.findByText(/Mochi-Game Quest Evaluator polish/i);
+    await screen.findByText(/ClauseFlow release evidence dossier/i);
     expect(vi.mocked(genlayer.readJsonView)).not.toHaveBeenCalledWith(expect.anything(), expect.anything(), "get_offer_ids", []);
     expect(vi.mocked(genlayer.readJsonView)).not.toHaveBeenCalledWith(expect.anything(), expect.anything(), "get_deal_history", expect.anything());
     fireEvent.click(screen.getByRole("button", { name: "Offers" }));
@@ -225,7 +225,7 @@ describe("ClauseFlow", () => {
       throw new Error(`Unexpected view ${functionName}`);
     });
     render(<App />);
-    await screen.findByText(/Mochi-Game Quest Evaluator polish/i);
+    await screen.findByText(/ClauseFlow release evidence dossier/i);
     fireEvent.click(screen.getByRole("button", { name: /Deal Detail/i }));
     await waitFor(() => expect(vi.mocked(genlayer.readJsonView).mock.calls.filter((call) => call[2] === "get_deal_history")).toHaveLength(1));
     chainDeal = deal;
@@ -235,12 +235,12 @@ describe("ClauseFlow", () => {
 
   it("filters history by both party addresses", async () => {
     render(<App />);
-    await screen.findByText(/Mochi-Game Quest Evaluator polish/i);
+    await screen.findByText(/ClauseFlow release evidence dossier/i);
     fireEvent.change(screen.getByLabelText("Builder address filter"), { target: { value: "0x999" } });
     expect(screen.getByText(/No matching agreements/i)).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Builder address filter"), { target: { value: builder } });
     fireEvent.change(screen.getByLabelText("Client address filter"), { target: { value: client } });
-    expect(screen.getByText(/Mochi-Game Quest Evaluator polish/i)).toBeTruthy();
+    expect(screen.getByText(/ClauseFlow release evidence dossier/i)).toBeTruthy();
   });
 
   it("keeps a real Builder workspace empty until terms are entered", async () => {
@@ -265,7 +265,7 @@ describe("ClauseFlow", () => {
 
   it("renders reviewed history as readable evidence instead of raw payloads", async () => {
     render(<App />);
-    await screen.findByText(/Mochi-Game Quest Evaluator polish/i);
+    await screen.findByText(/ClauseFlow release evidence dossier/i);
     fireEvent.click(screen.getByRole("button", { name: /Deal Detail/i }));
     fireEvent.click(screen.getByRole("tab", { name: /On-chain history/i }));
     expect(await screen.findByText(/Approved \(100\/100\)\. Fetched live app and README\./i)).toBeTruthy();
@@ -276,7 +276,7 @@ describe("ClauseFlow", () => {
 
   it("opens accepted agreement terms by default in deal detail", async () => {
     render(<App />);
-    await screen.findByText(/Mochi-Game Quest Evaluator polish/i);
+    await screen.findByText(/ClauseFlow release evidence dossier/i);
     fireEvent.click(screen.getByRole("button", { name: /Deal Detail/i }));
     const summary = await screen.findByText("Full accepted terms");
     expect((summary.closest("details") as HTMLDetailsElement).open).toBe(true);
@@ -284,7 +284,7 @@ describe("ClauseFlow", () => {
 
   it("renders substantive validator reasoning and linked evidence", async () => {
     render(<App />);
-    await screen.findByText(/Mochi-Game Quest Evaluator polish/i);
+    await screen.findByText(/ClauseFlow release evidence dossier/i);
     fireEvent.click(screen.getByRole("button", { name: /Deal Detail/i }));
     fireEvent.click(screen.getByRole("tab", { name: /Evidence & review/i }));
     expect(screen.getByText("Full validator report")).toBeTruthy();
@@ -292,7 +292,7 @@ describe("ClauseFlow", () => {
     expect(screen.getByText("Acceptance criteria")).toBeTruthy();
     expect(screen.getAllByText("Validator reasoning")).toHaveLength(2);
     expect(screen.getByText(/independently corroborate/i)).toBeTruthy();
-    expect(screen.getAllByRole("link", { name: /mochi-game-frontend.vercel.app/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: /clauseflow-two.vercel.app/i }).length).toBeGreaterThan(0);
     expect(screen.queryByText(/public evidence contains/i)).toBeNull();
   });
 
@@ -307,7 +307,7 @@ describe("ClauseFlow", () => {
       throw new Error(`Unexpected view ${functionName}`);
     });
     render(<App />);
-    await screen.findByText(/Mochi-Game Quest Evaluator polish/i);
+    await screen.findByText(/ClauseFlow release evidence dossier/i);
     fireEvent.click(screen.getByRole("button", { name: /Deal Detail/i }));
     fireEvent.click(screen.getByRole("tab", { name: /Evidence & review/i }));
     expect(screen.getByText(/Criterion-level structured validator data was not stored/i)).toBeTruthy();

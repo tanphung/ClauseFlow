@@ -127,7 +127,6 @@ async function waitForAcceptedExecution(client: ConnectedClient, hash: Transacti
       transaction = await client.getTransaction({ hash });
       transientFailures = 0;
     } catch (error) {
-      const message = normalizeError(error);
       if (!isTransientBradburyRpcError(error) || transientFailures >= 12) throw error;
       transientFailures += 1;
       await new Promise((resolve) => window.setTimeout(resolve, 5_000));

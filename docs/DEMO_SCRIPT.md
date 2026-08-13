@@ -5,14 +5,12 @@ The produced reviewer video and upload copy are documented in [`DEMO_VIDEO.md`](
 ## Before Recording
 
 - Open the public ClauseFlow URL and the Bradbury explorer.
-- Use two test wallets, one Builder and one Client.
-- Keep the offer below `0.5 GEN`.
 - Use only real, publicly accessible ClauseFlow release evidence. Never use `example.com`, placeholder content, or fabricated customer claims.
 
 ## Demo Flow
 
 1. **Dashboard**
-   Reload production with browser cache available. Show the verified snapshot immediately, then the status transition to `Live on-chain data synced`. Point out the two terminal agreements and balance-backed totals.
+   Reload production. Show the bundled, contract-bound snapshot immediately, then the status transition to `Live on-chain data synced`. Point out the two terminal agreements and balance-backed totals.
 
 2. **Paid agreement**
    Open `ClauseFlow release evidence dossier`, show immutable terms, then the full validator report. Explain that the leader creates the detailed report while protocol-selected validators independently refetch every URL and verify accessibility, criteria, deliverables, missing items, score, and settlement decision. Point at individual Finding and Validator reasoning fields before showing the `PAID 0.02 GEN` timeline.

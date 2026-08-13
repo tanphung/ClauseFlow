@@ -5,7 +5,7 @@ ClauseFlow welcomes focused bug reports, agreement pilots, and improvements to e
 ## Run Locally
 
 ```powershell
-npm install
+npm ci
 npm run dev
 ```
 
