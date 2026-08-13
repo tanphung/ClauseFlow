@@ -272,6 +272,8 @@ export function App() {
   const [dataSource, setDataSource] = useState<DataSource>(initialDataSource);
   const [dataTimestamp, setDataTimestamp] = useState(initialSnapshot?.generatedAt || "");
   const [walletAddress, setWalletAddress] = useState("");
+  const [walletConnecting, setWalletConnecting] = useState(false);
+  const [walletError, setWalletError] = useState("");
   const refreshInFlight = useRef(false);
   const offersRefreshInFlight = useRef(false);
   const historyRefreshInFlight = useRef(new Set<string>());
@@ -410,12 +412,15 @@ export function App() {
 
   async function handleConnectWallet() {
     if (!config) return;
+    setWalletConnecting(true);
+    setWalletError("");
     try {
       const connected = await connectWallet(config);
       setWalletAddress(connected.address);
-      setLoadError("");
     } catch (error) {
-      setLoadError(normalizeError(error));
+      setWalletError(normalizeError(error));
+    } finally {
+      setWalletConnecting(false);
     }
   }
 
@@ -485,7 +490,10 @@ export function App() {
           </div>
           <div className="headerActions">
             <button className="iconButton" aria-label="Refresh on-chain data" title="Refresh on-chain data" onClick={() => void refreshVisibleData()}><RefreshCcw size={17} className={refreshing ? "spin" : ""} /></button>
-            <button className="walletButton" onClick={handleConnectWallet}><Wallet size={16} /> {walletAddress ? short(walletAddress) : "Connect wallet"}</button>
+            <button className="walletButton" onClick={handleConnectWallet} disabled={walletConnecting} aria-busy={walletConnecting}>
+              {walletConnecting ? <RefreshCcw size={16} className="spin" /> : <Wallet size={16} />}
+              {walletAddress ? short(walletAddress) : walletConnecting ? "Connecting..." : "Connect wallet"}
+            </button>
           </div>
         </header>
 
@@ -495,6 +503,7 @@ export function App() {
         </div>
         {loadError && !stats && <div className="notice errorNotice"><ShieldCheck size={17} /><span>{loadError}</span></div>}
         {loadError && stats && <div className="syncWarning"><span>Live refresh unavailable. Verified data remains visible.</span><small>{loadError}</small></div>}
+        {walletError && <div className="notice errorNotice" role="alert"><Wallet size={17} /><span>{walletError}</span></div>}
         {refreshing && <div className="loadingBar" aria-label="Updating Bradbury contract views" />}
         {txState.lifecycle !== "idle" && <TransactionBanner txState={txState} config={config} onDismiss={() => setTxState({ hash: "", label: "No transaction submitted in this browser session.", lifecycle: "idle", executionResult: "NOT_SUBMITTED", consensusResult: "IDLE", message: "Read-only dashboard is available without connecting a wallet.", childTransactions: [] })} />}
 

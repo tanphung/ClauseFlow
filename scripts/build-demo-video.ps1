@@ -18,7 +18,7 @@ $scenes = Get-Content $sceneFile -Raw | ConvertFrom-Json
 Add-Type -AssemblyName System.Speech
 $voice = New-Object System.Speech.Synthesis.SpeechSynthesizer
 $voice.SelectVoice("Microsoft David Desktop")
-$voice.Rate = -1
+$voice.Rate = 0
 $voice.Volume = 100
 
 foreach ($scene in $scenes) {
@@ -28,7 +28,7 @@ foreach ($scene in $scenes) {
   $voice.Speak($scene.narration)
   $voice.SetOutputToNull()
   $seconds = [double](& ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 $wav)
-  $scene.durationSeconds = [math]::Ceiling(($seconds + 1.6) * 10) / 10
+  $scene.durationSeconds = [math]::Ceiling(($seconds + 1.0) * 10) / 10
 }
 $voice.Dispose()
 $timingJson = $scenes | ConvertTo-Json -Depth 5
@@ -42,10 +42,13 @@ try {
   Pop-Location
 }
 
+$metadata = Get-Content $metadataFile -Raw | ConvertFrom-Json
 $concatLines = New-Object System.Collections.Generic.List[string]
 foreach ($scene in $scenes) {
   $normalized = Join-Path $raw ("audio-{0}.wav" -f $scene.id)
-  $duration = [double]$scene.durationSeconds
+  $recordedScene = $metadata.scenes | Where-Object { $_.id -eq $scene.id } | Select-Object -First 1
+  if ($null -eq $recordedScene) { throw "Recording metadata is missing scene $($scene.id)" }
+  $duration = [double]$recordedScene.durationSeconds
   if ([string]::IsNullOrWhiteSpace($scene.narration)) {
     & ffmpeg -y -v error -f lavfi -i "anullsrc=r=48000:cl=stereo" -t $duration -c:a pcm_s16le $normalized
   } else {
@@ -62,7 +65,6 @@ $fullAudio = Join-Path $raw "narration.wav"
 & ffmpeg -y -v error -f concat -safe 0 -i $concatFile -c:a pcm_s16le $fullAudio
 if ($LASTEXITCODE -ne 0) { throw "Narration concatenation failed" }
 
-$metadata = Get-Content $metadataFile -Raw | ConvertFrom-Json
 $trim = [math]::Max(0, [double]$metadata.preRollSeconds)
 $sceneDuration = [double]$metadata.sceneDurationSeconds
 & ffmpeg -y -v error -i $rawVideo -i $fullAudio `

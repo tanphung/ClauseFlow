@@ -23,15 +23,57 @@ export function createReadClient(config: ClauseFlowConfig) {
   return createClient({ chain });
 }
 
-type WalletProvider = {
+export type WalletProvider = {
   request(args: { method: string; params?: unknown[] }): Promise<unknown>;
+  isMetaMask?: boolean;
+  providers?: WalletProvider[];
 };
 
 export function getWalletProvider(): WalletProvider | null {
-  return (window as unknown as { ethereum?: WalletProvider }).ethereum || null;
+  const injected = (window as unknown as { ethereum?: WalletProvider }).ethereum;
+  if (!injected) return null;
+  const providers = injected.providers?.length ? injected.providers : [injected];
+  return providers.find((provider) => provider.isMetaMask) || providers[0] || null;
+}
+
+type AnnouncedProvider = {
+  info?: { rdns?: string; name?: string };
+  provider?: WalletProvider;
+};
+
+export async function discoverWalletProvider(waitMs = 120): Promise<WalletProvider | null> {
+  const providers: Array<{ provider: WalletProvider; rdns: string }> = [];
+  const add = (provider: WalletProvider | undefined, rdns = "") => {
+    if (!provider) return;
+    const existing = providers.find((candidate) => candidate.provider === provider);
+    if (existing) {
+      if (rdns) existing.rdns = rdns;
+      return;
+    }
+    providers.push({ provider, rdns });
+  };
+  const injected = (window as unknown as { ethereum?: WalletProvider }).ethereum;
+  for (const provider of injected?.providers || []) add(provider);
+  add(injected);
+
+  const onAnnouncement = (event: Event) => {
+    const detail = (event as CustomEvent<AnnouncedProvider>).detail;
+    add(detail?.provider, detail?.info?.rdns || "");
+  };
+  window.addEventListener("eip6963:announceProvider", onAnnouncement);
+  window.dispatchEvent(new Event("eip6963:requestProvider"));
+  await new Promise((resolve) => window.setTimeout(resolve, waitMs));
+  window.removeEventListener("eip6963:announceProvider", onAnnouncement);
+
+  const preferred = providers.find(({ rdns }) => rdns.toLowerCase() === "io.metamask")
+    || providers.find(({ provider }) => provider.isMetaMask);
+  return preferred?.provider || providers[0]?.provider || null;
 }
 
 export function normalizeError(error: unknown): string {
+  const walletCode = walletErrorCode(error);
+  if (walletCode === 4001) return "Wallet request was rejected. Open the wallet and approve the connection when you are ready.";
+  if (walletCode === -32002) return "A wallet request is already pending. Open the wallet extension and complete or reject it, then try again.";
   if (error instanceof Error && error.message) return error.message;
   if (typeof error === "string") return error;
   if (error && typeof error === "object") {
@@ -49,24 +91,57 @@ export function normalizeError(error: unknown): string {
   return String(error || "Unknown error");
 }
 
+function walletErrorCode(error: unknown): number | undefined {
+  if (!error || typeof error !== "object") return undefined;
+  const record = error as Record<string, unknown>;
+  if (typeof record.code === "number") return record.code;
+  return walletErrorCode(record.cause);
+}
+
 function isTransientBradburyRpcError(error: unknown) {
   return /internal error|fetch failed|econnreset|etimedout|network error|socket hang up|pipeline backpressure|not currently accepting transactions/i.test(normalizeError(error));
 }
 
 export async function connectWallet(config: ClauseFlowConfig) {
-  const provider = getWalletProvider();
+  const provider = await discoverWalletProvider();
   if (!provider) throw new Error("No compatible browser wallet was found.");
   const accounts = (await provider.request({ method: "eth_requestAccounts" })) as string[];
   const address = accounts[0];
   if (!address) throw new Error("The wallet did not return an account.");
   const chain = config.chain === "studionet" ? studionet : testnetBradbury;
+  await ensureWalletNetwork(provider, chain);
   const client = createClient({
     chain,
     account: address as `0x${string}`,
     provider: provider as never
   });
-  await client.connect(config.chain === "studionet" ? "studionet" : "testnetBradbury");
+  if (config.chain === "studionet") await client.connect("studionet");
   return { client, address, provider };
+}
+
+async function ensureWalletNetwork(provider: WalletProvider, chain: typeof testnetBradbury | typeof studionet) {
+  const chainId = `0x${chain.id.toString(16)}`;
+  const currentChainId = String(await provider.request({ method: "eth_chainId" })).toLowerCase();
+  if (currentChainId === chainId) return;
+  try {
+    await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId }] });
+    return;
+  } catch (error) {
+    const message = normalizeError(error);
+    const missingChain = walletErrorCode(error) === 4902 || /unrecognized chain|unknown chain|not added/i.test(message);
+    if (!missingChain) throw new Error(`Could not switch the wallet to ${chain.name}: ${message}`);
+  }
+  await provider.request({
+    method: "wallet_addEthereumChain",
+    params: [{
+      chainId,
+      chainName: chain.name,
+      rpcUrls: [...chain.rpcUrls.default.http],
+      nativeCurrency: chain.nativeCurrency,
+      blockExplorerUrls: chain.blockExplorers?.default.url ? [chain.blockExplorers.default.url] : []
+    }]
+  });
+  await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId }] });
 }
 
 type ConnectedClient = Awaited<ReturnType<typeof connectWallet>>["client"];

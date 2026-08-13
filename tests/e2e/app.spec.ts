@@ -55,6 +55,43 @@ test("create form starts empty without a seeded demo agreement", async ({ page }
   await expect(page.getByRole("button", { name: "Structure clauses" })).toBeDisabled();
 });
 
+test("connects through MetaMask when another injected wallet is also installed", async ({ page }) => {
+  await page.addInitScript(() => {
+    const calls: string[] = [];
+    const otherProvider = {
+      request: async ({ method }: { method: string }) => {
+        calls.push(`other:${method}`);
+        throw new Error("Wrong injected provider selected");
+      }
+    };
+    const metamaskProvider = {
+      isMetaMask: true,
+      request: async ({ method }: { method: string }) => {
+        calls.push(`metamask:${method}`);
+        if (method === "eth_requestAccounts") return ["0x1111111111111111111111111111111111111111"];
+        if (method === "eth_chainId") return "0x1";
+        if (method === "wallet_switchEthereumChain") return null;
+        throw new Error(`Unexpected wallet method: ${method}`);
+      }
+    };
+    Object.defineProperty(window, "ethereum", {
+      configurable: true,
+      value: { request: otherProvider.request, providers: [otherProvider, metamaskProvider] }
+    });
+    Object.defineProperty(window, "__walletCalls", { configurable: true, value: calls });
+  });
+  await openLocalPreview(page);
+
+  await page.getByRole("button", { name: "Connect wallet" }).click();
+
+  await expect(page.getByRole("button", { name: /0x1111\.\.\.1111/i })).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { __walletCalls: string[] }).__walletCalls)).toEqual([
+    "metamask:eth_requestAccounts",
+    "metamask:eth_chainId",
+    "metamask:wallet_switchEthereumChain"
+  ]);
+});
+
 test("mobile layout has no horizontal overflow", async ({ page }) => {
   await openLocalPreview(page);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);

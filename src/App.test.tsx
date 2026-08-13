@@ -263,6 +263,17 @@ describe("ClauseFlow", () => {
     expect(screen.queryByText(/\[object Object\]/i)).toBeNull();
   });
 
+  it("reports wallet failures separately from Bradbury refresh health", async () => {
+    vi.mocked(genlayer.connectWallet).mockRejectedValueOnce({ code: -32002 });
+    render(<App />);
+    await screen.findByText(/ClauseFlow release evidence dossier/i);
+
+    fireEvent.click(screen.getByRole("button", { name: /Connect wallet/i }));
+
+    expect((await screen.findByRole("alert")).textContent).toMatch(/wallet request is already pending/i);
+    expect(screen.queryByText(/Live refresh unavailable/i)).toBeNull();
+  });
+
   it("renders reviewed history as readable evidence instead of raw payloads", async () => {
     render(<App />);
     await screen.findByText(/ClauseFlow release evidence dossier/i);

@@ -14,13 +14,13 @@
   {
     "id": "payment",
     "caption": "Approved evidence releases escrow to the Builder",
-    "narration": "The first agreement proves the payment path. Its accepted clauses are immutable after funding. The leader creates a detailed report from the submitted public evidence. Protocol-selected validators treat that report as untrusted and independently refetch every submitted URL. They verify source accessibility, each acceptance criterion, deliverable coverage, missing items, score, and settlement decision. Matching JSON or matching prose alone is not enough for consensus. The on-chain report records each finding and validator reasoning, followed by the finalized point zero two GEN payment.",
+    "narration": "The first agreement proves the payment path. Its accepted clauses are immutable after funding. The leader creates a detailed report from the submitted public evidence. Protocol-selected validators treat that report as untrusted and independently refetch every submitted URL. They verify source accessibility, each acceptance criterion, deliverable coverage, missing items, score, and settlement decision. Matching JSON or matching prose alone is not enough for consensus. The interface renders these fields directly from the agreement's on-chain record. It does not turn a bare pass or fail into invented analysis, and clearly labels structured detail that was not stored. The on-chain report records each finding and validator reasoning, followed by the finalized point zero two GEN payment.",
     "durationSeconds": 0
   },
   {
     "id": "refund",
     "caption": "Missing evidence produces a verifiable refund outcome",
-    "narration": "The second agreement proves the refund path. It required one dedicated accessibility audit with keyboard, focus, measured contrast, and remediation findings. Independent validators refetched the submitted sources, recorded why every material criterion failed, identified the absent deliverable, and rejected the delivery. That genuine non-delivery outcome enabled the Client refund. The timeline confirms point zero one five GEN refunded and contract escrow returned to zero.",
+    "narration": "The second agreement proves the refund path. It required one dedicated accessibility audit with keyboard, focus, measured contrast, and remediation findings. Independent validators refetched the submitted sources, recorded why every material criterion failed, identified the absent deliverable, and rejected the delivery. Reviewers can inspect the failed criteria, source findings, missing items, and settlement events directly, without relying on a frontend-generated explanation. That genuine non-delivery outcome enabled the Client refund. The timeline confirms point zero one five GEN refunded and contract escrow returned to zero.",
     "durationSeconds": 0
   },
   {
