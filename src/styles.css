@@ -830,8 +830,21 @@ legend { width: 100%; padding: 0 0 12px; color: var(--ink); font-size: 11px; fon
   .dealFacts { grid-template-columns: 1fr; }
   .dealFacts > div { border-right: 0; border-bottom: 1px solid var(--line); }
   .dealFacts > div:last-child { border-bottom: 0; }
-  .detailTabs { width: 100%; overflow-x: auto; }
-  .detailTabs button { flex: 1 0 auto; }
+  .detailTabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+  .detailTabs button {
+    justify-content: center;
+    min-width: 0;
+    min-height: 44px;
+    padding: 4px;
+    gap: 4px;
+    line-height: 1.15;
+    white-space: normal;
+  }
+  .detailTabs button svg { flex: 0 0 auto; width: 14px; height: 14px; }
   .reviewHeading { grid-template-columns: auto 1fr; }
   .reviewScore { grid-column: 2; }
   .sourceReviewGrid, .reviewSignals { grid-template-columns: 1fr; }

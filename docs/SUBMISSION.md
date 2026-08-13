@@ -28,7 +28,7 @@ Deterministic code handles addresses, amounts, deadlines, revisions, and one-tim
 - Live frontend: https://clauseflow-two.vercel.app
 - Source: https://github.com/tanphung/ClauseFlow
 
-The final paid/refunded hashes and aggregate views are appended after the two-wallet Bradbury pilot reaches terminal state. These are testnet pilot transactions, not a claim of external customer adoption.
+The two-wallet Bradbury pilot is terminal: deal `#1` is `PAID` after an `APPROVED` `100/100` evidence review, and deal `#2` is `REFUNDED` after a `REJECTED` `0/100` non-delivery review. Canonical totals are `0.035 GEN` funded, `0.02 GEN` paid, `0.015 GEN` refunded, and zero active escrow or contract balance. Exact transaction links and view results are in [DEPLOYMENT.md](DEPLOYMENT.md). These are testnet pilot transactions, not a claim of external customer adoption.
 
 ## Category
 

@@ -33,7 +33,7 @@ ClauseFlow lets a Builder publish objective service terms and a Client lock the 
 | Release evidence matrix | [docs/RELEASE_EVIDENCE.md](docs/RELEASE_EVIDENCE.md) |
 | Reviewer notes | [docs/SUBMISSION.md](docs/SUBMISSION.md) |
 
-The deployment is `FINALIZED / AGREE / FINISHED_WITH_RETURN`, exposes 18 methods, began with `get_offer_ids=[]`, and matches the repository contract source byte-for-byte after newline normalization.
+The deployment is `FINALIZED / AGREE / FINISHED_WITH_RETURN`, exposes 18 methods, began with `get_offer_ids=[]`, and matches the repository contract source byte-for-byte after newline normalization. Its two-wallet Bradbury pilot now contains one `PAID` agreement after an `APPROVED` `100/100` review and one `REFUNDED` agreement after a `REJECTED` `0/100` review. Canonical totals are `0.035 GEN` funded, `0.02 GEN` paid, `0.015 GEN` refunded, and zero active escrow.
 
 ## The Trust Problem
 
@@ -155,4 +155,4 @@ docs/                         Architecture, deployment, evidence, and reviewer n
 
 ## Project Status
 
-This repository is one continuing Project: contract, dApp, deployment tooling, public evidence, tests, and two-wallet Bradbury pilot validation. It is not submitted separately as an extracted Intelligent Contract. Final payment/refund transaction proof is recorded in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) after both terminal histories are verified.
+This repository is one continuing Project: contract, dApp, deployment tooling, public evidence, tests, and two-wallet Bradbury pilot validation. It is not submitted separately as an extracted Intelligent Contract. Final payment/refund transaction proof and aggregate view results are recorded in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
