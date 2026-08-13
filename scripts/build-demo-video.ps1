@@ -63,9 +63,10 @@ $fullAudio = Join-Path $raw "narration.wav"
 if ($LASTEXITCODE -ne 0) { throw "Narration concatenation failed" }
 
 $metadata = Get-Content $metadataFile -Raw | ConvertFrom-Json
-$trim = [double]$metadata.preRollSeconds
-& ffmpeg -y -v error -ss $trim -i $rawVideo -i $fullAudio `
-  -filter_complex "[0:v]fps=30,scale=1920:1080:flags=lanczos,format=yuv420p[v];[1:a]loudnorm=I=-16:TP=-1.5:LRA=11[a]" `
+$rawDuration = [double](& ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 $rawVideo)
+$trim = [math]::Max(0, $rawDuration - [double]$metadata.sceneDurationSeconds)
+& ffmpeg -y -v error -i $rawVideo -i $fullAudio `
+  -filter_complex "[0:v]trim=start=$trim,setpts=PTS-STARTPTS,fps=30,scale=1920:1080:flags=lanczos,format=yuv420p[v];[1:a]loudnorm=I=-16:TP=-1.5:LRA=11[a]" `
   -map "[v]" -map "[a]" -c:v libx264 -preset medium -crf 21 -c:a aac -b:a 192k -ar 48000 -movflags +faststart -shortest $final
 if ($LASTEXITCODE -ne 0) { throw "Final video encoding failed" }
 & ffmpeg -y -v error -i $final -ss 1 -frames:v 1 $thumbnail

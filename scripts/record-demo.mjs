@@ -16,8 +16,8 @@ const context = await browser.newContext({
   deviceScaleFactor: 1,
   recordVideo: { dir: dirname(outputPath), size: { width: 1920, height: 1080 } },
 });
-const page = await context.newPage();
 const startedAt = Date.now();
+const page = await context.newPage();
 
 await page.goto("https://clauseflow-two.vercel.app", { waitUntil: "domcontentloaded", timeout: 60_000 });
 await page.getByRole("heading", { name: "Public on-chain agreement dashboard", exact: true }).waitFor({ state: "visible", timeout: 30_000 });
