@@ -15,7 +15,7 @@
 
 ## Pilot Settlement Proof
 
-Every transaction below reached `AGREE / FINISHED_WITH_RETURN`; terminal state was then re-read from contract views. Explorer links expose lifecycle and receipt details independently.
+All 14 GenLayer transactions below reached `FINALIZED / AGREE / FINISHED_WITH_RETURN`; terminal state was then re-read from contract views. Explorer links expose lifecycle and receipt details independently.
 
 ### Agreement 1: paid release dossier
 
