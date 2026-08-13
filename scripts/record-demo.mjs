@@ -198,16 +198,16 @@ async function runDashboard(target, seconds, text) {
     const snapshotStatus = target.getByRole("status").filter({ hasText: /Verified on-chain snapshot|Cached on-chain data/ });
     await snapshotStatus.waitFor({ state: "visible", timeout: 5_000 });
     await point(target, snapshotStatus);
-    await wait(target, seconds * 0.16);
+    await wait(target, seconds * 0.08);
     const liveStatus = target.getByRole("status").filter({ hasText: /Live on-chain data synced/ });
     const liveSynced = await liveStatus.waitFor({ state: "visible", timeout: 8_000 }).then(() => true).catch(() => false);
     await point(target, liveSynced ? liveStatus : snapshotStatus);
-    await wait(target, seconds * 0.12);
+    await wait(target, seconds * 0.06);
     await point(target, target.getByRole("region", { name: "Protocol summary", exact: true }));
-    await wait(target, seconds * 0.2);
+    await wait(target, seconds * 0.12);
     const rows = target.locator("button.ledgerRow");
     await point(target, rows.first());
-    await wait(target, seconds * 0.16);
+    await wait(target, seconds * 0.08);
   });
 }
 
@@ -218,19 +218,19 @@ async function runPayment(target, seconds, text) {
     await click(target, row);
     await target.evaluate(() => window.scrollTo({ top: 0, behavior: "smooth" }));
     await setCaption(target, text, seconds);
-    await wait(target, seconds * 0.18);
+    await wait(target, seconds * 0.14);
     await click(target, target.getByRole("tab", { name: "Evidence & review", exact: true }));
     await point(target, target.locator(".reviewScore"));
-    await wait(target, seconds * 0.1);
+    await wait(target, seconds * 0.08);
     await point(target, target.locator(".fullReportCue"));
-    await wait(target, seconds * 0.1);
+    await wait(target, seconds * 0.08);
     await point(target, target.locator(".assessmentCard").first());
-    await wait(target, seconds * 0.2);
+    await wait(target, seconds * 0.16);
     await point(target, target.locator(".assessmentCard").nth(1));
-    await wait(target, seconds * 0.12);
+    await wait(target, seconds * 0.1);
     await click(target, target.getByRole("tab", { name: "On-chain history", exact: true }));
     await point(target, target.locator(".historyList"));
-    await wait(target, seconds * 0.14);
+    await wait(target, seconds * 0.1);
   });
 }
 
@@ -242,17 +242,17 @@ async function runRefund(target, seconds, text) {
     await click(target, row);
     await target.evaluate(() => window.scrollTo({ top: 0, behavior: "smooth" }));
     await setCaption(target, text, seconds);
-    await wait(target, seconds * 0.16);
+    await wait(target, seconds * 0.12);
     await click(target, target.getByRole("tab", { name: "Evidence & review", exact: true }));
     await point(target, target.locator(".reviewScore"));
-    await wait(target, seconds * 0.1);
+    await wait(target, seconds * 0.08);
     await point(target, target.locator(".assessmentCard").first());
-    await wait(target, seconds * 0.18);
+    await wait(target, seconds * 0.14);
     await point(target, target.locator(".reviewPanel .clause").filter({ hasText: "Missing items" }));
-    await wait(target, seconds * 0.16);
+    await wait(target, seconds * 0.12);
     await click(target, target.getByRole("tab", { name: "On-chain history", exact: true }));
     await point(target, target.locator(".historyList"));
-    await wait(target, seconds * 0.15);
+    await wait(target, seconds * 0.1);
   });
 }
 
@@ -296,15 +296,15 @@ async function runClose(target, seconds, text) {
     await target.evaluate(() => window.scrollTo({ top: 0, behavior: "smooth" }));
     await setCaption(target, text, seconds * 0.48);
     await point(target, target.locator(".heroProof"));
-    await wait(target, seconds * 0.2);
+    await wait(target, seconds * 0.14);
     await point(target, target.getByRole("region", { name: "Protocol summary", exact: true }));
-    await wait(target, seconds * 0.2);
+    await wait(target, seconds * 0.14);
     await hideCaption(target);
     await showIntro(target, text, seconds * 0.52);
     await target.evaluate(() => {
       const proof = document.querySelector("#cf-demo-intro .proof");
       if (proof) proof.textContent = "clauseflow-two.vercel.app  |  github.com/tanphung/ClauseFlow";
     });
-    await wait(target, seconds * 0.45);
+    await wait(target, seconds * 0.38);
   });
 }
