@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { connectWallet, createReadClient, explorerAddressUrl, explorerTxUrl, hasContractAddress, normalizeError, readJsonView, writeAndVerify, type ClauseFlowConfig } from "./lib/genlayer";
+import { connectWallet, createReadClient, discoverWalletProviders, explorerAddressUrl, explorerTxUrl, hasContractAddress, normalizeError, readJsonView, writeAndVerify, type ClauseFlowConfig, type WalletOption, type WalletProvider } from "./lib/genlayer";
 import type { CalldataEncodable } from "genlayer-js/types";
 import bundledOnChainSnapshot from "./data/onchain-snapshot.json";
 
@@ -272,6 +272,10 @@ export function App() {
   const [dataSource, setDataSource] = useState<DataSource>(initialDataSource);
   const [dataTimestamp, setDataTimestamp] = useState(initialSnapshot?.generatedAt || "");
   const [walletAddress, setWalletAddress] = useState("");
+  const [walletName, setWalletName] = useState("");
+  const [walletProvider, setWalletProvider] = useState<WalletProvider | null>(null);
+  const [walletOptions, setWalletOptions] = useState<WalletOption[]>([]);
+  const [walletPickerOpen, setWalletPickerOpen] = useState(false);
   const [walletConnecting, setWalletConnecting] = useState(false);
   const [walletError, setWalletError] = useState("");
   const refreshInFlight = useRef(false);
@@ -319,6 +323,32 @@ export function App() {
       void refreshHistoryFromChain(selectedDeal);
     }
   }, [view, selectedDeal?.id, selectedDealFingerprint]);
+
+  useEffect(() => {
+    if (!walletProvider?.on) return;
+    const accountsChanged = (...args: unknown[]) => {
+      const accounts = Array.isArray(args[0]) ? args[0] as string[] : [];
+      setWalletAddress(accounts[0] || "");
+      if (!accounts[0]) setWalletName("");
+    };
+    const chainChanged = (...args: unknown[]) => {
+      const chainId = String(args[0] || "").toLowerCase();
+      setWalletError(chainId && chainId !== "0x107d" ? "Wallet network changed. ClauseFlow will request Bradbury before the next transaction." : "");
+    };
+    const disconnected = () => {
+      setWalletAddress("");
+      setWalletName("");
+      setWalletProvider(null);
+    };
+    walletProvider.on("accountsChanged", accountsChanged);
+    walletProvider.on("chainChanged", chainChanged);
+    walletProvider.on("disconnect", disconnected);
+    return () => {
+      walletProvider.removeListener?.("accountsChanged", accountsChanged);
+      walletProvider.removeListener?.("chainChanged", chainChanged);
+      walletProvider.removeListener?.("disconnect", disconnected);
+    };
+  }, [walletProvider]);
 
   async function refreshFromChain() {
     if (refreshInFlight.current) return;
@@ -415,8 +445,33 @@ export function App() {
     setWalletConnecting(true);
     setWalletError("");
     try {
-      const connected = await connectWallet(config);
+      const options = await discoverWalletProviders();
+      if (options.length === 0) throw new Error("No compatible browser wallet was found. Install an EVM wallet such as OKX Wallet or MetaMask.");
+      const preferredId = window.localStorage.getItem("clauseflow:wallet-rdns");
+      const ordered = preferredId
+        ? [...options].sort((left, right) => Number(right.rdns === preferredId || right.id === preferredId) - Number(left.rdns === preferredId || left.id === preferredId))
+        : options;
+      setWalletOptions(ordered);
+      if (ordered.length === 1) await connectUsingWallet(ordered[0]);
+      else setWalletPickerOpen(true);
+    } catch (error) {
+      setWalletError(normalizeError(error));
+    } finally {
+      setWalletConnecting(false);
+    }
+  }
+
+  async function connectUsingWallet(option: WalletOption) {
+    if (!config) return;
+    setWalletPickerOpen(false);
+    setWalletConnecting(true);
+    setWalletError("");
+    try {
+      const connected = await connectWallet(config, option.provider);
       setWalletAddress(connected.address);
+      setWalletName(option.name);
+      setWalletProvider(option.provider);
+      window.localStorage.setItem("clauseflow:wallet-rdns", option.rdns || option.id);
     } catch (error) {
       setWalletError(normalizeError(error));
     } finally {
@@ -430,7 +485,7 @@ export function App() {
     try {
       const result = await writeAndVerify(config, functionName, args, value, (hash) => {
         setTxState({ hash, label, lifecycle: "pending", executionResult: "WAITING_FOR_CONSENSUS", consensusResult: "PENDING", message: "Transaction submitted. Waiting for validator consensus.", childTransactions: [] });
-      });
+      }, walletProvider || undefined);
       setWalletAddress(result.address);
       setTxState({ hash: result.hash, label, lifecycle: result.lifecycle === "FINALIZED" ? "finalized" : "accepted", executionResult: result.executionResult, consensusResult: result.consensusResult, message: result.childTransactions.length ? "Parent execution succeeded. Child GEN transfer IDs are shown below for independent verification." : "Execution and consensus succeeded; on-chain state is being refreshed.", childTransactions: result.childTransactions });
       await refreshFromChain();
@@ -490,7 +545,7 @@ export function App() {
           </div>
           <div className="headerActions">
             <button className="iconButton" aria-label="Refresh on-chain data" title="Refresh on-chain data" onClick={() => void refreshVisibleData()}><RefreshCcw size={17} className={refreshing ? "spin" : ""} /></button>
-            <button className="walletButton" onClick={handleConnectWallet} disabled={walletConnecting} aria-busy={walletConnecting}>
+            <button className="walletButton" onClick={handleConnectWallet} disabled={walletConnecting} aria-busy={walletConnecting} title={walletName || "Connect wallet"}>
               {walletConnecting ? <RefreshCcw size={16} className="spin" /> : <Wallet size={16} />}
               {walletAddress ? short(walletAddress) : walletConnecting ? "Connecting..." : "Connect wallet"}
             </button>
@@ -545,6 +600,26 @@ export function App() {
         )}
         {view === "deal" && !selectedDeal && <section className="emptyState"><span className="emptyIcon"><Layers3 size={24} /></span><h2>No on-chain deals yet</h2><p>Publish an offer and fund it to start the agreement timeline.</p><button className="primary" onClick={() => openView("offers")}>Browse offers <ArrowRight size={16} /></button></section>}
       </section>
+      {walletPickerOpen && (
+        <div className="walletPickerScrim" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setWalletPickerOpen(false)}>
+          <section className="walletPicker" role="dialog" aria-modal="true" aria-labelledby="wallet-picker-title">
+            <header>
+              <div><span className="eyebrow">Wallet provider</span><h2 id="wallet-picker-title">Connect a wallet</h2></div>
+              <button className="iconButton" aria-label="Close wallet selector" title="Close" onClick={() => setWalletPickerOpen(false)}><X size={18} /></button>
+            </header>
+            <div className="walletOptions">
+              {walletOptions.map((option) => (
+                <button key={option.id} className="walletOption" onClick={() => void connectUsingWallet(option)}>
+                  {option.icon ? <img src={option.icon} alt="" /> : <span className="walletFallback"><Wallet size={20} /></span>}
+                  <span><strong>{option.name}</strong><small>{option.rdns || "Injected EVM wallet"}</small></span>
+                  <ChevronRight size={18} />
+                </button>
+              ))}
+            </div>
+            <p>ClauseFlow requests Bradbury only in the wallet you select.</p>
+          </section>
+        </div>
+      )}
     </main>
   );
 }

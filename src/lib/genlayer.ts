@@ -26,48 +26,67 @@ export function createReadClient(config: ClauseFlowConfig) {
 export type WalletProvider = {
   request(args: { method: string; params?: unknown[] }): Promise<unknown>;
   isMetaMask?: boolean;
+  isOkxWallet?: boolean;
   providers?: WalletProvider[];
+  on?(event: "accountsChanged" | "chainChanged" | "disconnect", listener: (...args: unknown[]) => void): void;
+  removeListener?(event: "accountsChanged" | "chainChanged" | "disconnect", listener: (...args: unknown[]) => void): void;
 };
 
-export function getWalletProvider(): WalletProvider | null {
-  const injected = (window as unknown as { ethereum?: WalletProvider }).ethereum;
-  if (!injected) return null;
-  const providers = injected.providers?.length ? injected.providers : [injected];
-  return providers.find((provider) => provider.isMetaMask) || providers[0] || null;
-}
+export type WalletOption = {
+  id: string;
+  name: string;
+  icon: string;
+  rdns: string;
+  provider: WalletProvider;
+};
 
 type AnnouncedProvider = {
-  info?: { rdns?: string; name?: string };
+  info?: { uuid?: string; rdns?: string; name?: string; icon?: string };
   provider?: WalletProvider;
 };
 
-export async function discoverWalletProvider(waitMs = 120): Promise<WalletProvider | null> {
-  const providers: Array<{ provider: WalletProvider; rdns: string }> = [];
-  const add = (provider: WalletProvider | undefined, rdns = "") => {
+export async function discoverWalletProviders(waitMs = 120): Promise<WalletOption[]> {
+  const providers: WalletOption[] = [];
+  const add = (provider: WalletProvider | undefined, info: AnnouncedProvider["info"] = {}) => {
     if (!provider) return;
     const existing = providers.find((candidate) => candidate.provider === provider);
     if (existing) {
-      if (rdns) existing.rdns = rdns;
+      if (info.rdns) existing.rdns = info.rdns;
+      if (info.name) existing.name = info.name;
+      if (info.icon) existing.icon = info.icon;
+      if (info.uuid) existing.id = info.uuid;
       return;
     }
-    providers.push({ provider, rdns });
+    const fallbackName = provider.isOkxWallet ? "OKX Wallet" : provider.isMetaMask ? "MetaMask" : "Browser wallet";
+    providers.push({
+      id: info.uuid || info.rdns || `legacy-${providers.length + 1}`,
+      name: info.name || fallbackName,
+      icon: info.icon || "",
+      rdns: info.rdns || "",
+      provider
+    });
   };
   const injected = (window as unknown as { ethereum?: WalletProvider }).ethereum;
-  for (const provider of injected?.providers || []) add(provider);
-  add(injected);
+  if (injected?.providers?.length) {
+    for (const provider of injected.providers) add(provider);
+  } else {
+    add(injected);
+  }
 
   const onAnnouncement = (event: Event) => {
     const detail = (event as CustomEvent<AnnouncedProvider>).detail;
-    add(detail?.provider, detail?.info?.rdns || "");
+    add(detail?.provider, detail?.info);
   };
   window.addEventListener("eip6963:announceProvider", onAnnouncement);
   window.dispatchEvent(new Event("eip6963:requestProvider"));
   await new Promise((resolve) => window.setTimeout(resolve, waitMs));
   window.removeEventListener("eip6963:announceProvider", onAnnouncement);
 
-  const preferred = providers.find(({ rdns }) => rdns.toLowerCase() === "io.metamask")
-    || providers.find(({ provider }) => provider.isMetaMask);
-  return preferred?.provider || providers[0]?.provider || null;
+  return providers;
+}
+
+export async function discoverWalletProvider(waitMs = 120): Promise<WalletProvider | null> {
+  return (await discoverWalletProviders(waitMs))[0]?.provider || null;
 }
 
 export function normalizeError(error: unknown): string {
@@ -102,8 +121,8 @@ function isTransientBradburyRpcError(error: unknown) {
   return /internal error|fetch failed|econnreset|etimedout|network error|socket hang up|pipeline backpressure|not currently accepting transactions/i.test(normalizeError(error));
 }
 
-export async function connectWallet(config: ClauseFlowConfig) {
-  const provider = await discoverWalletProvider();
+export async function connectWallet(config: ClauseFlowConfig, selectedProvider?: WalletProvider) {
+  const provider = selectedProvider || await discoverWalletProvider();
   if (!provider) throw new Error("No compatible browser wallet was found.");
   const accounts = (await provider.request({ method: "eth_requestAccounts" })) as string[];
   const address = accounts[0];
@@ -225,10 +244,11 @@ export async function writeAndVerify(
   functionName: string,
   args: CalldataEncodable[],
   value: bigint = 0n,
-  onSubmitted?: (hash: string) => void
+  onSubmitted?: (hash: string) => void,
+  selectedProvider?: WalletProvider
 ) {
   if (!hasContractAddress(config)) throw new Error("ClauseFlow contract address is not configured.");
-  const { client, address, provider } = await connectWallet(config);
+  const { client, address, provider } = await connectWallet(config, selectedProvider);
   const writeParams = {
     address: config.contractAddress as `0x${string}`,
     functionName,

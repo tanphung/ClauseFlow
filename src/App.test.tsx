@@ -8,6 +8,7 @@ vi.mock("./lib/genlayer", async () => {
   return {
     ...actual,
     createReadClient: vi.fn(() => ({})),
+    discoverWalletProviders: vi.fn(async () => [{ id: "wallet", name: "Test wallet", icon: "", rdns: "test.wallet", provider: {} }]),
     connectWallet: vi.fn(async () => ({ client: {}, address: builder })),
     writeAndVerify: vi.fn(async (_config, _functionName, _args, _value, onSubmitted) => {
       onSubmitted?.("0xabc");
@@ -272,6 +273,22 @@ describe("ClauseFlow", () => {
 
     expect((await screen.findByRole("alert")).textContent).toMatch(/wallet request is already pending/i);
     expect(screen.queryByText(/Live refresh unavailable/i)).toBeNull();
+  });
+
+  it("uses the selected wallet provider for contract writes", async () => {
+    render(<App />);
+    await screen.findByText(/ClauseFlow release evidence dossier/i);
+
+    fireEvent.click(screen.getByRole("button", { name: /Connect wallet/i }));
+    await waitFor(() => expect(vi.mocked(genlayer.connectWallet)).toHaveBeenCalled());
+    const selectedProvider = vi.mocked(genlayer.connectWallet).mock.calls[0][1];
+
+    fireEvent.click(screen.getByRole("button", { name: /^Create$/i }));
+    fillValidOfferForm();
+    fireEvent.click(screen.getByRole("button", { name: /Structure Clauses/i }));
+
+    await waitFor(() => expect(vi.mocked(genlayer.writeAndVerify)).toHaveBeenCalled());
+    expect(vi.mocked(genlayer.writeAndVerify).mock.calls[0][5]).toBe(selectedProvider);
   });
 
   it("renders reviewed history as readable evidence instead of raw payloads", async () => {

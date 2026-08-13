@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { connectWallet, discoverWalletProvider, normalizeError, type ClauseFlowConfig, type WalletProvider } from "./genlayer";
+import { connectWallet, discoverWalletProviders, normalizeError, type ClauseFlowConfig, type WalletProvider } from "./genlayer";
 
 const config: ClauseFlowConfig = {
   contractAddress: "0x3333333333333333333333333333333333333333",
@@ -17,17 +17,24 @@ afterEach(() => {
 });
 
 describe("wallet connection", () => {
-  it("prefers MetaMask when multiple injected wallets are installed", async () => {
-    const first = { request: vi.fn(), isMetaMask: true } as unknown as WalletProvider;
+  it("returns every EIP-6963 wallet without forcing MetaMask", async () => {
+    const okx = { request: vi.fn(), isOkxWallet: true } as unknown as WalletProvider;
     const metamask = { request: vi.fn(), isMetaMask: true } as unknown as WalletProvider;
-    setInjectedProvider({ request: vi.fn(), providers: [first, metamask] });
+    setInjectedProvider({ request: vi.fn(), providers: [okx, metamask] });
     window.addEventListener("eip6963:requestProvider", () => {
       window.dispatchEvent(new CustomEvent("eip6963:announceProvider", {
-        detail: { info: { rdns: "io.metamask", name: "MetaMask" }, provider: metamask }
+        detail: { info: { uuid: "okx", rdns: "com.okex.wallet", name: "OKX Wallet" }, provider: okx }
+      }));
+      window.dispatchEvent(new CustomEvent("eip6963:announceProvider", {
+        detail: { info: { uuid: "metamask", rdns: "io.metamask", name: "MetaMask" }, provider: metamask }
       }));
     }, { once: true });
 
-    expect(await discoverWalletProvider(0)).toBe(metamask);
+    const options = await discoverWalletProviders(0);
+    expect(options.map(({ id, name, rdns }) => ({ id, name, rdns }))).toEqual([
+      { id: "okx", name: "OKX Wallet", rdns: "com.okex.wallet" },
+      { id: "metamask", name: "MetaMask", rdns: "io.metamask" }
+    ]);
   });
 
   it("connects on Bradbury without requesting a MetaMask Snap", async () => {
@@ -48,6 +55,39 @@ describe("wallet connection", () => {
     expect(connected.address).toBe("0x1111111111111111111111111111111111111111");
     expect(methods).toEqual(["eth_requestAccounts", "eth_chainId"]);
     expect(methods).not.toContain("wallet_requestSnaps");
+  });
+
+  it("connects with the explicitly selected OKX provider", async () => {
+    const okx: WalletProvider = {
+      isOkxWallet: true,
+      request: vi.fn(async ({ method }) => {
+        if (method === "eth_requestAccounts") return ["0x2222222222222222222222222222222222222222"];
+        if (method === "eth_chainId") return "0x107d";
+        throw new Error(`Unexpected wallet method: ${method}`);
+      })
+    };
+    const metamask = { isMetaMask: true, request: vi.fn() } as unknown as WalletProvider;
+    setInjectedProvider({ request: vi.fn(), providers: [metamask, okx] });
+
+    const connected = await connectWallet(config, okx);
+
+    expect(connected.address).toBe("0x2222222222222222222222222222222222222222");
+    expect(okx.request).toHaveBeenCalledWith({ method: "eth_requestAccounts" });
+    expect(metamask.request).not.toHaveBeenCalled();
+  });
+
+  it("discovers an OKX provider that injects after the page loads", async () => {
+    const okx = { request: vi.fn(), isOkxWallet: true } as unknown as WalletProvider;
+    window.addEventListener("eip6963:requestProvider", () => {
+      window.dispatchEvent(new CustomEvent("eip6963:announceProvider", {
+        detail: { info: { uuid: "late-okx", rdns: "com.okex.wallet", name: "OKX Wallet" }, provider: okx }
+      }));
+    }, { once: true });
+
+    const options = await discoverWalletProviders(0);
+
+    expect(options).toHaveLength(1);
+    expect(options[0]).toMatchObject({ id: "late-okx", name: "OKX Wallet", rdns: "com.okex.wallet", provider: okx });
   });
 
   it("adds Bradbury when the wallet does not know the chain, then switches to it", async () => {

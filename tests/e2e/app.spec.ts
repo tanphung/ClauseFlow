@@ -55,13 +55,16 @@ test("create form starts empty without a seeded demo agreement", async ({ page }
   await expect(page.getByRole("button", { name: "Structure clauses" })).toBeDisabled();
 });
 
-test("connects through MetaMask when another injected wallet is also installed", async ({ page }) => {
+test("lets the user select OKX when multiple wallets are installed", async ({ page }) => {
   await page.addInitScript(() => {
     const calls: string[] = [];
-    const otherProvider = {
+    const okxProvider = {
+      isOkxWallet: true,
       request: async ({ method }: { method: string }) => {
-        calls.push(`other:${method}`);
-        throw new Error("Wrong injected provider selected");
+        calls.push(`okx:${method}`);
+        if (method === "eth_requestAccounts") return ["0x2222222222222222222222222222222222222222"];
+        if (method === "eth_chainId") return "0x107d";
+        throw new Error(`Unexpected wallet method: ${method}`);
       }
     };
     const metamaskProvider = {
@@ -76,19 +79,24 @@ test("connects through MetaMask when another injected wallet is also installed",
     };
     Object.defineProperty(window, "ethereum", {
       configurable: true,
-      value: { request: otherProvider.request, providers: [otherProvider, metamaskProvider] }
+      value: { request: okxProvider.request, providers: [okxProvider, metamaskProvider] }
+    });
+    window.addEventListener("eip6963:requestProvider", () => {
+      window.dispatchEvent(new CustomEvent("eip6963:announceProvider", { detail: { info: { uuid: "okx", name: "OKX Wallet", rdns: "com.okex.wallet" }, provider: okxProvider } }));
+      window.dispatchEvent(new CustomEvent("eip6963:announceProvider", { detail: { info: { uuid: "metamask", name: "MetaMask", rdns: "io.metamask" }, provider: metamaskProvider } }));
     });
     Object.defineProperty(window, "__walletCalls", { configurable: true, value: calls });
   });
   await openLocalPreview(page);
 
   await page.getByRole("button", { name: "Connect wallet" }).click();
+  await expect(page.getByRole("dialog", { name: "Connect a wallet" })).toBeVisible();
+  await page.getByRole("button", { name: /OKX Wallet/i }).click();
 
-  await expect(page.getByRole("button", { name: /0x1111\.\.\.1111/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /0x2222\.\.\.2222/i })).toBeVisible();
   expect(await page.evaluate(() => (window as unknown as { __walletCalls: string[] }).__walletCalls)).toEqual([
-    "metamask:eth_requestAccounts",
-    "metamask:eth_chainId",
-    "metamask:wallet_switchEthereumChain"
+    "okx:eth_requestAccounts",
+    "okx:eth_chainId"
   ]);
 });
 
