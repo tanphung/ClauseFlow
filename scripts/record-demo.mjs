@@ -161,12 +161,12 @@ async function wait(target, seconds) {
   ];
   let index = 0;
   while (Date.now() < deadline) {
-    const remaining = deadline - Date.now();
     const [xRatio, yRatio] = offsets[index % offsets.length];
     const x = Math.max(28, Math.min(1890, pointerAnchor.x + pointerAnchor.width * xRatio));
     const y = Math.max(28, Math.min(1040, pointerAnchor.y + pointerAnchor.height * yRatio));
-    await target.mouse.move(x, y, { steps: 18 });
-    if (remaining > 0) await target.waitForTimeout(Math.min(420, remaining));
+    await target.mouse.move(x, y, { steps: 12 });
+    const remaining = deadline - Date.now();
+    if (remaining > 0) await target.waitForTimeout(Math.min(240, remaining));
     index += 1;
   }
 }
