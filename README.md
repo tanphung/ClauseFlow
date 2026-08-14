@@ -19,8 +19,6 @@ ClauseFlow lets a Builder publish objective service terms and a Client lock the 
 | `get_deal_history` | On-chain history | read canonical lifecycle events |
 | `get_dashboard_stats` | Protocol summary | read funded, paid, and refunded totals |
 
-![ClauseFlow public agreement dashboard](docs/assets/clauseflow-dashboard.png)
-
 ## Live Release
 
 | Surface | Verified release |
