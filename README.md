@@ -2,28 +2,24 @@
 
 **Evidence-based service agreements settled by GenLayer consensus.**
 
-ClauseFlow lets a Builder publish objective service terms and a Client lock the exact GEN price. Bradbury validators fetch public delivery evidence, assess it against immutable clauses, and change on-chain settlement rights. This public README is the reviewer documentation for the funded release; ClauseFlow is not an AI advice interface.
+ClauseFlow lets a Builder publish objective service terms and a Client lock the exact GEN price. Bradbury validators assess public delivery evidence against the accepted clauses, and their consensus changes on-chain settlement rights. ClauseFlow uses AI only at this evidence boundary; it is not an advice or recommendation interface.
 
-**Paid release agreement:** the Client locked exactly `0.02 GEN`; `APPROVED` permits Builder payment; one revision is allowed within 24 hours; and `REJECTED` or deadline plus the 24-hour grace period permits Client refund. A separate `0.015 GEN` accessibility-audit agreement intentionally demonstrates truthful non-delivery, validator rejection, and Client refund. In both paths, external transfers execute after parent finalization, and terminal `PAID` or `REFUNDED` state requires balance confirmation.
+## Product Focus: Executable Acceptance
 
-| Method | Live interface | README consequence |
-| --- | --- | --- |
-| `publish_offer` | New offer | publish immutable terms |
-| `accept_offer` | Fund exact GEN | lock the exact displayed amount |
-| `submit_delivery` | Evidence submission | store public delivery URLs |
-| `review_delivery` | Validator review | decide approval, revision, or rejection |
-| `claim_payment` | Deal Detail / Settlement / Claim payment | emit Builder transfer after `APPROVED` |
-| `confirm_payment` | Deal Detail / Settlement / Confirm payment | balance-prove terminal `PAID` |
-| `claim_refund` | Deal Detail / Settlement / Claim refund | emit Client transfer after `REJECTED` or deadline eligibility |
-| `confirm_refund` | Deal Detail / Settlement / Confirm refund | balance-prove terminal `REFUNDED` |
-| `get_deal_history` | On-chain history | read canonical lifecycle events |
-| `get_dashboard_stats` | Protocol summary | read funded, paid, and refunded totals |
+Locking funds is only part of a service agreement. The harder problem is defining and proving what "completed" means. ClauseFlow makes acceptance a first-class delivery workflow:
+
+- Both parties review scope, deliverables, testable acceptance criteria, deadlines, revision limits, and refund rules before funding; the accepted terms are then immutable.
+- Each criterion and deliverable included in the normalized review receives its own status, finding, and reasoning instead of being reduced to one opaque verdict. A `SATISFIED` or `PARTIAL` finding must cite a retrievable submitted source.
+- Unsupported obligations become explicit missing items and a revision checklist, allowing the Builder to repair a submission within the revision rules accepted by the Client.
+- Terms, evidence packages, review rounds, settlement eligibility, and final payment or refund remain attached to one public agreement record.
+- Deterministic code governs parties, amounts, time, revision limits, and one-time settlement. Validator consensus is reserved for the evidence judgment that deterministic code cannot make.
 
 ## Live Release
 
 | Surface | Verified release |
 | --- | --- |
 | Live dApp | [clauseflow-two.vercel.app](https://clauseflow-two.vercel.app) |
+| Demo video | [End-to-end walkthrough on X](https://x.com/tanphung000/status/2088260443752243463) |
 | Source repository | [github.com/tanphung/ClauseFlow](https://github.com/tanphung/ClauseFlow) |
 | Bradbury contract | [`0xF85C...e63D`](https://explorer-bradbury.genlayer.com/address/0xF85C4460B8195F9ebFD7b376c852aD7E89Ffe63D) |
 | Deployment transaction | [`0x3e2a...e5737`](https://explorer-bradbury.genlayer.com/tx/0x3e2ad3fd2f4c980dc5d481d253e072b501a0508206a3f6c91245e2dc538e5737) |
@@ -33,17 +29,7 @@ ClauseFlow lets a Builder publish objective service terms and a Client lock the 
 | Security and limitations | [SECURITY.md](SECURITY.md) |
 | Release checklist | [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) |
 
-The deployment is `FINALIZED / AGREE / FINISHED_WITH_RETURN`, exposes 18 methods, began with `get_offer_ids=[]`, and matches the repository contract source byte-for-byte after newline normalization. Its two-wallet Bradbury pilot now contains one `PAID` agreement after an `APPROVED` `100/100` review and one `REFUNDED` agreement after a `REJECTED` `0/100` review. Canonical totals are `0.035 GEN` funded, `0.02 GEN` paid, `0.015 GEN` refunded, and zero active escrow.
-
-## Product Focus: Executable Acceptance
-
-Locking funds is only part of a service agreement. The harder problem is defining and proving what "completed" means. ClauseFlow makes acceptance a first-class delivery workflow:
-
-- Both parties review scope, deliverables, testable acceptance criteria, deadlines, revision limits, and refund rules before funding; the accepted terms are then immutable.
-- Every criterion and deliverable receives its own evidence-backed status, finding, reasoning, and supporting source instead of being reduced to one opaque verdict.
-- Unsupported obligations become explicit missing items and a revision checklist, allowing the Builder to repair a submission within the revision rules accepted by the Client.
-- Terms, evidence packages, review rounds, settlement eligibility, and final payment or refund remain attached to one public agreement record.
-- Deterministic code governs parties, amounts, time, revision limits, and one-time settlement. Validator consensus is reserved for the evidence judgment that deterministic code cannot make.
+The deployment is `FINALIZED / AGREE / FINISHED_WITH_RETURN`, exposes 18 methods, began with `get_offer_ids=[]`, and matches the repository contract source byte-for-byte after newline normalization. Its two-wallet Bradbury pilot contains one `PAID` agreement after an `APPROVED` `100/100` review and one `REFUNDED` agreement after a `REJECTED` `0/100` review. Canonical totals are `0.035 GEN` funded, `0.02 GEN` paid, `0.015 GEN` refunded, and zero active escrow. These figures document testnet verification, not external customer adoption.
 
 ## The Trust Problem
 
@@ -78,6 +64,8 @@ flowchart LR
   H --> I[Public on-chain history]
 ```
 
+### Contract-to-Product Map
+
 | Contract method | Product action | Public proof |
 | --- | --- | --- |
 | `structure_offer` | Structure complete clauses | Builder draft |
@@ -103,7 +91,7 @@ Every completed review stores more than a PASS label:
 - strengths, risks, missing items, revision checklist, and next action;
 - a concise explanation of the consensus basis.
 
-The contract deterministically derives the score and settlement result from normalized assessments. Approval requires every material obligation to be satisfied and a score of 100.
+The contract deterministically derives the score and settlement result from normalized assessments. Approval requires every criterion and deliverable represented in the review to be satisfied and a score of 100. The deployed v1 reviews up to four newline-separated criteria and four deliverables per submission; agreements should keep material items within those bounds.
 
 ## Settlement Safety
 
@@ -170,4 +158,4 @@ docs/                         Architecture, deployment, evidence, and reviewer n
 
 ## Project Status
 
-This repository is one continuing Project: contract, dApp, deployment tooling, public evidence, tests, and two-wallet Bradbury pilot validation. It is not submitted separately as an extracted Intelligent Contract. Final payment/refund transaction proof and aggregate view results are recorded in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+This repository contains the complete ClauseFlow Project: contract, dApp, deployment tooling, public evidence, tests, and documentation. It is not submitted separately as an extracted Intelligent Contract. Final transaction proof and aggregate view results are recorded in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md); continued product and adoption work is outlined in [docs/ROADMAP.md](docs/ROADMAP.md).
