@@ -146,8 +146,6 @@ npm run test:e2e
 npm run preflight:bradbury
 ```
 
-Private keys belong only in local `.env` or keystore files. They must never appear in Vite variables, frontend config, documentation, screenshots, logs, or Git history.
-
 Security assumptions, mutable URL evidence, and the deployed v1 pending-transfer limitation are documented transparently in [SECURITY.md](SECURITY.md).
 
 ## Repository Map

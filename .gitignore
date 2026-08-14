@@ -19,5 +19,3 @@ __pycache__/
 Thumbs.db
 *.log
 *.err
-
-.vercel
