@@ -2,11 +2,15 @@
 
 ## Portal Copy
 
-**Title:** ClauseFlow: Evidence-Verified Escrow with Balance-Proven Settlement
+**Title:** ClauseFlow: Executable Acceptance Criteria for Service Work
 
 **Notes / Description:**
 
-ClauseFlow is a working GenLayer Bradbury dApp where validator consensus directly controls GEN escrow. A Builder publishes immutable terms, a Client locks the exact amount, and the Builder submits public delivery evidence. The leader creates a detailed report, but protocol-selected validators treat it as untrusted, independently refetch every URL, and verify accessibility, criteria, deliverables, missing items, score, and settlement decision. The full report is stored on-chain; the frontend renders it without inventing rationale. Claims first enter pending states, and terminal PAID or REFUNDED status requires contract-balance confirmation. The public Dashboard exposes the complete lifecycle without a wallet or private indexer. The verified two-wallet pilot shows 0.02 GEN paid, 0.015 GEN refunded, and zero active escrow. The attached X post includes a professional demo video of both paths.
+Service escrow protects funds but rarely defines how completed work is proven. ClauseFlow turns acceptance criteria into a live delivery workflow on GenLayer.
+
+Before funding, both parties review scope, deliverables, testable criteria, revision limits, deadlines, and refund rules; accepted terms then become immutable. Public evidence is assessed criterion-by-criterion and deliverable-by-deliverable. Findings, unsupported items, and a revision checklist stay attached to the agreement, allowing a Builder to repair a submission within the accepted rules instead of entering an improvised dispute.
+
+Deterministic code controls parties, time, amounts, revisions, and settlement. Validator consensus handles only the evidence judgment code cannot make. The result is a public record of what was promised, delivered, why it passed or failed, and how it settled. A professional end-to-end demo video is included in the attached X post.
 
 ## Plain-Language Summary
 

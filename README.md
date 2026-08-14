@@ -35,15 +35,15 @@ ClauseFlow lets a Builder publish objective service terms and a Client lock the 
 
 The deployment is `FINALIZED / AGREE / FINISHED_WITH_RETURN`, exposes 18 methods, began with `get_offer_ids=[]`, and matches the repository contract source byte-for-byte after newline normalization. Its two-wallet Bradbury pilot now contains one `PAID` agreement after an `APPROVED` `100/100` review and one `REFUNDED` agreement after a `REJECTED` `0/100` review. Canonical totals are `0.035 GEN` funded, `0.02 GEN` paid, `0.015 GEN` refunded, and zero active escrow.
 
-## What Makes ClauseFlow Different
+## Product Focus: Executable Acceptance
 
-ClauseFlow combines evidence consensus and escrow settlement in one auditable state machine rather than attaching an AI response to a payment interface:
+Locking funds is only part of a service agreement. The harder problem is defining and proving what "completed" means. ClauseFlow makes acceptance a first-class delivery workflow:
 
-- **The leader report is not trusted by default.** Protocol-selected validators independently refetch the submitted URLs and verify each material criterion, deliverable, missing item, score, and settlement decision.
-- **The report is part of the agreement record.** Source findings, criterion reasoning, risks, missing items, and the consensus basis are stored on-chain; the frontend renders those fields and does not invent explanations from a PASS/FAIL label.
-- **Consensus changes settlement rights.** An approved report enables Builder payment, while rejected evidence or deterministic deadline eligibility enables Client refund. The review is not advice or a cosmetic AI feature.
-- **Terminal settlement is balance-proven.** `FINALIZED` alone is not shown as payment success. Claims enter a pending state, external GEN movement executes, and `PAID` or `REFUNDED` is recorded only after contract-balance confirmation.
-- **The complete lifecycle is public.** Immutable terms, parties, evidence, review, transaction links, and payment/refund history remain queryable from contract views without a wallet, private database, or off-chain indexer.
+- Both parties review scope, deliverables, testable acceptance criteria, deadlines, revision limits, and refund rules before funding; the accepted terms are then immutable.
+- Every criterion and deliverable receives its own evidence-backed status, finding, reasoning, and supporting source instead of being reduced to one opaque verdict.
+- Unsupported obligations become explicit missing items and a revision checklist, allowing the Builder to repair a submission within the revision rules accepted by the Client.
+- Terms, evidence packages, review rounds, settlement eligibility, and final payment or refund remain attached to one public agreement record.
+- Deterministic code governs parties, amounts, time, revision limits, and one-time settlement. Validator consensus is reserved for the evidence judgment that deterministic code cannot make.
 
 ## The Trust Problem
 
