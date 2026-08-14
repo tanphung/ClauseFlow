@@ -1,5 +1,13 @@
 # ClauseFlow Project Submission Notes
 
+## Portal Copy
+
+**Title:** ClauseFlow: Evidence-Verified Escrow with Balance-Proven Settlement
+
+**Notes / Description:**
+
+ClauseFlow is a working GenLayer Bradbury dApp where validator consensus directly controls GEN escrow. A Builder publishes immutable terms, a Client locks the exact amount, and the Builder submits public delivery evidence. The leader creates a detailed report, but protocol-selected validators treat it as untrusted, independently refetch every URL, and verify accessibility, criteria, deliverables, missing items, score, and settlement decision. The full report is stored on-chain; the frontend renders it without inventing rationale. Claims first enter pending states, and terminal PAID or REFUNDED status requires contract-balance confirmation. The public Dashboard exposes the complete lifecycle without a wallet or private indexer. The verified two-wallet pilot shows 0.02 GEN paid, 0.015 GEN refunded, and zero active escrow. The attached X post includes a professional demo video of both paths.
+
 ## Plain-Language Summary
 
 ClauseFlow is a two-party service-agreement dApp. A Builder publishes objective terms, a Client locks the exact GEN price, and GenLayer validators inspect public delivery evidence against the funded clauses. Their consensus determines whether the Builder can be paid, must revise, or the Client can receive a refund.
