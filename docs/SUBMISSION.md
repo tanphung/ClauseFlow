@@ -30,6 +30,12 @@ Deterministic code handles addresses, amounts, deadlines, revisions, and one-tim
 
 The two-wallet Bradbury pilot is terminal: deal `#1` is `PAID` after an `APPROVED` `100/100` evidence review, and deal `#2` is `REFUNDED` after a `REJECTED` `0/100` non-delivery review. Canonical totals are `0.035 GEN` funded, `0.02 GEN` paid, `0.015 GEN` refunded, and zero active escrow or contract balance. Exact transaction links and view results are in [DEPLOYMENT.md](DEPLOYMENT.md). These are testnet pilot transactions, not a claim of external customer adoption.
 
+## Known Limitations
+
+Submitted evidence uses mutable public URLs rather than content-addressed snapshots. The deployed v1 also has no timeout, retry, or rollback path for a failed external child transfer after a claim enters `PAYMENT_PENDING` or `REFUND_PENDING`. These boundaries and mitigations are documented in [SECURITY.md](../SECURITY.md); they are not concealed by the frontend or submission claims.
+
+The repository hardening checks CI, direct tests, frontend tests, build output, and the frozen deployed-source hash without sending Bradbury transactions. The owner release steps are listed in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
+
 ## Category
 
 Submit the complete repository as one **Project**. Do not submit the contract separately as an Intelligent Contract and do not describe this release as a Milestone.

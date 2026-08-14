@@ -32,6 +32,8 @@ ClauseFlow lets a Builder publish objective service terms and a Client lock the 
 | Contract source | [contracts/clauseflow.py](contracts/clauseflow.py) |
 | Release evidence matrix | [docs/RELEASE_EVIDENCE.md](docs/RELEASE_EVIDENCE.md) |
 | Reviewer notes | [docs/SUBMISSION.md](docs/SUBMISSION.md) |
+| Security and limitations | [SECURITY.md](SECURITY.md) |
+| Release checklist | [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md) |
 
 The deployment is `FINALIZED / AGREE / FINISHED_WITH_RETURN`, exposes 18 methods, began with `get_offer_ids=[]`, and matches the repository contract source byte-for-byte after newline normalization. Its two-wallet Bradbury pilot now contains one `PAID` agreement after an `APPROVED` `100/100` review and one `REFUNDED` agreement after a `REJECTED` `0/100` review. Canonical totals are `0.035 GEN` funded, `0.02 GEN` paid, `0.015 GEN` refunded, and zero active escrow.
 
@@ -132,7 +134,9 @@ npm run dev
 Open `http://127.0.0.1:5173`. Public history works without a wallet. Writes require a Bradbury wallet on chain ID `4221` with test GEN.
 
 ```powershell
+python -m pip install -r requirements-ci.txt
 npm audit --omit=dev
+npm run verify:deployed-source
 npm run lint:contract
 py -3.13 -m pytest tests/direct -q
 npm test
@@ -143,6 +147,8 @@ npm run preflight:bradbury
 ```
 
 Private keys belong only in local `.env` or keystore files. They must never appear in Vite variables, frontend config, documentation, screenshots, logs, or Git history.
+
+Security assumptions, mutable URL evidence, and the deployed v1 pending-transfer limitation are documented transparently in [SECURITY.md](SECURITY.md).
 
 ## Repository Map
 
