@@ -1,30 +1,40 @@
-# GenLayer Submission Release Checklist
+# ClauseFlow v2 Release Checklist
 
-## Automated Gates
+## Source Gates
 
-- [ ] `npm audit --omit=dev`
-- [ ] `npm run verify:deployed-source`
-- [ ] `npm run lint:contract`
-- [ ] `python -m pytest tests/direct -q`
-- [ ] `npm test`
-- [ ] `npm run typecheck`
-- [ ] `npm run build`
-- [ ] `npm run test:e2e -- --project=desktop`
-- [ ] GitHub Actions frontend, contract, and desktop E2E jobs are green
+- [ ] `npm audit --omit=dev` reports zero production vulnerabilities
+- [ ] `npm run lint:contract` reports 21 methods and no errors
+- [ ] `py -3.13 -m pytest tests/direct -q` passes
+- [ ] `npm test` passes frontend and router tests
+- [ ] `npm run typecheck` passes
+- [ ] `npm run build` passes
+- [ ] `npm run test:e2e` passes
+- [ ] Secret and tracked-artifact scans are clean
 
-## Reviewer Truth
+## Deployment Gates
 
-- [ ] Live dApp uses `0xF85C4460B8195F9ebFD7b376c852aD7E89Ffe63D`
-- [ ] Deployment and settlement links in `docs/DEPLOYMENT.md` resolve
-- [ ] Repository contract source hash matches the deployed-source proof
-- [ ] Paid and refunded histories remain visible from public contract views
-- [ ] Limitations in `SECURITY.md` remain accurate
-- [ ] Submission describes a two-wallet Bradbury pilot, not external adoption
+- [ ] Bradbury network, three wallet identities, and balances pass preflight
+- [ ] Settlement Router deployment is mined and bytecode is present
+- [ ] ClauseFlow deployment is `FINALIZED / AGREE / FINISHED_WITH_RETURN`
+- [ ] ClauseFlow exposes 21 methods and empty initial offer/deal views
+- [ ] Router is permanently bound to the exact ClauseFlow address
+- [ ] Runtime config is updated only after all checks above
+- [ ] GitHub and Vercel publicly serve the exact commit used for evidence
 
-## Hygiene
+## Pilot Gates
 
-- [ ] No `.env`, private key, seed phrase, runtime log, test artifact, or generated video is tracked
-- [ ] Working tree is clean
-- [ ] Final diff contains no unintended contract, runtime config, or snapshot change
-- [ ] Demo video is uploaded manually before adding any public video URL
-- [ ] Create `v1.0.0 - GenLayer Submission` only after all checks pass
+- [ ] Paid agreement adjudicates every accepted obligation against immutable evidence
+- [ ] Paid agreement ends with an exact released Builder receipt and `PAID`
+- [ ] Refund agreement adjudicates every accepted obligation and truthfully rejects the missing audit
+- [ ] Refund agreement ends with an exact released Client receipt and `REFUNDED`
+- [ ] Every write records activation hash, GenLayer hash, lifecycle, consensus, execution, and resulting state
+- [ ] Final stats and router receipts reconcile with zero accounted escrow
+
+## Submission Gates
+
+- [ ] README, evidence dossier, deployment proof, and submission notes contain only verified v2 claims
+- [ ] Production snapshot matches the final contract and router
+- [ ] Desktop and responsive production QA pass without console errors or overflow
+- [ ] New v2 video shows independent validator refetch, detailed reports, exact payment, exact refund, and empty Create state
+- [ ] GitHub Actions is green and Vercel is Ready
+- [ ] Working tree is clean and no runtime checkpoint, secret, or temporary media is tracked

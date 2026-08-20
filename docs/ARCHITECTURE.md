@@ -1,37 +1,60 @@
-# ClauseFlow Architecture
+# ClauseFlow v2 Architecture
 
-## Trust Boundary
+## Components
 
 | Layer | Responsibility |
 | --- | --- |
-| React dApp | Wallet connection, transaction truth, public views, filters, explorer links |
-| Intelligent Contract | Immutable terms, escrow, evidence review, eligibility, settlement, statistics, history |
-| Public evidence | Delivery, demo, documentation, and source URLs submitted by the Builder |
-| Bradbury validators | Independent fetching and material verification of the settlement report |
+| React dApp | Public views, wallet discovery, immutable evidence input, transaction truth, receipt rendering |
+| GenLayer Intelligent Contract | Frozen obligations, evidence rounds, consensus adjudication, deterministic eligibility, canonical history |
+| EVM Settlement Router | Deal-specific funded receipt and recipient-controlled release |
+| Public immutable evidence | Version-bearing HTTPS artifacts with expected SHA-256 digests |
+| Bradbury validators | Independent refetch and material verification of every accepted obligation |
+
+## Accepted Agreement
+
+`structure_offer` and `publish_offer` accept the exact obligation manifest rather than asking an LLM to rewrite a broad scope. Each obligation has a stable ID, category, statement, acceptance rule, and required evidence types. Duplicate IDs, empty material fields, unsupported categories, unsupported evidence types, and manifests outside the 1-12 limit are rejected.
+
+`accept_offer` freezes the full manifest and hash with the parties, exact amount, delivery window, grace period, revision count, revision window, and review timeout. The contextual service description does not silently become an additional obligation.
+
+## Immutable Evidence Rounds
+
+`submit_delivery` validates a manifest of 1-8 evidence sources. Each source declares a stable evidence ID and type, label and version-bearing HTTPS URL, immutable version kind and ID, and expected SHA-256 digest.
+
+Supported bindings are Git commit URLs, IPFS CID URLs, and immutable Vercel deployment URLs. The contract stores every round append-only. A revision appends a new round and leaves previous submissions available through `get_evidence_rounds`.
 
 ## Consensus Design
 
-`structure_offer` deterministically canonicalizes the Builder's complete inputs, exact payment, deadline, revision, and refund metadata without asking an LLM to invent or reinterpret obligations. `publish_offer` rejects empty, changed, or reused drafts. Consensus is reserved for the evidence-dependent settlement decision where it solves the actual trust problem.
+`review_delivery` is the only nondeterministic settlement boundary:
 
-`review_delivery` is the settlement trust boundary:
+1. The leader refetches every source and verifies its declared immutable version and digest.
+2. The leader returns exactly one structured assessment for every funded obligation ID and one source assessment for every evidence ID.
+3. The contract rejects missing, duplicate, extra, or malformed IDs and derives the bounded score and decision from normalized assessments.
+4. Protocol-selected validators independently refetch the same immutable URLs.
+5. Validators treat the leader report as untrusted and verify source accessibility, version and digest matches, exact obligation coverage, required evidence-type coverage, findings, reasoning, missing items, score, and decision.
+6. Matching JSON or prose is not an equivalence rule. Every material verification flag must be true.
+7. Storage changes occur only after consensus returns and deterministic validation succeeds.
 
-1. The leader independently fetches all submitted sources and creates a detailed report for each normalized criterion and deliverable, up to four of each in deployed v1.
-2. The contract normalizes assessment statuses and deterministically derives score and result.
-3. Each validator independently refetches the sources.
-4. Each validator treats the leader report as untrusted and verifies every criterion and deliverable claim against its independently fetched evidence.
-5. A validator separately verifies source accessibility, criterion coverage, deliverable coverage, missing items, score, and settlement decision. Consensus accepts the report only when all six material checks pass and no unsupported claim remains; valid JSON or matching prose alone is insufficient.
-6. Storage changes occur only after consensus returns.
+Approval requires every accepted obligation to be `SATISFIED`. Partial or missing support follows the funded revision policy; a terminally unsatisfied submission becomes `REJECTED`.
 
-Validators do not approve JSON format or identical prose. Approval requires every criterion and deliverable represented in the normalized review to be `SATISFIED`, a score of 100, accessible supporting evidence, no missing items, and independent verification of those material claims.
+## Deterministic Policy
 
-## Escrow And Settlement
+The contract computes delivery, grace, revision, review-timeout, and refund eligibility from stored timestamps and counters. The validator report cannot change these terms.
 
-`accept_offer` requires the exact attoGEN price and increases funded and accounted escrow. A payment/refund claim checks authorization and eligibility, moves the deal to a pending state, decreases accounted escrow, records the expected post-transfer balance, and emits an external GEN transfer.
+- A missed initial delivery after deadline plus grace is refundable.
+- `REVISION_REQUIRED` is possible only when a funded revision remains.
+- A revision must arrive inside the stored revision window.
+- A submitted round that is not reviewed before the stored review timeout becomes refundable.
+- A rejected submission is refundable.
+- Payment requires `APPROVED`; payment and refund remain mutually exclusive.
 
-External messages execute after parent finalization. `confirm_payment` and `confirm_refund` reach terminal state only after the contract balance proves the transfer occurred. Paid and refunded paths are mutually exclusive and idempotent.
+## Settlement Router
 
-## Public History
+The EVM `SettlementRouter` is deployed first and permanently bound to one ClauseFlow contract. Only that ClauseFlow source can fund a receipt. Each receipt stores its deterministic settlement ID, exact deal ID hash, source ClauseFlow address, recipient, exact amount, payment/refund kind, and `FUNDED` or `RELEASED` state.
 
-Each deal keeps immutable parties and amount together with evidence, review, settlement fields, timestamps, and a lifecycle timeline. `get_dashboard_stats` and address-filter views expose canonical history directly; no private database or indexer is required for v1.
+After the GenLayer parent transaction finalizes, only the designated recipient can call `release_settlement`. The router uses checks-effects-interactions and a reentrancy guard; a failed recipient transfer reverts the receipt state.
 
-The production bundle includes a timestamped snapshot exported from the final Bradbury contract. The frontend accepts it only when both network and contract address exactly match runtime configuration, renders it immediately, and refreshes canonical stats and deals in the background. Offers and deal histories are re-read only when their views are opened; a deal-state change invalidates its history verification. Live views always take precedence, while a transient RPC failure leaves the labeled snapshot visible.
+ClauseFlow terminal confirmation calls `matches_released` with all deal-specific fields. An unrelated transfer, recipient, amount, kind, source contract, or receipt cannot complete the deal.
+
+## Public State
+
+Contract views are canonical. The dashboard snapshot is a timestamped UX cache accepted only for the exact network, ClauseFlow address, router address, and protocol version. Live reads replace it. Offers and histories load lazily, and deal changes invalidate cached history.

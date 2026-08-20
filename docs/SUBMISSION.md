@@ -1,52 +1,45 @@
-# ClauseFlow Project Submission Notes
+# ClauseFlow v2 Project Submission Notes
 
-## Portal Copy
+This file is a candidate reviewer package. Final addresses, transaction links, totals, and the v2 demo video must be inserted only after clean Bradbury verification.
 
-**Title:** ClauseFlow: Executable Acceptance Criteria for Service Work
+## Title
 
-**Notes / Description:**
+ClauseFlow: Enforceable Evidence-Verified Service Agreements
 
-Service escrow protects funds but rarely defines how completed work is proven. ClauseFlow turns acceptance criteria into a live delivery workflow on GenLayer.
+## Notes / Description
 
-Before funding, both parties review scope, deliverables, testable criteria, revision limits, deadlines, and refund rules; accepted terms then become immutable. Public evidence is assessed criterion-by-criterion and deliverable-by-deliverable. Findings, unsupported items, and a revision checklist stay attached to the agreement, allowing a Builder to repair a submission within the accepted rules instead of entering an improvised dispute.
+ClauseFlow turns natural-language service promises into an executable acceptance workflow on GenLayer.
 
-Deterministic code controls parties, time, amounts, revisions, and settlement. Validator consensus handles only the evidence judgment code cannot make. The result is a public record of what was promised, delivered, why it passed or failed, and how it settled. A professional end-to-end demo video is included in the attached X post.
+Before funding, every binding promise is represented by a stable obligation ID, acceptance rule, and required evidence types. The Client locks GEN against that exact manifest. The Builder then submits immutable version-bearing URLs and SHA-256 digests. A leader assesses every obligation, while protocol-selected validators independently refetch the sources and verify the version, digest, obligation coverage, findings, reasoning, score, missing items, and settlement decision. Matching JSON or matching prose is not enough.
 
-## Plain-Language Summary
+Deterministic code enforces the funded delivery, grace, revision, review-timeout, and refund rules. Settlement uses a dedicated router receipt bound to the exact deal, ClauseFlow source, recipient, amount, payment/refund kind, and released state. This closes the gap between what the parties accepted and what settlement actually enforces.
 
-ClauseFlow is a two-party service-agreement dApp. A Builder publishes objective terms, a Client locks the exact GEN price, and GenLayer validators inspect public delivery evidence against the funded clauses. Their consensus determines whether the Builder can be paid, must revise, or the Client can receive a refund.
+The repository contains the complete Intelligent Contract, Settlement Router, public dApp, tests, deployment tooling, architecture, and evidence dossier. The final submission will include an end-to-end video showing the two-wallet Bradbury pilot and independent validator reports.
 
 ## Why GenLayer Is Required
 
-Deterministic code handles addresses, amounts, deadlines, revisions, and one-time settlement. The unresolved trust problem is whether public web, source, demo, and documentation evidence actually satisfies natural-language obligations. ClauseFlow validators independently fetch that evidence and verify material criterion and deliverable findings. The result changes escrow eligibility, so this is not advice or an AI answer product.
+Addresses, amounts, clocks, counters, and receipt identity are deterministic. Whether a deployed application, source tree, audit, or report materially satisfies a funded natural-language obligation is not. That evidence judgment changes payment or refund eligibility, making validator consensus the product's trust boundary rather than an attached AI feature.
 
 ## Reviewer Path
 
-1. Open the [public Dashboard](https://clauseflow-two.vercel.app) without a wallet.
-2. Compare its totals with the final proof in [DEPLOYMENT.md](DEPLOYMENT.md).
-3. Open the paid agreement and inspect accepted terms, evidence, detailed validator reasoning, transfer, and terminal history.
-4. Open the refunded agreement and inspect the missing audit evidence, rejection reasoning, refund, and terminal history.
-5. Filter by Builder and Client address.
-6. Open **New offer** and confirm the workspace starts empty.
-7. Follow contract and transaction links to verify Bradbury state independently.
+1. Open the public Dashboard without a wallet.
+2. Open the approved agreement and inspect every accepted obligation, commit-pinned evidence, detailed validator reasoning, exact payment receipt, and `PAID` history.
+3. Open the rejected audit agreement and inspect the absent required audit evidence, per-obligation rejection, exact refund receipt, and `REFUNDED` history.
+4. Compare the contract and router fields with the explorer transactions in `docs/DEPLOYMENT.md`.
+5. Open **New offer** and confirm every binding term is explicit before publishing.
+6. Review the source and automated test gates.
 
-## Verified Release
+## Final Proof Checklist
 
-- Network: GenLayer Testnet Bradbury, chain ID `4221`
-- Contract: `0xF85C4460B8195F9ebFD7b376c852aD7E89Ffe63D`
-- Deployment: `0x3e2ad3fd2f4c980dc5d481d253e072b501a0508206a3f6c91245e2dc538e5737`
-- Deployment result: `FINALIZED / AGREE / FINISHED_WITH_RETURN`
-- Schema: 18 methods
-- Live frontend: https://clauseflow-two.vercel.app
-- Source: https://github.com/tanphung/ClauseFlow
-
-The two-wallet Bradbury pilot is terminal: deal `#1` is `PAID` after an `APPROVED` `100/100` evidence review, and deal `#2` is `REFUNDED` after a `REJECTED` `0/100` non-delivery review. Canonical totals are `0.035 GEN` funded, `0.02 GEN` paid, `0.015 GEN` refunded, and zero active escrow or contract balance. Exact transaction links and view results are in [DEPLOYMENT.md](DEPLOYMENT.md). These are testnet pilot transactions, not a claim of external customer adoption.
-
-## Known Limitations
-
-Submitted evidence uses mutable public URLs rather than content-addressed snapshots. The deployed v1 also has no timeout, retry, or rollback path for a failed external child transfer after a claim enters `PAYMENT_PENDING` or `REFUND_PENDING`. These boundaries and mitigations are documented in [SECURITY.md](../SECURITY.md); they are not concealed by the frontend or submission claims.
-
-The repository hardening checks CI, direct tests, frontend tests, build output, and the frozen deployed-source hash without sending Bradbury transactions. The owner release steps are listed in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
+- GenLayer Testnet Bradbury, chain ID `4221`
+- v2 ClauseFlow address and deployment transaction
+- bound Settlement Router address and deployment transaction
+- 21-method ClauseFlow schema and empty initial views
+- payment pilot with exact `APPROVED` per-obligation report and released Builder receipt
+- refund pilot with exact `REJECTED` per-obligation report and released Client receipt
+- zero accounted escrow after both terminal confirmations
+- public commit-pinned evidence and SHA-256 values
+- new v2 video URL
 
 ## Category
 
