@@ -29,7 +29,7 @@ async function openV2(page: Page) {
   }));
   await page.addInitScript(({ key, value }) => localStorage.setItem(key, value), {
     key: `clauseflow:dashboard:${contract}`,
-    value: JSON.stringify({ version: 2, network: "testnetBradbury", contractAddress: contract, offers: [offer], deals: [deal], stats, histories: { "1": [{ eventType: "PAID", note: "Exact router receipt confirmed", timestamp: deal.paidAt, actor: builder }] }, generatedAt: "2026-08-20T08:30:00Z" })
+    value: JSON.stringify({ version: 2, network: "testnetBradbury", contractAddress: contract, protocolVersion: "v2", settlementRouter: router, offers: [offer], deals: [deal], stats, histories: { "1": [{ eventType: "PAID", note: "Exact router receipt confirmed", timestamp: deal.paidAt, actor: builder }] }, generatedAt: "2026-08-20T08:30:00Z" })
   });
   await page.goto("/");
 }

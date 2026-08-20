@@ -227,6 +227,8 @@ type DashboardSnapshot = {
   version: number;
   network: ClauseFlowConfig["chain"];
   contractAddress: string;
+  protocolVersion?: ClauseFlowConfig["protocolVersion"];
+  settlementRouter?: string;
   offers: Offer[];
   deals: Deal[];
   stats: Stats;
@@ -273,11 +275,17 @@ function readSnapshot(config: ClauseFlowConfig): DashboardSnapshot | null {
   candidates.push(bundledOnChainSnapshot);
   for (const candidate of candidates) {
     const snapshot = candidate as DashboardSnapshot;
+    const v2IdentityMatches = config.protocolVersion !== "v2" || (
+      snapshot.protocolVersion === "v2"
+      && Boolean(config.settlementRouter)
+      && snapshot.settlementRouter?.toLowerCase() === config.settlementRouter?.toLowerCase()
+    );
     if (
       snapshot
       && [1, 2].includes(snapshot.version)
       && snapshot.network === config.chain
       && snapshot.contractAddress?.toLowerCase() === config.contractAddress.toLowerCase()
+      && v2IdentityMatches
       && Array.isArray(snapshot.deals)
       && Array.isArray(snapshot.offers)
       && snapshot.stats
@@ -292,6 +300,8 @@ function storeSnapshot(config: ClauseFlowConfig, offers: Offer[], deals: Deal[],
       version: 2,
       network: config.chain,
       contractAddress: config.contractAddress,
+      protocolVersion: config.protocolVersion,
+      settlementRouter: config.settlementRouter,
       offers,
       deals,
       stats,

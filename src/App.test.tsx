@@ -44,6 +44,19 @@ const history = [
   { eventType: "PAID", note: "Exact router receipt confirmed", timestamp: deal.paidAt, actor: builder }
 ];
 const rounds = [{ round: "1", submittedAt: deal.submittedAt, manifest, manifestHash: deal.currentEvidenceHash, deliveryNote: deal.currentDeliveryNote }];
+const snapshot = (overrides: Record<string, unknown> = {}) => ({
+  version: 2,
+  network: "testnetBradbury",
+  contractAddress: contract,
+  protocolVersion: "v2",
+  settlementRouter: router,
+  offers: [offer],
+  deals: [deal],
+  stats,
+  histories: { "1": history },
+  generatedAt: "2026-08-20T08:30:00Z",
+  ...overrides
+});
 
 vi.mock("./lib/genlayer", async () => {
   const actual = await vi.importActual<typeof import("./lib/genlayer")>("./lib/genlayer");
@@ -99,7 +112,7 @@ describe("ClauseFlow v2", () => {
   });
 
   it("keeps a matching snapshot visible when live Bradbury refresh fails", async () => {
-    window.localStorage.setItem(`clauseflow:dashboard:${contract}`, JSON.stringify({ version: 2, network: "testnetBradbury", contractAddress: contract, offers: [offer], deals: [deal], stats, histories: { "1": history }, generatedAt: "2026-08-20T08:30:00Z" }));
+    window.localStorage.setItem(`clauseflow:dashboard:${contract}`, JSON.stringify(snapshot()));
     vi.mocked(genlayer.readJsonView).mockRejectedValue(new Error("Bradbury timeout"));
     render(<App />);
     expect(screen.getByText(offer.title)).toBeTruthy();
@@ -108,8 +121,16 @@ describe("ClauseFlow v2", () => {
   });
 
   it("does not reuse a snapshot across contract addresses", () => {
-    window.localStorage.setItem(`clauseflow:dashboard:${contract}`, JSON.stringify({ version: 2, network: "testnetBradbury", contractAddress: contract, offers: [offer], deals: [deal], stats, histories: {}, generatedAt: "2026-08-20T08:30:00Z" }));
+    window.localStorage.setItem(`clauseflow:dashboard:${contract}`, JSON.stringify(snapshot({ histories: {} })));
     runtimeWindow().CLAUSEFLOW_CONFIG = { ...runtimeWindow().CLAUSEFLOW_CONFIG!, contractAddress: "0x5555555555555555555555555555555555555555" };
+    vi.mocked(genlayer.readJsonView).mockImplementation(() => new Promise(() => undefined));
+    render(<App />);
+    expect(screen.queryByText(offer.title)).toBeNull();
+    expect(screen.getByText(/Reading Bradbury state/i)).toBeTruthy();
+  });
+
+  it("rejects a v2 snapshot from a different settlement router", () => {
+    window.localStorage.setItem(`clauseflow:dashboard:${contract}`, JSON.stringify(snapshot({ settlementRouter: "0x5555555555555555555555555555555555555555" })));
     vi.mocked(genlayer.readJsonView).mockImplementation(() => new Promise(() => undefined));
     render(<App />);
     expect(screen.queryByText(offer.title)).toBeNull();
