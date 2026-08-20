@@ -7,6 +7,7 @@
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
+    "test:router": "vitest run tests/router",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
     "verify:deployed-source": "node scripts/verify-deployed-source.mjs",
@@ -32,7 +33,9 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.3.4",
     "ethers": "^6.17.0",
+    "ganache": "^7.9.2",
     "jsdom": "^25.0.1",
+    "solc": "^0.8.30",
     "typescript": "^5.7.2",
     "vite": "^6.0.7",
     "vitest": "^4.1.10"
