@@ -28,10 +28,10 @@
 html { min-width: 320px; background: var(--canvas); }
 html, body, #root { min-height: 100%; overflow-x: hidden; }
 body { margin: 0; min-width: 320px; background: var(--canvas); color: var(--ink); -webkit-font-smoothing: antialiased; }
-button, input, textarea { font: inherit; }
+button, input, textarea, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }
-button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible {
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible {
   outline: 3px solid rgba(231, 91, 69, 0.25);
   outline-offset: 2px;
 }
@@ -390,7 +390,7 @@ button:disabled { cursor: not-allowed; opacity: 0.42; }
 .partyFilters label { display: grid; gap: 6px; }
 .partyFilters label > span { display: flex; align-items: center; gap: 5px; color: var(--ink-faint); font-size: 10px; font-weight: 700; }
 
-input, textarea {
+input, textarea, select {
   width: 100%;
   color: var(--ink);
   background: #fff;
@@ -401,7 +401,8 @@ input, textarea {
   transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
 }
 input::placeholder, textarea::placeholder { color: #a1aaa6; }
-input:focus, textarea:focus { background: #fff; border-color: var(--forest-2); box-shadow: 0 0 0 3px rgba(29, 90, 78, 0.1); }
+input:focus, textarea:focus, select:focus { background: #fff; border-color: var(--forest-2); box-shadow: 0 0 0 3px rgba(29, 90, 78, 0.1); }
+select { appearance: auto; }
 textarea { min-height: 92px; resize: vertical; line-height: 1.55; }
 .shortTextarea { min-height: 68px; }
 
@@ -549,6 +550,24 @@ legend { width: 100%; padding: 0 0 12px; color: var(--ink); font-size: 11px; fon
   font-size: 10px;
   line-height: 1.5;
 }
+.syncBanner, .archiveBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  width: fit-content;
+  margin: -8px 0 14px;
+  padding: 8px 11px;
+  color: var(--forest-2);
+  background: #edf6f2;
+  border: 1px solid #c9e1d8;
+  border-radius: 6px;
+}
+.syncBanner.warning { color: #7a5b17; background: #fff8e8; border-color: #edddb8; }
+.syncBanner > span, .archiveBanner > span { display: grid; gap: 2px; }
+.syncBanner strong, .archiveBanner strong { font-size: 10px; }
+.syncBanner small, .archiveBanner span { font-size: 8px; line-height: 1.5; }
+.archiveBanner { width: 100%; color: #5f4b17; background: #fffaf0; border-color: #eadbad; }
+.archiveBanner strong { color: #493909; }
 .validationDot { flex: 0 0 auto; width: 7px; height: 7px; margin-top: 4px; background: currentColor; border-radius: 50%; }
 .errorNotice { margin-bottom: 14px; color: var(--danger); background: #fff0ee; border-color: #efcbc6; }
 .dataSyncStatus {
@@ -573,6 +592,33 @@ legend { width: 100%; padding: 0 0 12px; color: var(--ink); font-size: 11px; fon
 .formActions { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-top: 19px; border-top: 1px solid var(--line); }
 .formActions > span { display: flex; align-items: center; gap: 6px; max-width: 290px; color: var(--ink-faint); font-size: 9px; }
 .draftPanel { position: sticky; top: 112px; overflow: hidden; }
+.draftPanel > .eyebrow, .draftPanel > h3, .draftPanel > p, .draftPanel > dl, .draftPanel > .offerClauses, .draftPanel > .draftState { margin-right: 20px; margin-left: 20px; }
+.draftPanel > .eyebrow { margin-top: 20px; }
+.draftPanel > h3 { margin-top: 5px; }
+.draftPanel > p { margin-top: 7px; font-size: 10px; line-height: 1.6; }
+.draftPanel > dl { display: grid; grid-template-columns: 95px minmax(0, 1fr); gap: 7px; padding: 13px 0; font-size: 9px; }
+.draftPanel > dl dt { color: var(--ink-faint); }
+.draftPanel > dl dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+.draftPanel > .draftState { margin-bottom: 20px; }
+.obligationEditor { grid-column: 1 / -1; display: grid; gap: 10px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+.obligationEditorCard { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 14px; background: var(--paper-soft); border: 1px solid var(--line); border-radius: 7px; }
+.obligationEditorCard > header { grid-column: 1 / -1; display: grid; grid-template-columns: auto minmax(150px, 220px) auto; align-items: center; gap: 9px; }
+.obligationEditorCard > header > span { display: grid; place-items: center; min-width: 31px; height: 31px; padding: 0 6px; color: #fff; background: var(--forest-2); border-radius: 5px; font-family: ui-monospace, monospace; font-size: 9px; font-weight: 800; }
+.obligationEditorCard > header .iconButton { justify-self: end; }
+.obligationEditorCard > label { display: grid; gap: 6px; min-width: 0; color: var(--ink-soft); font-size: 9px; font-weight: 700; }
+.obligationEditorCard > label:nth-of-type(2), .obligationEditorCard > label:nth-of-type(3), .obligationEditorCard > label:nth-of-type(4) { grid-column: 1 / -1; }
+.evidenceTypePicker { display: flex; flex-wrap: wrap; gap: 6px; }
+.evidenceTypePicker button { min-height: 29px; padding: 0 9px; color: var(--ink-soft); background: #fff; border: 1px solid var(--line-strong); border-radius: 5px; font-size: 8px; font-weight: 800; }
+.evidenceTypePicker button.active { color: #fff; background: var(--forest-2); border-color: var(--forest-2); }
+.obligationList { display: grid; gap: 8px; margin-top: 12px; }
+.obligationCard { padding: 13px; background: var(--paper-soft); border: 1px solid var(--line); border-left: 3px solid var(--forest-2); border-radius: 6px; }
+.obligationCard > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.obligationCard > header span { color: var(--forest-2); font-family: ui-monospace, monospace; font-size: 9px; font-weight: 800; }
+.obligationCard > header small { font-size: 8px; text-transform: uppercase; }
+.obligationCard > p { margin: 8px 0 0; color: var(--ink); font-size: 10px; line-height: 1.65; }
+.obligationCard > div { margin-top: 8px; padding-top: 8px; color: var(--ink-soft); border-top: 1px solid var(--line); font-size: 9px; line-height: 1.6; }
+.obligationCard footer { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+.obligationCard footer span { padding: 4px 6px; color: var(--forest-2); background: var(--mint); border-radius: 4px; font-size: 8px; font-weight: 750; }
 .draftHeader { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 19px 20px; border-bottom: 1px solid var(--line); }
 .draftState { display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px; color: var(--ink-faint); background: var(--paper-soft); border: 1px solid var(--line); border-radius: 999px; font-size: 9px; font-weight: 750; }
 .draftState i { background: #a9b1ad; box-shadow: none; }
@@ -639,12 +685,23 @@ legend { width: 100%; padding: 0 0 12px; color: var(--ink); font-size: 11px; fon
 .agreementDocument, .settlementPanel, .evidencePanel, .reviewPanel, .historyPanel, .txPanel { padding: 21px; }
 .agreementDocument .offerClauses { margin-top: 0; border-top: 0; }
 .agreementDocument .offerClauses summary { padding: 12px 0; }
+.agreementContext { margin: 10px 0 0; padding: 12px; color: var(--ink-soft); background: var(--paper-soft); border-left: 3px solid var(--coral); font-size: 10px; line-height: 1.65; }
+.policyGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 15px; }
+.policyGrid > div { display: grid; gap: 3px; padding: 11px; background: var(--paper-soft); border: 1px solid var(--line); border-radius: 6px; }
+.policyGrid small { font-size: 8px; text-transform: uppercase; }
+.policyGrid strong { font-size: 10px; }
 .settlementPanel { position: sticky; top: 112px; }
 .settlementPanel > p:not(.eyebrow):not(.roleHint) { margin: 7px 0 16px; font-size: 10px; }
 .settlementAmount { display: grid; gap: 2px; padding: 15px; background: var(--paper-soft); border: 1px solid var(--line); border-radius: 7px; }
 .settlementAmount small { font-size: 8px; text-transform: uppercase; }
 .settlementAmount strong { font-size: 24px; }
 .settlementAmount strong span { color: var(--ink-faint); font-size: 10px; }
+.receiptSummary { display: grid; gap: 9px; margin-top: 10px; padding: 12px; color: #dcebe5; background: var(--forest); border-radius: 7px; }
+.receiptSummary > span { display: flex; align-items: center; gap: 6px; color: #8ee0bd; font-size: 8px; font-weight: 800; text-transform: uppercase; }
+.receiptSummary > code { overflow-wrap: anywhere; font-size: 8px; }
+.receiptSummary dl { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 6px; margin: 0; font-size: 8px; }
+.receiptSummary dt { color: rgba(255, 255, 255, 0.5); }
+.receiptSummary dd { margin: 0; color: #fff; overflow-wrap: anywhere; }
 .verticalActions { display: grid !important; }
 .verticalActions button { width: 100%; }
 .roleHint { display: flex; align-items: center; gap: 6px; margin: 13px 0 0; font-size: 9px; }
@@ -670,6 +727,19 @@ legend { width: 100%; padding: 0 0 12px; color: var(--ink); font-size: 11px; fon
 .deliveryForm { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
 .deliveryFormHead { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .deliveryForm > .inlineValidation, .deliveryForm > button { grid-column: 1 / -1; }
+.v2EvidenceForm { grid-template-columns: 1fr; }
+.evidenceRound { display: grid; gap: 8px; margin-top: 11px; padding: 13px; background: var(--paper-soft); border: 1px solid var(--line); border-radius: 7px; }
+.evidenceRound > header { display: flex; justify-content: space-between; gap: 10px; }
+.evidenceRound > header strong { font-size: 10px; }
+.evidenceRound > header time { color: var(--ink-faint); font-size: 8px; }
+.evidenceRound > p { margin: 0; font-size: 10px; line-height: 1.6; }
+.evidenceRound > code { color: var(--ink-faint); font-size: 8px; overflow-wrap: anywhere; }
+.evidenceSourceEditor { display: grid; grid-template-columns: 0.7fr 0.7fr 1fr; gap: 8px; padding: 12px; background: var(--paper-soft); border: 1px solid var(--line); border-radius: 7px; }
+.evidenceSourceEditor > header { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; }
+.evidenceSourceEditor > header span { color: var(--forest-2); font-family: ui-monospace, monospace; font-size: 9px; font-weight: 800; }
+.evidenceSourceEditor > input:nth-of-type(2) { grid-column: 1 / -1; }
+.hashField { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.hashField button { min-width: 116px; }
 .reviewPanel { border-top: 3px solid var(--forest-2); }
 .reviewPanel.rejected { border-top-color: var(--danger); }
 .reviewPanel.revision_required { border-top-color: var(--gold); }
@@ -821,6 +891,7 @@ legend { width: 100%; padding: 0 0 12px; color: var(--ink); font-size: 11px; fon
   .heroProof { justify-self: start; margin-top: 18px; }
   .agreementTab { grid-template-columns: 1fr; }
   .settlementPanel { position: static; }
+  .evidenceSourceEditor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .commercialFields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ledgerRow { grid-template-columns: minmax(0, 1fr) auto 24px; }
   .ledgerRow > :nth-child(2), .ledgerRow > :nth-child(5), .ledgerHead > :nth-child(2), .ledgerHead > :nth-child(5) { display: none; }
@@ -851,6 +922,11 @@ legend { width: 100%; padding: 0 0 12px; color: var(--ink); font-size: 11px; fon
   .sectionTitle, .ledgerTitle, .formHeading, .offerFooter, .deliveryFormHead { align-items: stretch; flex-direction: column; }
   .filterBox { width: 100%; }
   .partyFilters, fieldset, .fields, .commercialFields, .deliveryForm { grid-template-columns: 1fr; }
+  .obligationEditorCard, .evidenceSourceEditor, .policyGrid { grid-template-columns: 1fr; }
+  .obligationEditorCard > label, .obligationEditorCard > label:nth-of-type(n), .evidenceSourceEditor > input:nth-of-type(n) { grid-column: 1; }
+  .obligationEditorCard > header, .evidenceSourceEditor > header, .hashField { grid-column: 1; }
+  .hashField { grid-template-columns: 1fr; }
+  .hashField button { width: 100%; }
   .creationSteps li { min-height: 56px; padding: 9px; }
   .creationSteps li > div { display: none; }
   .creationSteps li { justify-content: center; }

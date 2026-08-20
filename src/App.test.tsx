@@ -1,351 +1,201 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 import * as genlayer from "./lib/genlayer";
+
+const builder = "0x1111111111111111111111111111111111111111";
+const client = "0x2222222222222222222222222222222222222222";
+const contract = "0x3333333333333333333333333333333333333333";
+const router = "0x4444444444444444444444444444444444444444";
+const runtimeWindow = () => window as unknown as { CLAUSEFLOW_CONFIG?: genlayer.ClauseFlowConfig };
+const obligations = [
+  { id: "O_DELIVERY", category: "DELIVERABLE", statement: "Publish the immutable release dossier.", acceptanceRule: "The dossier maps every named method to public evidence.", requiredEvidenceTypes: ["DOCUMENTATION", "SOURCE"] },
+  { id: "O_RUNTIME", category: "ACCEPTANCE", statement: "Expose the complete agreement workflow in the live app.", acceptanceRule: "The deployed interface exposes each accepted lifecycle action.", requiredEvidenceTypes: ["DELIVERY"] }
+];
+const manifest = [
+  { id: "E_DOC", type: "DOCUMENTATION", label: "Release dossier", url: "https://raw.githubusercontent.com/tanphung/ClauseFlow/abcdef123456/docs/RELEASE_EVIDENCE.md", versionKind: "GIT_COMMIT", versionId: "abcdef123456", sha256: "a".repeat(64) },
+  { id: "E_APP", type: "DELIVERY", label: "Pinned deployment", url: "https://clauseflow-two-git-abcdef123456.vercel.app", versionKind: "VERCEL_DEPLOYMENT", versionId: "abcdef123456", sha256: "b".repeat(64) }
+];
+const offer = {
+  id: "1", protocolVersion: "CLAUSEFLOW_V2", title: "ClauseFlow immutable release agreement", serviceDescription: "Verify a version-bound release package.", builder,
+  priceAttoGen: "20000000000000000", status: "OFFER_PUBLISHED", obligations: JSON.stringify(obligations), obligationsHash: "0xterms",
+  deliveryWindowHours: "48", gracePeriodHours: "24", revisionRounds: "1", revisionWindowHours: "24", reviewWindowHours: "24"
+};
+const deal = {
+  id: "1", offerId: "1", protocolVersion: "CLAUSEFLOW_V2", title: offer.title, serviceDescription: offer.serviceDescription, builder, client,
+  lockedAttoGen: offer.priceAttoGen, status: "PAID", obligations: offer.obligations, obligationsHash: offer.obligationsHash,
+  deliveryWindowHours: "48", gracePeriodHours: "24", maxRevisions: "1", revisionWindowHours: "24", reviewWindowHours: "24", revisionCount: "0", submissionRound: "1",
+  fundedAt: "2026-08-20T08:00:00Z", submittedAt: "2026-08-20T08:10:00Z", reviewedAt: "2026-08-20T08:20:00Z", completedAt: "2026-08-20T08:30:00Z", paidAt: "2026-08-20T08:30:00Z", refundedAt: "",
+  currentEvidenceManifest: JSON.stringify(manifest), currentEvidenceHash: "0xmanifest", currentDeliveryNote: "The pinned evidence satisfies both obligations.",
+  reviewResult: "APPROVED", reviewScore: "100", reviewExecutiveSummary: "Every accepted obligation was adjudicated against immutable public evidence.",
+  reviewObligationAssessments: JSON.stringify([
+    { obligationId: "O_DELIVERY", category: "DELIVERABLE", statement: obligations[0].statement, status: "SATISFIED", finding: "The dossier contains the required method matrix.", reasoning: "Validators independently fetched the pinned dossier and verified the matrix.", evidenceIds: ["E_DOC"] },
+    { obligationId: "O_RUNTIME", category: "ACCEPTANCE", statement: obligations[1].statement, status: "SATISFIED", finding: "The pinned app exposes the required lifecycle.", reasoning: "Validators fetched the immutable deployment and checked the accepted actions.", evidenceIds: ["E_APP"] }
+  ]),
+  reviewSourceAssessments: JSON.stringify(manifest.map((source) => ({ ...source, accessible: true, versionMatched: true, expectedSha256: source.sha256, actualSha256: source.sha256 }))),
+  reviewStrengths: JSON.stringify(["All accepted obligations have direct evidence."]), reviewRisks: "[]", reviewMissingItems: "[]", reviewRevisionChecklist: "[]",
+  reviewConsensusBasis: "Protocol-selected validators independently refetched every immutable source and verified exact obligation IDs.",
+  settlementId: "CLAUSEFLOW:1:PAYMENT:1", settlementKind: "PAYMENT", settlementRecipient: builder, settlementAmountAtto: offer.priceAttoGen, settlementConfirmedAt: "2026-08-20T08:30:00Z",
+  paid: "true", refunded: "false", nextAction: "Settlement confirmed"
+};
+const stats = { protocolVersion: "CLAUSEFLOW_V2", totalOffers: "1", totalDeals: "1", activeDeals: "0", completedDeals: "1", pendingSettlements: "0", totalFundedAtto: offer.priceAttoGen, totalPaidAtto: offer.priceAttoGen, totalRefundedAtto: "0", contractBalanceAtto: "0", accountedEscrowAtto: "0", settlementRouter: router };
+const history = [
+  { eventType: "FUNDED", note: "Exact accepted terms funded", timestamp: deal.fundedAt, actor: client },
+  { eventType: "PAID", note: "Exact router receipt confirmed", timestamp: deal.paidAt, actor: builder }
+];
+const rounds = [{ round: "1", submittedAt: deal.submittedAt, manifest, manifestHash: deal.currentEvidenceHash, deliveryNote: deal.currentDeliveryNote }];
 
 vi.mock("./lib/genlayer", async () => {
   const actual = await vi.importActual<typeof import("./lib/genlayer")>("./lib/genlayer");
   return {
     ...actual,
     createReadClient: vi.fn(() => ({})),
-    discoverWalletProviders: vi.fn(async () => [{ id: "wallet", name: "Test wallet", icon: "", rdns: "test.wallet", provider: {} }]),
-    connectWallet: vi.fn(async () => ({ client: {}, address: builder })),
+    discoverWalletProviders: vi.fn(async () => [{ id: "wallet", name: "Test wallet", icon: "", rdns: "test.wallet", provider: { request: vi.fn() } }]),
+    connectWallet: vi.fn(async (_config, provider) => ({ client: {}, address: builder, provider })),
     writeAndVerify: vi.fn(async (_config, _functionName, _args, _value, onSubmitted) => {
       onSubmitted?.("0xabc");
-      return { hash: "0xabc", address: builder, lifecycle: "ACCEPTED", executionResult: "FINISHED_WITH_RETURN", consensusResult: "AGREE", childTransactions: [] };
+      return { hash: "0xabc", address: builder, lifecycle: "FINALIZED", executionResult: "FINISHED_WITH_RETURN", consensusResult: "AGREE", childTransactions: [] };
     }),
+    readRouterSettlement: vi.fn(async () => ({ source: contract, dealHash: `0x${"1".repeat(64)}`, recipient: builder, amount: 20000000000000000n, kind: 1, state: 2 })),
+    releaseRouterSettlement: vi.fn(async () => `0x${"2".repeat(64)}`),
     readJsonView: vi.fn()
   };
 });
 
-const builder = "0x1111111111111111111111111111111111111111";
-const client = "0x2222222222222222222222222222222222222222";
-const clauses = {
-  scope: "Verify the ClauseFlow release evidence and settlement path.",
-  deliverables: "Live app URL, GitHub repository, README evidence, and delivery note.",
-  acceptanceCriteria: "Validators can fetch the ClauseFlow live app and README evidence.",
-  milestones: "Evidence inventory\nReviewer path polish",
-  evidenceRequirements: "Live app URL\nGitHub repository URL\nREADME URL",
-  verificationPlan: "Fetch live app\nFetch GitHub README\nCompare evidence with accepted criteria",
-  deadline: "3 days after funding plus a 24 hour grace period.",
-  revisionRules: "Maximum 1 revision round within 24 hours.",
-  paymentTerms: "Release 0.02 GEN after approval.",
-  refundConditions: "Refund after deadline and grace period.",
-  summary: "ClauseFlow release evidence agreement.",
-  priceDisplay: "0.02"
-};
-const offer = {
-  id: "1", title: "ClauseFlow release evidence dossier", builder, priceAttoGen: "20000000000000000", deadlineDays: "3", revisionRounds: "1",
-  scope: clauses.scope, deliverables: clauses.deliverables, acceptanceCriteria: clauses.acceptanceCriteria, refundRule: clauses.refundConditions,
-  referenceUrls: "https://github.com/tanphung/ClauseFlow\nhttps://clauseflow-two.vercel.app", structuredClauses: JSON.stringify(clauses), status: "OFFER_PUBLISHED"
-};
-const deal = {
-  id: "1", offerId: "1", title: offer.title, builder, client, lockedAttoGen: offer.priceAttoGen, status: "PAID",
-  fundedAt: "2026-07-12T04:22:40Z", submittedAt: "2026-07-12T04:22:52Z", reviewedAt: "2026-07-12T04:23:43Z", completedAt: "2026-07-12T04:25:57Z",
-  paidAt: "2026-07-12T04:25:57Z", refundedAt: "", deadlineAtUnix: "1783916560", refundAvailableAtUnix: "1784002960",
-  deliveryUrl: "https://clauseflow-two.vercel.app", githubUrl: "https://github.com/tanphung/ClauseFlow", demoUrl: "https://clauseflow-two.vercel.app", documentationUrl: "https://github.com/tanphung/ClauseFlow#readme",
-  deliveryNote: "Delivered ClauseFlow release evidence", reviewResult: "APPROVED", reviewScore: "100", reviewReason: "Evidence verified", revisionChecklist: "",
-  reviewEvidenceSummary: "Fetched live app and README.",
-  reviewCriteriaResults: "Live app: PASS\nGitHub README: PASS",
-  reviewMissingItems: "",
-  reviewExecutiveSummary: "Independent validators confirmed that the public application and repository prove the accepted reviewer workflow.",
-  reviewCriterionAssessments: JSON.stringify([{ id: "C1", criterion: "Validators can fetch the live app and README evidence.", status: "SATISFIED", finding: "The live interface exposes the contracted reviewer workflow.", reasoning: "The fetched app and README independently corroborate the expected behavior.", evidenceUrls: ["https://clauseflow-two.vercel.app"] }]),
-  reviewDeliverableAssessments: JSON.stringify([{ id: "D1", criterion: "Live app URL and repository evidence.", status: "SATISFIED", finding: "Both public artifacts are present.", reasoning: "Validators fetched both artifacts and found them mutually consistent.", evidenceUrls: ["https://github.com/tanphung/ClauseFlow"] }]),
-  reviewSourceAssessments: JSON.stringify([{ label: "delivery", url: "https://clauseflow-two.vercel.app", accessible: true, finding: "Live application fetched successfully.", relevance: "Directly demonstrates the accepted workflow." }]),
-  reviewStrengths: JSON.stringify(["Public artifacts are independently retrievable."]),
-  reviewRisks: JSON.stringify([]),
-  reviewConsensusBasis: "Leader and validators independently fetched submitted sources and agreed on every material status.",
-  nextAction: "Completed", paymentTxType: "EXTERNAL_GEN_TRANSFER_TO_BUILDER", paid: "true", refunded: "false"
-};
-const stats = { totalOffers: "1", totalDeals: "1", activeDeals: "0", completedDeals: "1", totalFundedAtto: offer.priceAttoGen, totalPaidAtto: offer.priceAttoGen, totalRefundedAtto: "0", contractBalanceAtto: "0", accountedEscrowAtto: "0" };
-
-function fillValidOfferForm() {
-  const values: Record<string, string> = {
-    "Offer title": "Independent delivery verification",
-    "Service description": "Verify a public release package for a client.",
-    "Detailed scope": "Review the public interface, source code, and documentation.",
-    "Deliverables": "Live app, contract source, and reviewer documentation.",
-    "Acceptance criteria": "Validators can independently fetch and compare each public artifact.",
-    "Reference URLs": "https://clauseflow-two.vercel.app",
-    "Price in GEN": "0.02",
-    "Deadline days": "3",
-    "Revision rounds": "1",
-    "Revision window hours": "24",
-    "Grace period hours": "24",
-    "Refund rule": "Client may claim a refund after a rejected evidence review."
-  };
-  for (const [label, value] of Object.entries(values)) fireEvent.change(screen.getByLabelText(label), { target: { value } });
+function mockViews() {
+  vi.mocked(genlayer.readJsonView).mockImplementation(async (_client, _config, functionName) => {
+    if (functionName === "get_deal_ids" || functionName === "get_offer_ids") return ["1"];
+    if (functionName === "get_dashboard_stats") return stats;
+    if (functionName === "get_deal") return deal;
+    if (functionName === "get_offer") return offer;
+    if (functionName === "get_deal_history") return history;
+    if (functionName === "get_evidence_rounds") return rounds;
+    if (functionName === "get_refund_eligibility") return { eligible: false, reason: "Deal is already settled" };
+    throw new Error(`Unexpected view ${functionName}`);
+  });
 }
 
-describe("ClauseFlow", () => {
-  it("keeps polling through recoverable validator timeout statuses", () => {
-    expect(genlayer.isTerminalTransactionFailure("LEADER_TIMEOUT")).toBe(false);
+describe("ClauseFlow v2", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.localStorage.clear();
+    window.history.replaceState({}, "", "/");
+    runtimeWindow().CLAUSEFLOW_CONFIG = { contractAddress: contract, settlementRouter: router, protocolVersion: "v2", chain: "testnetBradbury", explorerUrl: "https://explorer-bradbury.genlayer.com", stateStatus: "accepted" };
+    mockViews();
+  });
+
+  it("treats timeout as recoverable but disagreement as terminal", () => {
     expect(genlayer.isTerminalTransactionFailure("VALIDATORS_TIMEOUT")).toBe(false);
     expect(genlayer.isTerminalTransactionFailure("UNDETERMINED")).toBe(true);
     expect(genlayer.isTerminalTransactionFailure("CANCELED")).toBe(true);
   });
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-    window.localStorage.clear();
-    window.history.replaceState({}, "", "/");
-    window.CLAUSEFLOW_CONFIG = { contractAddress: "0x3333333333333333333333333333333333333333", chain: "testnetBradbury", explorerUrl: "https://explorer-bradbury.genlayer.com" };
-    vi.mocked(genlayer.readJsonView).mockImplementation(async (_client, _config, functionName) => {
-      if (functionName === "get_offer_ids") return ["1"];
-      if (functionName === "get_deal_ids") return ["1"];
-      if (functionName === "get_dashboard_stats") return stats;
-      if (functionName === "get_offer") return offer;
-      if (functionName === "get_deal") return deal;
-      if (functionName === "get_deal_history") return [
-        { eventType: "REVIEWED", note: "{legacy-review-payload}", timestamp: deal.reviewedAt, actor: client },
-        { eventType: "PAID", note: "GEN payment verified", timestamp: deal.paidAt, actor: builder }
-      ];
-      if (functionName === "get_structured_offer") return { ...offer, serviceDescription: "Verified page", priceAttoGen: offer.priceAttoGen, revisionWindowHours: "24", gracePeriodHours: "24", clauses, structuredAt: deal.fundedAt, publishedOfferId: "" };
-      throw new Error(`Unexpected view ${functionName}`);
-    });
-  });
-
-  it("loads canonical on-chain dashboard data without seeded payment rows", async () => {
+  it("loads only canonical v2 dashboard state", async () => {
     render(<App />);
-    expect(screen.queryByText(/Implement a grant dashboard MVP/i)).toBeNull();
-    expect(await screen.findByText(/ClauseFlow release evidence dossier/i)).toBeTruthy();
+    expect(await screen.findByText(offer.title)).toBeTruthy();
+    expect(screen.getByText("PAID")).toBeTruthy();
     expect(screen.getAllByText("0.02").length).toBeGreaterThan(0);
-    expect(screen.getByText("PAID")).toBeTruthy();
-    expect(screen.queryByText(/Example Domain/i)).toBeNull();
-    expect(screen.queryByText(/attoGEN/i)).toBeNull();
+    expect(screen.queryByText("[object Object]")).toBeNull();
   });
 
-  it("allows an explicit contract override only from a local URL", async () => {
-    const stagingContract = "0x4444444444444444444444444444444444444444";
-    window.history.replaceState({}, "", `/?contract=${stagingContract}`);
+  it("keeps a matching snapshot visible when live Bradbury refresh fails", async () => {
+    window.localStorage.setItem(`clauseflow:dashboard:${contract}`, JSON.stringify({ version: 2, network: "testnetBradbury", contractAddress: contract, offers: [offer], deals: [deal], stats, histories: { "1": history }, generatedAt: "2026-08-20T08:30:00Z" }));
+    vi.mocked(genlayer.readJsonView).mockRejectedValue(new Error("Bradbury timeout"));
     render(<App />);
-    await screen.findByText(/ClauseFlow release evidence dossier/i);
-    expect(vi.mocked(genlayer.readJsonView)).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ contractAddress: stagingContract }),
-      "get_deal_ids",
-      []
-    );
+    expect(screen.getByText(offer.title)).toBeTruthy();
+    expect(await screen.findByText(/Snapshot retained/i)).toBeTruthy();
+    expect(screen.getByText("PAID")).toBeTruthy();
   });
 
-  it("shows structured placeholders during a first Bradbury read", () => {
+  it("does not reuse a snapshot across contract addresses", () => {
+    window.localStorage.setItem(`clauseflow:dashboard:${contract}`, JSON.stringify({ version: 2, network: "testnetBradbury", contractAddress: contract, offers: [offer], deals: [deal], stats, histories: {}, generatedAt: "2026-08-20T08:30:00Z" }));
+    runtimeWindow().CLAUSEFLOW_CONFIG = { ...runtimeWindow().CLAUSEFLOW_CONFIG!, contractAddress: "0x5555555555555555555555555555555555555555" };
     vi.mocked(genlayer.readJsonView).mockImplementation(() => new Promise(() => undefined));
     render(<App />);
-    expect(screen.getByLabelText("Loading on-chain agreements")).toBeTruthy();
-    expect(screen.getAllByText(/Reading agreements from Bradbury/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(offer.title)).toBeNull();
+    expect(screen.getByText(/Reading Bradbury state/i)).toBeTruthy();
   });
 
-  it("renders the cached snapshot immediately while Bradbury refreshes in the background", async () => {
-    window.localStorage.setItem("clauseflow:dashboard:0x3333333333333333333333333333333333333333", JSON.stringify({
-      version: 1,
-      network: "testnetBradbury",
-      contractAddress: "0x3333333333333333333333333333333333333333",
-      offers: [offer],
-      deals: [deal],
-      stats,
-      histories: {
-        "1": [
-          { eventType: "PAID", note: "GEN payment verified", timestamp: deal.paidAt, actor: builder }
-        ]
-      },
-      generatedAt: "2026-07-24T00:00:00Z"
-    }));
+  it("starts the v2 Builder workspace empty and requires exact obligations", async () => {
     render(<App />);
-    expect(screen.getByText(/ClauseFlow release evidence dossier/i)).toBeTruthy();
-    expect(screen.getByText("PAID")).toBeTruthy();
-    await waitFor(() => expect(vi.mocked(genlayer.readJsonView)).toHaveBeenCalled());
-  });
-
-  it("renders a fresh cache immediately and still verifies live Bradbury data in the background", async () => {
-    window.localStorage.setItem("clauseflow:dashboard:0x3333333333333333333333333333333333333333", JSON.stringify({
-      version: 1,
-      network: "testnetBradbury",
-      contractAddress: "0x3333333333333333333333333333333333333333",
-      offers: [offer],
-      deals: [deal],
-      stats,
-      histories: {
-        "1": [
-          { eventType: "PAID", note: "GEN payment verified", timestamp: deal.paidAt, actor: builder }
-        ]
-      },
-      generatedAt: new Date().toISOString()
-    }));
-    render(<App />);
-    expect(screen.getByText(/ClauseFlow release evidence dossier/i)).toBeTruthy();
-    expect(screen.getByText("PAID")).toBeTruthy();
-    await waitFor(() => expect(vi.mocked(genlayer.readJsonView)).toHaveBeenCalledWith(expect.anything(), expect.anything(), "get_dashboard_stats", []));
-  });
-
-  it("uses the bundled snapshot only for its exact Bradbury contract", async () => {
-    window.CLAUSEFLOW_CONFIG = { contractAddress: "0xF85C4460B8195F9ebFD7b376c852aD7E89Ffe63D", chain: "testnetBradbury", explorerUrl: "https://explorer-bradbury.genlayer.com" };
-    vi.mocked(genlayer.readJsonView).mockImplementation(() => new Promise(() => undefined));
-    render(<App />);
-    expect(screen.getByText("ClauseFlow release evidence dossier")).toBeTruthy();
-    expect(screen.getByText(/Verified on-chain snapshot • syncing latest data/i)).toBeTruthy();
-  });
-
-  it("keeps verified cached rows visible when a background Bradbury refresh fails", async () => {
-    window.localStorage.setItem("clauseflow:dashboard:0x3333333333333333333333333333333333333333", JSON.stringify({
-      version: 1,
-      network: "testnetBradbury",
-      contractAddress: "0x3333333333333333333333333333333333333333",
-      offers: [offer],
-      deals: [deal],
-      stats,
-      histories: { "1": [{ eventType: "PAID", note: "GEN payment verified", timestamp: deal.paidAt, actor: builder }] },
-      generatedAt: "2026-07-24T00:00:00Z"
-    }));
-    vi.mocked(genlayer.readJsonView).mockRejectedValue(new Error("get_deal_ids timed out while reading Bradbury state"));
-    render(<App />);
-    expect(screen.getByText(/ClauseFlow release evidence dossier/i)).toBeTruthy();
-    expect(await screen.findByText(/Live refresh unavailable. Verified data remains visible./i)).toBeTruthy();
-    expect(screen.getByText("PAID")).toBeTruthy();
-  });
-
-  it("defers offer and history reads until a view needs them", async () => {
-    render(<App />);
-    await screen.findByText(/ClauseFlow release evidence dossier/i);
-    expect(vi.mocked(genlayer.readJsonView)).not.toHaveBeenCalledWith(expect.anything(), expect.anything(), "get_offer_ids", []);
-    expect(vi.mocked(genlayer.readJsonView)).not.toHaveBeenCalledWith(expect.anything(), expect.anything(), "get_deal_history", expect.anything());
-    fireEvent.click(screen.getByRole("button", { name: "Offers" }));
-    await waitFor(() => expect(vi.mocked(genlayer.readJsonView)).toHaveBeenCalledWith(expect.anything(), expect.anything(), "get_offer_ids", []));
-    fireEvent.click(screen.getByRole("button", { name: /Deal Detail/i }));
-    await waitFor(() => expect(vi.mocked(genlayer.readJsonView)).toHaveBeenCalledWith(expect.anything(), expect.anything(), "get_deal_history", ["1"]));
-  });
-
-  it("invalidates a verified history cache when the live deal state changes", async () => {
-    let chainDeal = { ...deal, status: "SUBMITTED", completedAt: "", paidAt: "", paid: "false" };
-    vi.mocked(genlayer.readJsonView).mockImplementation(async (_client, _config, functionName) => {
-      if (functionName === "get_deal_ids") return ["1"];
-      if (functionName === "get_dashboard_stats") return stats;
-      if (functionName === "get_deal") return chainDeal;
-      if (functionName === "get_offer_ids") return ["1"];
-      if (functionName === "get_offer") return offer;
-      if (functionName === "get_deal_history") return [{ eventType: chainDeal.status, note: chainDeal.status, timestamp: deal.reviewedAt, actor: client }];
-      throw new Error(`Unexpected view ${functionName}`);
-    });
-    render(<App />);
-    await screen.findByText(/ClauseFlow release evidence dossier/i);
-    fireEvent.click(screen.getByRole("button", { name: /Deal Detail/i }));
-    await waitFor(() => expect(vi.mocked(genlayer.readJsonView).mock.calls.filter((call) => call[2] === "get_deal_history")).toHaveLength(1));
-    chainDeal = deal;
-    fireEvent.click(screen.getByRole("button", { name: /Refresh on-chain data/i }));
-    await waitFor(() => expect(vi.mocked(genlayer.readJsonView).mock.calls.filter((call) => call[2] === "get_deal_history")).toHaveLength(2));
-  });
-
-  it("filters history by both party addresses", async () => {
-    render(<App />);
-    await screen.findByText(/ClauseFlow release evidence dossier/i);
-    fireEvent.change(screen.getByLabelText("Builder address filter"), { target: { value: "0x999" } });
-    expect(screen.getByText(/No matching agreements/i)).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Builder address filter"), { target: { value: builder } });
-    fireEvent.change(screen.getByLabelText("Client address filter"), { target: { value: client } });
-    expect(screen.getByText(/ClauseFlow release evidence dossier/i)).toBeTruthy();
-  });
-
-  it("keeps a real Builder workspace empty until terms are entered", async () => {
-    render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: /^Create$/i }));
-    const publish = screen.getByRole("button", { name: /Publish Reviewed Offer/i });
-    expect((publish as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.queryByDisplayValue(/Example Domain/i)).toBeNull();
-    expect(screen.queryByRole("button", { name: /Load real example/i })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "New offer" }));
+    expect((screen.getByRole("button", { name: /Publish reviewed offer/i }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByLabelText("Offer title") as HTMLInputElement).value).toBe("");
+    expect(screen.getByText(/Every binding promise belongs in the obligation manifest/i)).toBeTruthy();
+    expect(screen.queryByDisplayValue(/Example Domain/i)).toBeNull();
   });
 
-  it("normalizes execution failures instead of rendering object errors", async () => {
-    vi.mocked(genlayer.writeAndVerify).mockRejectedValueOnce({ shortMessage: "FINISHED_WITH_ERROR: contract execution did not succeed." });
+  it("renders every on-chain obligation assessment without inventing prose", async () => {
     render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: /^Create$/i }));
-    fillValidOfferForm();
-    fireEvent.click(screen.getByRole("button", { name: /Structure Clauses/i }));
-    expect(await screen.findByText(/FINISHED_WITH_ERROR/i)).toBeTruthy();
-    expect(screen.queryByText(/\[object Object\]/i)).toBeNull();
+    await screen.findByText(offer.title);
+    fireEvent.click(screen.getByRole("button", { name: "Deal detail" }));
+    fireEvent.click(screen.getByRole("button", { name: /Evidence & review/i }));
+    expect(await screen.findByText("Full validator report")).toBeTruthy();
+    expect(screen.getByText(/Every accepted obligation was adjudicated/i)).toBeTruthy();
+    expect(screen.getByText(/independently fetched the pinned dossier/i)).toBeTruthy();
+    expect(screen.getByText(/independently refetched every immutable source/i)).toBeTruthy();
+    expect(screen.getAllByText("SATISFIED")).toHaveLength(2);
   });
 
-  it("reports wallet failures separately from Bradbury refresh health", async () => {
-    vi.mocked(genlayer.connectWallet).mockRejectedValueOnce({ code: -32002 });
-    render(<App />);
-    await screen.findByText(/ClauseFlow release evidence dossier/i);
-
-    fireEvent.click(screen.getByRole("button", { name: /Connect wallet/i }));
-
-    expect((await screen.findByRole("alert")).textContent).toMatch(/wallet request is already pending/i);
-    expect(screen.queryByText(/Live refresh unavailable/i)).toBeNull();
-  });
-
-  it("uses the selected wallet provider for contract writes", async () => {
-    render(<App />);
-    await screen.findByText(/ClauseFlow release evidence dossier/i);
-
-    fireEvent.click(screen.getByRole("button", { name: /Connect wallet/i }));
-    await waitFor(() => expect(vi.mocked(genlayer.connectWallet)).toHaveBeenCalled());
-    const selectedProvider = vi.mocked(genlayer.connectWallet).mock.calls[0][1];
-
-    fireEvent.click(screen.getByRole("button", { name: /^Create$/i }));
-    fillValidOfferForm();
-    fireEvent.click(screen.getByRole("button", { name: /Structure Clauses/i }));
-
-    await waitFor(() => expect(vi.mocked(genlayer.writeAndVerify)).toHaveBeenCalled());
-    expect(vi.mocked(genlayer.writeAndVerify).mock.calls[0][5]).toBe(selectedProvider);
-  });
-
-  it("renders reviewed history as readable evidence instead of raw payloads", async () => {
-    render(<App />);
-    await screen.findByText(/ClauseFlow release evidence dossier/i);
-    fireEvent.click(screen.getByRole("button", { name: /Deal Detail/i }));
-    fireEvent.click(screen.getByRole("tab", { name: /On-chain history/i }));
-    expect(await screen.findByText(/Approved \(100\/100\)\. Fetched live app and README\./i)).toBeTruthy();
-    expect(screen.queryByText(/\{legacy-review-payload\}/i)).toBeNull();
-    expect(screen.getByRole("link", { name: /Actor 0x2222\.\.\.2222/i }).getAttribute("href")).toBe(`https://explorer-bradbury.genlayer.com/address/${client}`);
-    expect(screen.getAllByRole("link", { name: /Contract record/i })[0].getAttribute("href")).toBe("https://explorer-bradbury.genlayer.com/address/0x3333333333333333333333333333333333333333");
-  });
-
-  it("opens accepted agreement terms by default in deal detail", async () => {
-    render(<App />);
-    await screen.findByText(/ClauseFlow release evidence dossier/i);
-    fireEvent.click(screen.getByRole("button", { name: /Deal Detail/i }));
-    const summary = await screen.findByText("Full accepted terms");
-    expect((summary.closest("details") as HTMLDetailsElement).open).toBe(true);
-  });
-
-  it("renders substantive validator reasoning and linked evidence", async () => {
-    render(<App />);
-    await screen.findByText(/ClauseFlow release evidence dossier/i);
-    fireEvent.click(screen.getByRole("button", { name: /Deal Detail/i }));
-    fireEvent.click(screen.getByRole("tab", { name: /Evidence & review/i }));
-    expect(screen.getByText("Full validator report")).toBeTruthy();
-    expect(screen.getByText("On-chain verification rule")).toBeTruthy();
-    expect(screen.getByText("Acceptance criteria")).toBeTruthy();
-    expect(screen.getAllByText("Validator reasoning")).toHaveLength(2);
-    expect(screen.getByText(/independently corroborate/i)).toBeTruthy();
-    expect(screen.getAllByRole("link", { name: /clauseflow-two.vercel.app/i }).length).toBeGreaterThan(0);
-    expect(screen.queryByText(/public evidence contains/i)).toBeNull();
-  });
-
-  it("does not invent detailed reasoning when structured review fields are absent", async () => {
+  it("states when detailed review data was not stored instead of fabricating it", async () => {
+    const fallbackDeal = { ...deal, reviewObligationAssessments: "" };
+    mockViews();
     vi.mocked(genlayer.readJsonView).mockImplementation(async (_client, _config, functionName) => {
-      if (functionName === "get_deal_ids") return ["1"];
+      if (functionName === "get_deal_ids" || functionName === "get_offer_ids") return ["1"];
       if (functionName === "get_dashboard_stats") return stats;
-      if (functionName === "get_deal") return { ...deal, reviewCriterionAssessments: "", reviewDeliverableAssessments: "", reviewSourceAssessments: "" };
-      if (functionName === "get_offer_ids") return ["1"];
+      if (functionName === "get_deal") return fallbackDeal;
       if (functionName === "get_offer") return offer;
-      if (functionName === "get_deal_history") return [];
-      throw new Error(`Unexpected view ${functionName}`);
+      if (functionName === "get_deal_history") return history;
+      if (functionName === "get_evidence_rounds") return rounds;
+      if (functionName === "get_refund_eligibility") return { eligible: false, reason: "Settled" };
+      throw new Error(functionName);
     });
     render(<App />);
-    await screen.findByText(/ClauseFlow release evidence dossier/i);
-    fireEvent.click(screen.getByRole("button", { name: /Deal Detail/i }));
-    fireEvent.click(screen.getByRole("tab", { name: /Evidence & review/i }));
-    expect(screen.getByText(/Criterion-level structured validator data was not stored/i)).toBeTruthy();
-    expect(screen.getByText(/Deliverable-level structured validator data was not stored/i)).toBeTruthy();
-    expect(screen.getAllByText(/will not infer replacement findings or reasoning/i)).toHaveLength(2);
+    await screen.findByText(offer.title);
+    fireEvent.click(screen.getByRole("button", { name: "Deal detail" }));
+    fireEvent.click(screen.getByRole("button", { name: /Evidence & review/i }));
+    expect(await screen.findByText(/No obligation-level report was stored/i)).toBeTruthy();
+    expect(screen.queryByText(/independently fetched the pinned dossier/i)).toBeNull();
+  });
+
+  it("shows the exact immutable evidence version and hash", async () => {
+    render(<App />);
+    await screen.findByText(offer.title);
+    fireEvent.click(screen.getByRole("button", { name: "Deal detail" }));
+    fireEvent.click(screen.getByRole("button", { name: /Evidence & review/i }));
+    const roundTitle = await screen.findByText(/Round 1/i);
+    const round = roundTitle.closest("article")!;
+    expect(within(round).getByText(/GIT_COMMIT/i)).toBeTruthy();
+    expect(within(round).getAllByText(/sha256/i)).toHaveLength(2);
+  });
+
+  it("shows the deal-specific router receipt", async () => {
+    render(<App />);
+    await screen.findByText(offer.title);
+    fireEvent.click(screen.getByRole("button", { name: "Deal detail" }));
+    expect(await screen.findByText(/CLAUSEFLOW:1:PAYMENT:1/i)).toBeTruthy();
+    expect(screen.getByText("Released")).toBeTruthy();
+    expect(vi.mocked(genlayer.readRouterSettlement)).toHaveBeenCalledWith(expect.objectContaining({ settlementRouter: router }), deal.settlementId);
+  });
+
+  it("exposes the old contract only as a read-only archive", async () => {
+    const archiveAddress = "0x6666666666666666666666666666666666666666";
+    runtimeWindow().CLAUSEFLOW_CONFIG = { ...runtimeWindow().CLAUSEFLOW_CONFIG!, archives: [{ contractAddress: archiveAddress, protocolVersion: "v1", chain: "testnetBradbury", explorerUrl: "https://explorer-bradbury.genlayer.com", readOnly: true, label: "Archived v1 pilot" }] };
+    render(<App />);
+    await screen.findByText(offer.title);
+    fireEvent.click(screen.getByRole("button", { name: /Archived v1 pilot/i }));
+    expect(await screen.findByText(/This contract is preserved for historical transparency/i)).toBeTruthy();
+    expect((screen.getByRole("button", { name: "New offer" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("normalizes wallet execution objects instead of rendering object Object", async () => {
+    vi.mocked(genlayer.writeAndVerify).mockRejectedValueOnce({ shortMessage: "Contract execution failed cleanly" });
+    render(<App />);
+    await screen.findByText(offer.title);
+    fireEvent.click(screen.getByRole("button", { name: "Offers" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Accept & Lock 0.02 GEN/i }));
+    expect(await screen.findByText("Contract execution failed cleanly")).toBeTruthy();
+    expect(screen.queryByText("[object Object]")).toBeNull();
+    await waitFor(() => expect(genlayer.writeAndVerify).toHaveBeenCalled());
   });
 });
-
-declare global {
-  interface Window {
-    CLAUSEFLOW_CONFIG?: genlayer.ClauseFlowConfig;
-  }
-}

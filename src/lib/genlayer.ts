@@ -8,7 +8,47 @@ export type ClauseFlowConfig = {
   chain: "testnetBradbury" | "studionet";
   explorerUrl: string;
   stateStatus?: "accepted" | "finalized";
+  protocolVersion?: "v1" | "v2";
+  settlementRouter?: string;
+  label?: string;
+  readOnly?: boolean;
+  archives?: ClauseFlowProfile[];
 };
+
+export type ClauseFlowProfile = Omit<ClauseFlowConfig, "archives">;
+
+export type RouterSettlement = {
+  source: string;
+  dealHash: string;
+  recipient: string;
+  amount: bigint;
+  kind: number;
+  state: number;
+};
+
+export const settlementRouterAbi = [
+  {
+    type: "function",
+    name: "get_settlement",
+    stateMutability: "view",
+    inputs: [{ name: "settlementId", type: "string" }],
+    outputs: [
+      { name: "source", type: "address" },
+      { name: "dealHash", type: "bytes32" },
+      { name: "recipient", type: "address" },
+      { name: "amount", type: "uint256" },
+      { name: "kind", type: "uint8" },
+      { name: "state", type: "uint8" }
+    ]
+  },
+  {
+    type: "function",
+    name: "release_settlement",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "settlementId", type: "string" }],
+    outputs: []
+  }
+] as const;
 
 export function hasContractAddress(config: ClauseFlowConfig | null | undefined) {
   return Boolean(config?.contractAddress && /^0x[a-fA-F0-9]{40}$/.test(config.contractAddress));
@@ -278,6 +318,48 @@ export async function writeAndVerify(
     consensusResult,
     childTransactions
   };
+}
+
+export async function readRouterSettlement(config: ClauseFlowConfig, settlementId: string): Promise<RouterSettlement | null> {
+  if (!config.settlementRouter || !/^0x[a-fA-F0-9]{40}$/.test(config.settlementRouter) || !settlementId) return null;
+  const chain = config.chain === "studionet" ? studionet : testnetBradbury;
+  const publicClient = createViemPublicClient({ chain, transport: http(undefined, { timeout: 20_000, retryCount: 1 }) });
+  const result = await publicClient.readContract({
+    address: config.settlementRouter as `0x${string}`,
+    abi: settlementRouterAbi,
+    functionName: "get_settlement",
+    args: [settlementId]
+  });
+  return {
+    source: result[0],
+    dealHash: result[1],
+    recipient: result[2],
+    amount: result[3],
+    kind: Number(result[4]),
+    state: Number(result[5])
+  };
+}
+
+export async function releaseRouterSettlement(
+  config: ClauseFlowConfig,
+  provider: WalletProvider,
+  walletAddress: string,
+  settlementId: string
+) {
+  if (!config.settlementRouter || !/^0x[a-fA-F0-9]{40}$/.test(config.settlementRouter)) {
+    throw new Error("Settlement router is not configured for this contract.");
+  }
+  const chain = config.chain === "studionet" ? studionet : testnetBradbury;
+  await ensureWalletNetwork(provider, chain);
+  const data = encodeFunctionData({ abi: settlementRouterAbi, functionName: "release_settlement", args: [settlementId] });
+  const hash = await provider.request({
+    method: "eth_sendTransaction",
+    params: [{ from: walletAddress, to: config.settlementRouter, data, value: "0x0" }]
+  }) as Hash;
+  const publicClient = createViemPublicClient({ chain, transport: http(undefined, { timeout: 30_000, retryCount: 1 }) });
+  const receipt = await publicClient.waitForTransactionReceipt({ hash, confirmations: 1 });
+  if (receipt.status !== "success") throw new Error(`Router release reverted: ${hash}`);
+  return hash;
 }
 
 export async function readJsonView<T>(client: ReturnType<typeof createReadClient>, config: ClauseFlowConfig, functionName: string, args: CalldataEncodable[]): Promise<T> {
