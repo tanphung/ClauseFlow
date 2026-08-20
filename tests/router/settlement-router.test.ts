@@ -1,9 +1,9 @@
 // @vitest-environment node
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { BrowserProvider, Contract, ContractFactory, parseEther } from "ethers";
-import ganache from "ganache";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { Contract, ContractFactory, JsonRpcProvider, parseEther } from "ethers";
 import solc from "solc";
 import { readFileSync } from "node:fs";
+import { spawn, type ChildProcess } from "node:child_process";
 
 const helperSource = `
 // SPDX-License-Identifier: MIT
@@ -43,16 +43,39 @@ async function mined(transaction: Promise<unknown>) {
 }
 
 describe("ClauseFlowSettlementRouter", () => {
-  let provider: BrowserProvider;
-  let eip1193: ReturnType<typeof ganache.provider>;
+  const rpcUrl = "http://127.0.0.1:18545";
+  let hardhat: ChildProcess;
+  let provider: JsonRpcProvider;
   let router: Contract;
-  let owner: Awaited<ReturnType<BrowserProvider["getSigner"]>>;
-  let clauseFlow: Awaited<ReturnType<BrowserProvider["getSigner"]>>;
-  let recipient: Awaited<ReturnType<BrowserProvider["getSigner"]>>;
+  let owner: Awaited<ReturnType<JsonRpcProvider["getSigner"]>>;
+  let clauseFlow: Awaited<ReturnType<JsonRpcProvider["getSigner"]>>;
+  let recipient: Awaited<ReturnType<JsonRpcProvider["getSigner"]>>;
+
+  beforeAll(async () => {
+    hardhat = spawn(process.execPath, ["node_modules/hardhat/dist/src/cli.js", "node", "--hostname", "127.0.0.1", "--port", "18545"], {
+      cwd: process.cwd(),
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    provider = new JsonRpcProvider(rpcUrl);
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= 80; attempt += 1) {
+      try {
+        await provider.getBlockNumber();
+        return;
+      } catch (error) {
+        lastError = error;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
+    throw lastError;
+  }, 15_000);
+
+  afterAll(async () => {
+    await provider?.destroy();
+    hardhat?.kill();
+  });
 
   beforeEach(async () => {
-    eip1193 = ganache.provider({ logging: { quiet: true }, wallet: { totalAccounts: 6 } });
-    provider = new BrowserProvider(eip1193 as never);
     owner = await provider.getSigner(0);
     clauseFlow = await provider.getSigner(1);
     recipient = await provider.getSigner(2);
@@ -60,10 +83,6 @@ describe("ClauseFlowSettlementRouter", () => {
     router = await factory.deploy({ gasLimit: 6_000_000n });
     await router.waitForDeployment();
     await (await router.bind_clauseflow(await clauseFlow.getAddress())).wait();
-  });
-
-  afterEach(async () => {
-    await eip1193.disconnect();
   });
 
   it("binds ClauseFlow exactly once", async () => {

@@ -2,6 +2,7 @@
   "name": "clauseflow",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
@@ -33,7 +34,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.3.4",
     "ethers": "^6.17.0",
-    "ganache": "^7.9.2",
+    "hardhat": "^3.13.0",
     "jsdom": "^25.0.1",
     "solc": "^0.8.30",
     "typescript": "^5.7.2",

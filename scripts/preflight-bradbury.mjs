@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
+import { createPublicClient, formatEther, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { testnetBradbury } from "genlayer-js/chains";
 
 function readEnv() {
   return Object.fromEntries(
@@ -38,6 +40,34 @@ if (deployer.address.toLowerCase() !== env.EXPECTED_WALLET_ADDRESS.toLowerCase()
 }
 console.log(`DEPLOYER_ADDRESS=${deployer.address}`);
 console.log("EXPECTED_WALLET_ADDRESS_MATCH=true");
+
+const builderKey = env.CLAUSEFLOW_BUILDER_PRIVATE_KEY || env.ClauseFlow2_PRIVATE_KEY;
+const clientKey = env.CLAUSEFLOW_CLIENT_PRIVATE_KEY || env.ClauseFlow3_PRIVATE_KEY;
+if (!/^0x[a-fA-F0-9]{64}$/.test(builderKey || "")) throw new Error("Missing valid Builder private key");
+if (!/^0x[a-fA-F0-9]{64}$/.test(clientKey || "")) throw new Error("Missing valid Client private key");
+const builder = privateKeyToAccount(builderKey);
+const client = privateKeyToAccount(clientKey);
+if (new Set([deployer.address, builder.address, client.address].map((address) => address.toLowerCase())).size !== 3) {
+  throw new Error("Deployer, Builder and Client must be three distinct wallets");
+}
+const expectedBuilder = env.EXPECTED_BUILDER_WALLET_ADDRESS || env.ClauseFlow2_ADDRESS;
+const expectedClient = env.EXPECTED_CLIENT_WALLET_ADDRESS || env.ClauseFlow3_ADDRESS;
+if (expectedBuilder && builder.address.toLowerCase() !== expectedBuilder.toLowerCase()) throw new Error("Builder key/address mismatch");
+if (expectedClient && client.address.toLowerCase() !== expectedClient.toLowerCase()) throw new Error("Client key/address mismatch");
+const publicClient = createPublicClient({ chain: testnetBradbury, transport: http(undefined, { timeout: 30_000, retryCount: 1 }) });
+const [deployerBalance, builderBalance, clientBalance] = await Promise.all([
+  publicClient.getBalance({ address: deployer.address }),
+  publicClient.getBalance({ address: builder.address }),
+  publicClient.getBalance({ address: client.address })
+]);
+console.log(`BUILDER_ADDRESS=${builder.address}`);
+console.log(`CLIENT_ADDRESS=${client.address}`);
+console.log(`DEPLOYER_BALANCE=${formatEther(deployerBalance)} GEN`);
+console.log(`BUILDER_BALANCE=${formatEther(builderBalance)} GEN`);
+console.log(`CLIENT_BALANCE=${formatEther(clientBalance)} GEN`);
+if (deployerBalance < 100_000_000_000_000_000n) throw new Error("Deployer needs at least 0.1 GEN");
+if (builderBalance < 50_000_000_000_000_000n) throw new Error("Builder needs at least 0.05 GEN for transaction fees");
+if (clientBalance < 100_000_000_000_000_000n) throw new Error("Client needs at least 0.1 GEN for escrow and fees");
 
 const networkOutput = runGenLayer(["config", "get", "network"]);
 if (!networkOutput.includes("network=testnet-bradbury")) {

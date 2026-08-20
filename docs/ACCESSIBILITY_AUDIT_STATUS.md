@@ -1,12 +1,24 @@
 # ClauseFlow Accessibility Audit Delivery Status
 
-This public status record is part of a Bradbury two-wallet pilot agreement. It is not the contracted accessibility audit report.
+## Status
 
-The Builder did not deliver a dedicated ClauseFlow accessibility audit containing:
+The dedicated accessibility audit required by the pilot agreement was not delivered.
 
-- tested keyboard-navigation results;
+This file is a truthful delivery-status record. It is not an accessibility audit and must not be treated as a substitute for the contracted artifact.
+
+## Missing Contracted Evidence
+
+No immutable audit artifact was provided containing all of the following:
+
+- tested keyboard navigation results;
 - visible-focus findings;
-- measured color-contrast results; and
-- actionable remediation tied to identified interface elements.
+- measured color-contrast ratios and applicable thresholds;
+- affected interface locations;
+- actionable remediation findings; and
+- reproducible measurement methods.
 
-The public ClauseFlow application, source repository, and README remain available as supporting context. They do not substitute for the missing dedicated audit artifact. Validators should assess this non-delivery against the immutable funded agreement and record the resulting settlement decision.
+General ClauseFlow application, source, or README pages provide project context only. They do not satisfy the agreement's required `AUDIT` evidence type or its material acceptance rules.
+
+## Expected Settlement Consequence
+
+The agreement has zero revision rounds. Validators should adjudicate each accepted audit obligation from the submitted immutable evidence, identify the absent audit findings, and reject the delivery. A rejected decision makes the Client eligible to start the deal-specific refund settlement. ClauseFlow may record `REFUNDED` only after the router proves release to that deal's Client for the exact funded amount.
