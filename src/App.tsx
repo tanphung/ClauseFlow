@@ -17,6 +17,7 @@ import {
   Hash,
   Landmark,
   LockKeyhole,
+  Menu,
   Plus,
   RefreshCcw,
   Search,
@@ -329,6 +330,7 @@ export function App() {
   const [walletOptions, setWalletOptions] = useState<WalletOption[]>([]);
   const [walletPickerOpen, setWalletPickerOpen] = useState(false);
   const [walletConnecting, setWalletConnecting] = useState(false);
+  const [navigationOpen, setNavigationOpen] = useState(false);
   const [walletError, setWalletError] = useState("");
   const [txState, setTxState] = useState<TxState>(EMPTY_TX);
   const [routerReceipt, setRouterReceipt] = useState<RouterSettlement | null>(null);
@@ -529,18 +531,24 @@ export function App() {
   function openDeal(id: string) {
     setSelectedDealId(id);
     setView("deal");
+    setNavigationOpen(false);
+  }
+
+  function navigate(nextView: View) {
+    setView(nextView);
+    setNavigationOpen(false);
   }
 
   return <div className="appShell">
     {refreshing && <div className="loadingBar" />}
-    <aside className="sidebar">
-      <div className="brand"><span className="brandMark"><ShieldCheck size={21} /></span><span className="brandCopy"><strong>ClauseFlow</strong><small>Agreement protocol v2</small></span></div>
+    <aside className={`sidebar ${navigationOpen ? "open" : ""}`}>
+      <div className="brand"><span className="brandMark"><ShieldCheck size={21} /></span><span className="brandCopy"><strong>ClauseFlow</strong><small>Agreement protocol v2</small></span><button className="iconButton mobileClose" onClick={() => setNavigationOpen(false)} aria-label="Close navigation"><X size={16} /></button></div>
       <nav>
         <p className="navLabel">Workspace</p>
-        <NavButton active={view === "dashboard"} icon={<Activity size={16} />} label="Dashboard" onClick={() => setView("dashboard")} />
-        <NavButton active={view === "offers"} icon={<FileText size={16} />} label="Offers" onClick={() => setView("offers")} />
-        <NavButton active={view === "create"} icon={<Plus size={16} />} label="New offer" onClick={() => setView("create")} disabled={Boolean(config.readOnly)} />
-        <NavButton active={view === "deal"} icon={<LockKeyhole size={16} />} label="Deal detail" onClick={() => setView("deal")} disabled={!selectedDeal} />
+        <NavButton active={view === "dashboard"} icon={<Activity size={16} />} label="Dashboard" onClick={() => navigate("dashboard")} />
+        <NavButton active={view === "offers"} icon={<FileText size={16} />} label="Offers" onClick={() => navigate("offers")} />
+        <NavButton active={view === "create"} icon={<Plus size={16} />} label="New offer" onClick={() => navigate("create")} disabled={Boolean(config.readOnly)} />
+        <NavButton active={view === "deal"} icon={<LockKeyhole size={16} />} label="Deal detail" onClick={() => navigate("deal")} disabled={!selectedDeal} />
         {profiles.length > 1 && <>
           <p className="navLabel archiveLabel">Contract history</p>
           {profiles.map((profile, index) => <NavButton
@@ -548,16 +556,17 @@ export function App() {
             active={profileIndex === index}
             icon={index === 0 ? <BadgeCheck size={16} /> : <Archive size={16} />}
             label={profile.label || (index === 0 ? "Current v2" : `Archived v${index}`)}
-            onClick={() => { setProfileIndex(index); setView("dashboard"); }}
+            onClick={() => { setProfileIndex(index); navigate("dashboard"); }}
           />)}
         </>}
       </nav>
       <div className="sidebarProof"><span className="proofIcon"><Landmark size={16} /></span><div><span className="networkState"><i /> Bradbury testnet</span><strong>{short(config.contractAddress)}</strong></div><a href={explorerAddressUrl(config, config.contractAddress)} target="_blank" rel="noreferrer" title="Open contract"><ExternalLink size={15} /></a></div>
     </aside>
+    {navigationOpen && <button className="sidebarScrim" onClick={() => setNavigationOpen(false)} aria-label="Close navigation" />}
 
     <main className="workspace">
       <header className="topbar">
-        <div className="topbarIdentity"><div><div className="breadcrumb">ClauseFlow <ChevronRight size={12} /> {viewLabel(view)}</div><h1>{titleFor(view)}</h1></div></div>
+        <div className="topbarIdentity"><button className="iconButton mobileMenu" onClick={() => setNavigationOpen(true)} aria-label="Open navigation"><Menu size={17} /></button><div><div className="breadcrumb">ClauseFlow <ChevronRight size={12} /> {viewLabel(view)}</div><h1>{titleFor(view)}</h1></div></div>
         <div className="headerActions">
           <button className="iconButton" onClick={() => void refreshDashboard()} title="Refresh on-chain data" aria-label="Refresh on-chain data"><RefreshCcw className={refreshing ? "spin" : ""} size={16} /></button>
           <button className="walletButton" onClick={() => void handleConnectWallet()} disabled={walletConnecting}><Wallet size={16} /> {walletAddress ? short(walletAddress) : walletConnecting ? "Connecting" : "Connect wallet"}</button>
