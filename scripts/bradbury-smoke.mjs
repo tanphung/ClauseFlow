@@ -1,4 +1,5 @@
-import { closeSync, createHash, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { closeSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { abi, createClient } from "genlayer-js";
 import { testnetBradbury } from "genlayer-js/chains";
