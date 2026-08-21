@@ -19,19 +19,23 @@ These controls keep the accepted agreement and the executable settlement policy 
 
 ## Release Status
 
-The v2 source, tests, frontend, and deployment tooling are complete. The final Bradbury v2 addresses and pilot transaction proof will be added only after the clean deployment and both end-to-end settlement paths are verified. Until then, the public dApp remains on the archived v1 pilot and must not be treated as v2 deployment proof.
+The v2 contract pair is clean-deployed and verified on Bradbury. The public runtime now targets v2; the two end-to-end pilot settlements remain pending and will be documented only after their exact receipts and terminal states are verified.
 
 | Surface | Link |
 | --- | --- |
 | Live dApp | [clauseflow-two.vercel.app](https://clauseflow-two.vercel.app) |
 | Source repository | [github.com/tanphung/ClauseFlow](https://github.com/tanphung/ClauseFlow) |
 | Intelligent Contract | [contracts/clauseflow.py](contracts/clauseflow.py) |
-| Settlement Router | [contracts/SettlementRouter.sol](contracts/SettlementRouter.sol) |
+| Settlement Router source | [contracts/SettlementRouter.sol](contracts/SettlementRouter.sol) |
+| Bradbury v2 | [`0x541139...49c9F`](https://explorer-bradbury.genlayer.com/address/0x5411398e4f4AA26dCdBD7E1Af9C876189BD49c9F) |
+| Settlement Router | [`0x645143...f2dd6`](https://explorer-bradbury.genlayer.com/address/0x645143380d78af86f7528c057c0a1b1ca10f2dd6) |
 | Architecture | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | Release evidence dossier | [docs/RELEASE_EVIDENCE.md](docs/RELEASE_EVIDENCE.md) |
 | Security boundaries | [SECURITY.md](SECURITY.md) |
 
 The earlier walkthrough on [X](https://x.com/tanphung000/status/2088260443752243463) documents the v1 pilot only. A new v2 video will be recorded after final on-chain verification.
+
+The v2 deployment transaction is [`0x28f7e7...4d7f7`](https://explorer-bradbury.genlayer.com/tx/0x28f7e7621468ed34eaa9adba8f15045b3d40c9d90f9c8b3efc0e0537b784d7f7): `FINALIZED / AGREE / FINISHED_WITH_RETURN`. The Router binding transaction is [`0x44019d...5ba3d`](https://explorer-bradbury.genlayer.com/tx/0x44019ddd9f7ec2be24df4c478b0641da0e06a25ef3109b6d2ed3d7feb105ba3d). Verification returned 21 methods, `CLAUSEFLOW_V2`, and empty initial offer and deal lists.
 
 ## Trust And Consensus
 

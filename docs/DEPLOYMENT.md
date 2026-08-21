@@ -2,17 +2,19 @@
 
 ## v2 Candidate
 
-The v2 source is not yet represented by the production runtime. This section will be populated automatically from verified deployment and pilot checkpoints before resubmission.
+The v2 contract pair is deployed and verified. Pilot settlement rows remain pending until both exact receipts reach terminal state.
 
 | Field | Verified value |
 | --- | --- |
 | Network | GenLayer Testnet Bradbury (`4221`) |
-| ClauseFlow v2 | Pending clean deployment |
-| Settlement Router | Pending clean deployment |
-| Router binding | Pending verification |
-| Deployment lifecycle | Pending verification |
-| ClauseFlow schema | Expected: 21 methods |
-| Initial offer/deal views | Expected: empty |
+| ClauseFlow v2 | [`0x5411398e4f4AA26dCdBD7E1Af9C876189BD49c9F`](https://explorer-bradbury.genlayer.com/address/0x5411398e4f4AA26dCdBD7E1Af9C876189BD49c9F) |
+| Settlement Router | [`0x645143380d78af86f7528c057c0a1b1ca10f2dd6`](https://explorer-bradbury.genlayer.com/address/0x645143380d78af86f7528c057c0a1b1ca10f2dd6) |
+| Router deployment | [`0xb479d38df3c7408b03920ee207239d3101e306f8d99e6ae722d80bb134c421e7`](https://explorer-bradbury.genlayer.com/tx/0xb479d38df3c7408b03920ee207239d3101e306f8d99e6ae722d80bb134c421e7) |
+| ClauseFlow deployment | [`0x28f7e7621468ed34eaa9adba8f15045b3d40c9d90f9c8b3efc0e0537b784d7f7`](https://explorer-bradbury.genlayer.com/tx/0x28f7e7621468ed34eaa9adba8f15045b3d40c9d90f9c8b3efc0e0537b784d7f7) |
+| Router binding | [`0x44019ddd9f7ec2be24df4c478b0641da0e06a25ef3109b6d2ed3d7feb105ba3d`](https://explorer-bradbury.genlayer.com/tx/0x44019ddd9f7ec2be24df4c478b0641da0e06a25ef3109b6d2ed3d7feb105ba3d) |
+| Deployment lifecycle | `FINALIZED / AGREE / FINISHED_WITH_RETURN` |
+| ClauseFlow schema | 21 methods: 9 writes and 12 views |
+| Initial offer/deal views | `[]` / `[]` |
 | Payment agreement | Pending |
 | Refund agreement | Pending |
 | Final escrow | Pending |

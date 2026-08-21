@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#123c33" />
-    <meta name="description" content="ClauseFlow lifecycle: publish immutable terms; fund exactly 0.02 GEN; submit public evidence; validator review; APPROVED permits Builder payment; one revision within 24 hours; REJECTED or deadline plus 24-hour grace permits Client refund; transfers execute after parent finalization; PAID or REFUNDED requires balance confirmation; public history remains on-chain." />
-    <meta name="clauseflow-lifecycle" content="publish_offer maps to New offer; accept_offer maps to exact GEN funding; submit_delivery maps to Evidence submission; review_delivery maps to Validator review; claim_payment and confirm_payment map to Builder payment; claim_refund and confirm_refund map to Client refund; get_deal_history maps to On-chain history; get_dashboard_stats maps to Protocol summary." />
+    <meta name="description" content="ClauseFlow v2 funds exact service obligations, binds public evidence to immutable versions and SHA-256 digests, independently adjudicates every accepted obligation on GenLayer, enforces stored revision and refund windows, and confirms payment or refund against an exact deal-specific SettlementRouter receipt." />
+    <meta name="clauseflow-lifecycle" content="structure_offer and publish_offer freeze exact obligations; accept_offer locks exact GEN; submit_delivery appends immutable evidence rounds; review_delivery independently adjudicates every obligation; claim_payment or claim_refund funds an exact router receipt; the designated recipient releases it; confirm_payment or confirm_refund verifies deal, source, recipient, amount, kind, and released state." />
     <link rel="preload" href="/assets/clauseflow-agreement-studio.png" as="image" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23123c33'/%3E%3Cpath d='M16 6l8 3v6c0 5-3.3 8.6-8 11-4.7-2.4-8-6-8-11V9l8-3z' fill='white'/%3E%3Cpath d='M12 16l3 3 6-7' fill='none' stroke='%23e75b45' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
     <title>ClauseFlow | On-chain Agreements</title>
@@ -15,7 +15,8 @@
     <div id="root">
       <main aria-label="ClauseFlow pre-rendered application evidence">
         <h1>ClauseFlow public on-chain agreement dashboard</h1>
-        <p>Live Bradbury contract: 0xF85C4460B8195F9ebFD7b376c852aD7E89Ffe63D</p>
+        <p>Live Bradbury v2 contract: 0x5411398e4f4AA26dCdBD7E1Af9C876189BD49c9F</p>
+        <p>Deal-specific SettlementRouter: 0x645143380d78af86f7528c057c0a1b1ca10f2dd6</p>
         <nav aria-label="Application navigation">
           <a href="/">Dashboard</a>
           <a href="/?view=offers">Offers</a>
@@ -24,14 +25,14 @@
         </nav>
         <section aria-labelledby="workflow-proof">
           <h2 id="workflow-proof">Rendered workflow controls</h2>
-          <p>New offer contains Structure clauses and Publish reviewed offer controls for immutable terms.</p>
-          <p>Offers contains Fund exact displayed GEN. Deal Detail contains Submit delivery, Run validator review, Claim payment, Confirm payment, Claim refund, and Confirm refund controls.</p>
-          <p>Deal Detail displays Agreement, Evidence &amp; review, and On-chain history. Dashboard displays Protocol summary totals from get_dashboard_stats.</p>
+          <p>New offer structures and publishes every binding obligation with its stable ID, acceptance rule, and required evidence types.</p>
+          <p>Offers locks the exact displayed GEN. Deal Detail submits version-bearing evidence with SHA-256 digests, runs independent validator adjudication, and settles through the exact router receipt.</p>
+          <p>Deal Detail displays Agreement, immutable Evidence rounds, Validator report, exact Settlement receipt, and On-chain history. Dashboard reads protocol totals directly from contract views.</p>
         </section>
         <section aria-labelledby="settlement-proof">
           <h2 id="settlement-proof">Settlement rules rendered by this release</h2>
-          <p>The Client locks exactly 0.02 GEN. APPROVED permits Builder payment. One revision round is allowed within 24 hours. REJECTED, or deadline plus the 24-hour grace period, permits Client refund.</p>
-          <p>External transfers execute after parent finalization. PAID or REFUNDED is shown only after balance-backed confirmation. Public history remains canonical on-chain contract data.</p>
+          <p>Deterministic code enforces the funded delivery, grace, revision, revision-window, review-timeout, and refund terms. Validator prose cannot change them.</p>
+          <p>After parent finalization, only the designated recipient releases the router receipt. PAID or REFUNDED requires an exact match of deal, ClauseFlow source, recipient, amount, kind, and RELEASED state.</p>
         </section>
         <figure>
           <img src="/assets/clauseflow-agreement-studio.png" alt="ClauseFlow agreement workspace with dashboard, evidence review, and on-chain history" width="1536" height="1024" />
