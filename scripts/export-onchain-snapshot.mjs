@@ -3,7 +3,7 @@ import { dirname, resolve } from "node:path";
 import { createClient } from "genlayer-js";
 import { testnetBradbury } from "genlayer-js/chains";
 
-const contractAddress = "0xF85C4460B8195F9ebFD7b376c852aD7E89Ffe63D";
+const contractAddress = "0xfa226FED4f2357E0045e09A3fF6F133c721D4567";
 const outputPath = resolve("src/data/onchain-snapshot.json");
 const client = createClient({ chain: testnetBradbury });
 

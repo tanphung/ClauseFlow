@@ -3,7 +3,7 @@
 ## Source Gates
 
 - [ ] `npm audit --omit=dev` reports zero production vulnerabilities
-- [ ] `npm run lint:contract` reports 21 methods and no errors
+- [ ] `npm run lint:contract` reports 22 methods and no errors
 - [ ] `py -3.13 -m pytest tests/direct -q` passes
 - [ ] `npm test` passes frontend and router tests
 - [ ] `npm run typecheck` passes
@@ -16,7 +16,7 @@
 - [ ] Bradbury network, three wallet identities, and balances pass preflight
 - [ ] Settlement Router deployment is mined and bytecode is present
 - [ ] ClauseFlow deployment is `FINALIZED / AGREE / FINISHED_WITH_RETURN`
-- [ ] ClauseFlow exposes 21 methods and empty initial offer/deal views
+- [ ] ClauseFlow exposes 22 methods and empty initial offer/deal views
 - [ ] Router is permanently bound to the exact ClauseFlow address
 - [ ] Runtime config is updated only after all checks above
 - [ ] GitHub and Vercel publicly serve the exact commit used for evidence

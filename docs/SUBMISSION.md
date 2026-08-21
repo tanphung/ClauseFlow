@@ -34,7 +34,7 @@ Addresses, amounts, clocks, counters, and receipt identity are deterministic. Wh
 - GenLayer Testnet Bradbury, chain ID `4221`
 - v2 ClauseFlow address and deployment transaction
 - bound Settlement Router address and deployment transaction
-- 21-method ClauseFlow schema and empty initial views
+- 22-method ClauseFlow schema and empty initial views
 - payment pilot with exact `APPROVED` per-obligation report and released Builder receipt
 - refund pilot with exact `REJECTED` per-obligation report and released Client receipt
 - zero accounted escrow after both terminal confirmations

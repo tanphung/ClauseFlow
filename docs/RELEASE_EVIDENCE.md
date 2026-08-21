@@ -6,7 +6,7 @@ This document is the public delivery artifact for the v2 release pilot. Validato
 
 ### O_METHODS: complete method coverage
 
-The v2 Intelligent Contract exposes 21 public methods. This dossier maps every method and the router release path to its executable consequence.
+The v2 Intelligent Contract exposes 22 public methods. This dossier maps every method and the router release path to its executable consequence.
 
 | Contract method | Interface action or public proof | Enforced consequence |
 | --- | --- | --- |
@@ -19,6 +19,7 @@ The v2 Intelligent Contract exposes 21 public methods. This dossier maps every m
 | `confirm_payment` | Deal / Settlement / Confirm | Record `PAID` only for the exact released receipt |
 | `claim_refund` | Deal / Settlement / Start refund | Fund the exact Client receipt when deterministic policy allows |
 | `confirm_refund` | Deal / Settlement / Confirm | Record `REFUNDED` only for the exact released receipt |
+| `retry_settlement_funding` | Deal / Receipt recovery | Re-emit only the idempotent binding call; never transfer additional GEN |
 | `get_protocol_policy` | Contract profile | Read v2 limits and router address |
 | `get_structured_offer` | New offer state | Read the Builder's current structured manifest |
 | `get_offer` | Offer detail | Read immutable published terms |
@@ -77,10 +78,10 @@ The leader must fetch those sources and assess all four funded obligation IDs. P
 
 - Live app: https://clauseflow-two.vercel.app
 - Repository: https://github.com/tanphung/ClauseFlow
-- Final v2 ClauseFlow: https://explorer-bradbury.genlayer.com/address/0x5411398e4f4AA26dCdBD7E1Af9C876189BD49c9F
-- Final v2 Settlement Router: https://explorer-bradbury.genlayer.com/address/0x645143380d78af86f7528c057c0a1b1ca10f2dd6
-- Deployment: https://explorer-bradbury.genlayer.com/tx/0x28f7e7621468ed34eaa9adba8f15045b3d40c9d90f9c8b3efc0e0537b784d7f7
-- Router binding: https://explorer-bradbury.genlayer.com/tx/0x44019ddd9f7ec2be24df4c478b0641da0e06a25ef3109b6d2ed3d7feb105ba3d
+- Final v2 ClauseFlow: https://explorer-bradbury.genlayer.com/address/0xfa226FED4f2357E0045e09A3fF6F133c721D4567
+- Final v2 Settlement Router: https://explorer-bradbury.genlayer.com/address/0x2d93c79eb8d050c8328836927808de9cd50b4765
+- Deployment: https://explorer-bradbury.genlayer.com/tx/0x5c49c5289f50afae6b76ccf8bd409a3b83b87e4304514abab278701d5efb1b2c
+- Router binding: https://explorer-bradbury.genlayer.com/tx/0xa88c04fc0ea3df720f499d551b4610a6cc39b1e738262eac97d03ebf4d5b5501
 - Final v2 pilot settlement proof: pending end-to-end verification
 
-The deployment is `FINALIZED / AGREE / FINISHED_WITH_RETURN`, exposes 21 methods, reports `CLAUSEFLOW_V2`, binds the listed router, and began with empty offer and deal lists. Pilot settlement fields remain pending until their exact receipts are finalized and re-read.
+The deployment is `FINALIZED / AGREE / FINISHED_WITH_RETURN`, exposes 22 methods, reports `CLAUSEFLOW_V2`, binds the listed router, and began with empty offer and deal lists. Pilot settlement fields remain pending until their exact receipts are finalized and re-read.

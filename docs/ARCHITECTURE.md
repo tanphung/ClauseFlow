@@ -49,7 +49,9 @@ The contract computes delivery, grace, revision, review-timeout, and refund elig
 
 ## Settlement Router
 
-The EVM `SettlementRouter` is deployed first and permanently bound to one ClauseFlow contract. Only that ClauseFlow source can fund a receipt. Each receipt stores its deterministic settlement ID, exact deal ID hash, source ClauseFlow address, recipient, exact amount, payment/refund kind, and `FUNDED` or `RELEASED` state.
+The EVM `SettlementRouter` is deployed first and permanently bound to one ClauseFlow contract. A finalized claim emits a pure GEN transfer that becomes source-specific Router credit, followed by a zero-value call that consumes exactly that credit and binds it to the deal receipt. Each receipt stores its deterministic settlement ID, exact deal ID hash, source ClauseFlow address, recipient, exact amount, payment/refund kind, and `FUNDED` or `RELEASED` state.
+
+If the binding message is delayed after credit arrives, the exact recipient may call `retry_settlement_funding`. This method emits only the idempotent binding call and cannot transfer additional GEN. A mismatched duplicate receipt is rejected by the Router.
 
 After the GenLayer parent transaction finalizes, only the designated recipient can call `release_settlement`. The router uses checks-effects-interactions and a reentrancy guard; a failed recipient transfer reverts the receipt state.
 

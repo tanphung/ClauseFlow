@@ -27,15 +27,15 @@ The v2 contract pair is clean-deployed and verified on Bradbury. The public runt
 | Source repository | [github.com/tanphung/ClauseFlow](https://github.com/tanphung/ClauseFlow) |
 | Intelligent Contract | [contracts/clauseflow.py](contracts/clauseflow.py) |
 | Settlement Router source | [contracts/SettlementRouter.sol](contracts/SettlementRouter.sol) |
-| Bradbury v2 | [`0x541139...49c9F`](https://explorer-bradbury.genlayer.com/address/0x5411398e4f4AA26dCdBD7E1Af9C876189BD49c9F) |
-| Settlement Router | [`0x645143...f2dd6`](https://explorer-bradbury.genlayer.com/address/0x645143380d78af86f7528c057c0a1b1ca10f2dd6) |
+| Bradbury v2 | [`0xfa226F...D4567`](https://explorer-bradbury.genlayer.com/address/0xfa226FED4f2357E0045e09A3fF6F133c721D4567) |
+| Settlement Router | [`0x2d93c7...b4765`](https://explorer-bradbury.genlayer.com/address/0x2d93c79eb8d050c8328836927808de9cd50b4765) |
 | Architecture | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | Release evidence dossier | [docs/RELEASE_EVIDENCE.md](docs/RELEASE_EVIDENCE.md) |
 | Security boundaries | [SECURITY.md](SECURITY.md) |
 
 The earlier walkthrough on [X](https://x.com/tanphung000/status/2088260443752243463) documents the v1 pilot only. A new v2 video will be recorded after final on-chain verification.
 
-The v2 deployment transaction is [`0x28f7e7...4d7f7`](https://explorer-bradbury.genlayer.com/tx/0x28f7e7621468ed34eaa9adba8f15045b3d40c9d90f9c8b3efc0e0537b784d7f7): `FINALIZED / AGREE / FINISHED_WITH_RETURN`. The Router binding transaction is [`0x44019d...5ba3d`](https://explorer-bradbury.genlayer.com/tx/0x44019ddd9f7ec2be24df4c478b0641da0e06a25ef3109b6d2ed3d7feb105ba3d). Verification returned 21 methods, `CLAUSEFLOW_V2`, and empty initial offer and deal lists.
+The v2 deployment transaction is [`0x5c49c5...fb1b2c`](https://explorer-bradbury.genlayer.com/tx/0x5c49c5289f50afae6b76ccf8bd409a3b83b87e4304514abab278701d5efb1b2c): `FINALIZED / AGREE / FINISHED_WITH_RETURN`. The Router binding transaction is [`0xa88c04...b5501`](https://explorer-bradbury.genlayer.com/tx/0xa88c04fc0ea3df720f499d551b4610a6cc39b1e738262eac97d03ebf4d5b5501). Verification returned 22 methods, `CLAUSEFLOW_V2`, and empty initial offer and deal lists.
 
 ## Trust And Consensus
 
@@ -93,7 +93,7 @@ The AI report cannot extend a funded deadline, grant an extra revision, change a
 
 ### Exact Settlement Receipt
 
-`claim_payment` and `claim_refund` start a router settlement containing the exact deal-specific fields. The designated recipient releases that router receipt after the parent GenLayer transaction finalizes. `confirm_payment` or `confirm_refund` succeeds only if the router proves all of these fields together:
+`claim_payment` and `claim_refund` emit one pure GEN transfer to the bound Router and one zero-value call that binds the resulting source credit to the exact deal-specific receipt. If binding is delayed, `retry_settlement_funding` re-emits only the idempotent binding and never transfers additional GEN. The designated recipient releases that router receipt after the parent GenLayer transaction finalizes. `confirm_payment` or `confirm_refund` succeeds only if the Router proves all of these fields together:
 
 - settlement ID and deal hash;
 - ClauseFlow source contract;
@@ -106,7 +106,7 @@ This prevents an unrelated transfer or aggregate balance change from completing 
 
 ## Contract Surface
 
-The Intelligent Contract exposes 21 methods: 9 writes and 12 views.
+The Intelligent Contract exposes 22 methods: 10 writes and 12 views.
 
 | Phase | Methods |
 | --- | --- |
@@ -114,7 +114,7 @@ The Intelligent Contract exposes 21 methods: 9 writes and 12 views.
 | Funding | `accept_offer` |
 | Evidence | `submit_delivery`, `get_evidence_rounds` |
 | Adjudication | `review_delivery`, `get_refund_eligibility` |
-| Settlement | `claim_payment`, `confirm_payment`, `claim_refund`, `confirm_refund` |
+| Settlement | `claim_payment`, `confirm_payment`, `claim_refund`, `confirm_refund`, `retry_settlement_funding` |
 | Public history | `get_deal`, `get_deal_ids`, `get_completed_deal_ids`, `get_deals_for_address`, `get_deal_history`, `get_dashboard_stats` |
 | Policy | `get_protocol_policy` |
 
