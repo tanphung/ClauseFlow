@@ -132,7 +132,7 @@ const [schema, offerIds, dealIds, policy, boundClauseFlow, routerOwner] = await 
 
 const methodCount = Object.keys(schema?.methods || {}).length;
 const parsedPolicy = typeof policy === "string" ? JSON.parse(policy) : policy;
-if (methodCount !== 21) throw new Error(`Expected 21 schema methods, received ${methodCount}`);
+if (methodCount !== 22) throw new Error(`Expected 22 schema methods, received ${methodCount}`);
 if (String(offerIds) !== "[]" || String(dealIds) !== "[]") throw new Error(`Expected clean state, received offers=${offerIds} deals=${dealIds}`);
 if (parsedPolicy.protocolVersion !== "CLAUSEFLOW_V2") throw new Error(`Unexpected protocol version ${parsedPolicy.protocolVersion}`);
 if (parsedPolicy.settlementRouter.toLowerCase() !== routerAddress.toLowerCase()) throw new Error("ClauseFlow policy does not bind the deployed router");

@@ -19,6 +19,7 @@ contract ClauseFlowSettlementRouter {
 
     address public immutable owner;
     address public clauseFlow;
+    mapping(address => uint256) public sourceCredits;
     mapping(bytes32 => SettlementReceipt) private receipts;
     bool private releasing;
 
@@ -31,6 +32,7 @@ contract ClauseFlowSettlementRouter {
         uint256 amount,
         uint8 kind
     );
+    event SourceCreditReceived(address indexed source, uint256 amount, uint256 availableCredit);
     event SettlementReleased(
         bytes32 indexed settlementKey,
         string settlementId,
@@ -42,6 +44,7 @@ contract ClauseFlowSettlementRouter {
     error AlreadyBound();
     error InvalidSettlement();
     error SettlementExists();
+    error InsufficientCredit();
     error NotRecipient();
     error NotFunded();
     error TransferFailed();
@@ -63,25 +66,38 @@ contract ClauseFlowSettlementRouter {
         string calldata settlementId,
         string calldata dealId,
         address payable recipient,
+        uint256 amount,
         uint8 kind
-    ) external payable {
+    ) external {
         if (msg.sender != clauseFlow || clauseFlow == address(0)) revert Unauthorized();
         if (bytes(settlementId).length == 0 || bytes(dealId).length == 0 || recipient == address(0)) {
             revert InvalidSettlement();
         }
-        if (msg.value == 0 || (kind != 1 && kind != 2)) revert InvalidSettlement();
+        if (amount == 0 || (kind != 1 && kind != 2)) revert InvalidSettlement();
 
         bytes32 key = keccak256(bytes(settlementId));
-        if (receipts[key].state != SettlementState.NONE) revert SettlementExists();
+        SettlementReceipt storage existing = receipts[key];
+        if (existing.state != SettlementState.NONE) {
+            if (
+                existing.source == msg.sender
+                    && existing.dealHash == keccak256(bytes(dealId))
+                    && existing.recipient == recipient
+                    && existing.amount == amount
+                    && existing.kind == kind
+            ) return;
+            revert SettlementExists();
+        }
+        if (sourceCredits[msg.sender] < amount) revert InsufficientCredit();
+        sourceCredits[msg.sender] -= amount;
         receipts[key] = SettlementReceipt({
             source: msg.sender,
             dealHash: keccak256(bytes(dealId)),
             recipient: recipient,
-            amount: msg.value,
+            amount: amount,
             kind: kind,
             state: SettlementState.FUNDED
         });
-        emit SettlementFunded(key, settlementId, dealId, recipient, msg.value, kind);
+        emit SettlementFunded(key, settlementId, dealId, recipient, amount, kind);
     }
 
     function release_settlement(string calldata settlementId) external {
@@ -144,6 +160,8 @@ contract ClauseFlowSettlementRouter {
     }
 
     receive() external payable {
-        revert InvalidSettlement();
+        if (msg.sender != clauseFlow || clauseFlow == address(0) || msg.value == 0) revert InvalidSettlement();
+        sourceCredits[msg.sender] += msg.value;
+        emit SourceCreditReceived(msg.sender, msg.value, sourceCredits[msg.sender]);
     }
 }

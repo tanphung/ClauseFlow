@@ -90,11 +90,21 @@ describe("ClauseFlowSettlementRouter", () => {
     await expect(mined(router.bind_clauseflow(await owner.getAddress()))).rejects.toThrow();
   });
 
-  it("rejects unauthorized funding and duplicate settlement IDs", async () => {
+  it("accepts credit only from ClauseFlow and binds it idempotently", async () => {
     const id = "CF2|contract|1|1|1|recipient|200";
-    await expect(mined(router.fund_settlement(id, "1", await recipient.getAddress(), 1, { value: 200n }))).rejects.toThrow();
-    await (await router.connect(clauseFlow).fund_settlement(id, "1", await recipient.getAddress(), 1, { value: 200n })).wait();
-    await expect(mined(router.connect(clauseFlow).fund_settlement(id, "1", await recipient.getAddress(), 1, { value: 200n }))).rejects.toThrow();
+    const recipientAddress = await recipient.getAddress();
+    await expect(mined(router.fund_settlement(id, "1", recipientAddress, 200n, 1))).rejects.toThrow();
+    await expect(mined(owner.sendTransaction({ to: await router.getAddress(), value: 200n }))).rejects.toThrow();
+    await (await clauseFlow.sendTransaction({ to: await router.getAddress(), value: 200n })).wait();
+    expect(await router.sourceCredits(await clauseFlow.getAddress())).toBe(200n);
+    await (await router.connect(clauseFlow).fund_settlement(id, "1", recipientAddress, 200n, 1)).wait();
+    expect(await router.sourceCredits(await clauseFlow.getAddress())).toBe(0n);
+    await (await router.connect(clauseFlow).fund_settlement(id, "1", recipientAddress, 200n, 1)).wait();
+    await expect(mined(router.connect(clauseFlow).fund_settlement(id, "different", recipientAddress, 200n, 1))).rejects.toThrow();
+  });
+
+  it("does not bind a receipt before enough source credit arrives", async () => {
+    await expect(mined(router.connect(clauseFlow).fund_settlement("CF2|credit", "2", await recipient.getAddress(), 500n, 1))).rejects.toThrow();
   });
 
   it("releases only to the bound recipient and matches every receipt field", async () => {
@@ -102,7 +112,8 @@ describe("ClauseFlowSettlementRouter", () => {
     const amount = parseEther("0.02");
     const recipientAddress = await recipient.getAddress();
     const sourceAddress = await clauseFlow.getAddress();
-    await (await router.connect(clauseFlow).fund_settlement(id, "7", recipientAddress, 1, { value: amount })).wait();
+    await (await clauseFlow.sendTransaction({ to: await router.getAddress(), value: amount })).wait();
+    await (await router.connect(clauseFlow).fund_settlement(id, "7", recipientAddress, amount, 1)).wait();
     await expect(mined(router.release_settlement(id))).rejects.toThrow();
     await (await router.connect(recipient).release_settlement(id)).wait();
 
@@ -120,7 +131,8 @@ describe("ClauseFlowSettlementRouter", () => {
     const rejecting = await rejectingFactory.deploy({ gasLimit: 2_000_000n });
     await rejecting.waitForDeployment();
     const id = "CF2|contract|9|1|2|rejecting|500";
-    await (await router.connect(clauseFlow).fund_settlement(id, "9", await rejecting.getAddress(), 2, { value: 500n })).wait();
+    await (await clauseFlow.sendTransaction({ to: await router.getAddress(), value: 500n })).wait();
+    await (await router.connect(clauseFlow).fund_settlement(id, "9", await rejecting.getAddress(), 500n, 2)).wait();
     await expect(mined(rejecting.release(await router.getAddress(), id))).rejects.toThrow();
     const receipt = await router.get_settlement(id);
     expect(receipt[5]).toBe(1n);

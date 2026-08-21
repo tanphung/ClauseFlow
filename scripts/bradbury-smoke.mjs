@@ -47,6 +47,8 @@ const routerAddress = policy.settlementRouter;
 if (!/^0x[a-fA-F0-9]{40}$/.test(routerAddress)) throw new Error("Contract returned an invalid settlement router");
 const routerAbi = [
   { type: "function", name: "clauseFlow", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
+  { type: "function", name: "sourceCredits", stateMutability: "view", inputs: [{ name: "source", type: "address" }], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "fund_settlement", stateMutability: "nonpayable", inputs: [{ name: "settlementId", type: "string" }, { name: "dealId", type: "string" }, { name: "recipient", type: "address" }, { name: "amount", type: "uint256" }, { name: "kind", type: "uint8" }], outputs: [] },
   { type: "function", name: "release_settlement", stateMutability: "nonpayable", inputs: [{ name: "settlementId", type: "string" }], outputs: [] },
   { type: "function", name: "get_settlement", stateMutability: "view", inputs: [{ name: "settlementId", type: "string" }], outputs: [{ name: "source", type: "address" }, { name: "dealHash", type: "bytes32" }, { name: "recipient", type: "address" }, { name: "amount", type: "uint256" }, { name: "kind", type: "uint8" }, { name: "state", type: "uint8" }] }
 ];
@@ -88,7 +90,7 @@ async function runPayment() {
     title,
     "A version-bound release dossier proving that every accepted obligation, revision/refund deadline, and deal-specific settlement receipt is enforced by ClauseFlow v2.",
     JSON.stringify([
-      { id: "O_METHODS", category: "DELIVERABLE", statement: "Publish a versioned method dossier covering all twenty-one ClauseFlow v2 public methods and the SettlementRouter release path.", acceptanceRule: "The pinned dossier names all twenty-one public methods and maps settlement initiation, recipient release, and receipt confirmation to public source.", requiredEvidenceTypes: ["DOCUMENTATION", "SOURCE"] },
+      { id: "O_METHODS", category: "DELIVERABLE", statement: "Publish a versioned method dossier covering all twenty-two ClauseFlow v2 public methods and the SettlementRouter release path.", acceptanceRule: "The pinned dossier names all twenty-two public methods and maps settlement initiation, safe binding retry, recipient release, and receipt confirmation to public source.", requiredEvidenceTypes: ["DOCUMENTATION", "SOURCE"] },
       { id: "O_TERMS", category: "ACCEPTANCE", statement: "Demonstrate that accepted obligations and stored delivery, revision, review-timeout, and refund terms are enforced without unstated settlement shortcuts.", acceptanceRule: "Pinned contract source and documentation visibly enforce the exact obligation manifest and every funded timing or revision condition.", requiredEvidenceTypes: ["SOURCE", "DOCUMENTATION"] },
       { id: "O_RECEIPT", category: "ACCEPTANCE", statement: "Bind payment confirmation to the specific deal, Builder recipient, exact amount, settlement kind, router source, and released receipt state.", acceptanceRule: "Pinned ClauseFlow and router source cross-check deal ID, recipient, amount, kind, source contract, and released state before PAID is recorded.", requiredEvidenceTypes: ["SOURCE"] },
       { id: "O_INTERFACE", category: "DELIVERABLE", statement: "Expose the v2 obligations, immutable evidence versions, validator reasoning, deadlines, and exact settlement receipt in the public interface source.", acceptanceRule: "The pinned interface source renders each stored v2 field and never invents validator analysis or settlement success.", requiredEvidenceTypes: ["DELIVERY"] }
@@ -221,9 +223,33 @@ async function writeAndVerify(account, functionName, args, value) {
   console.log(`TX ${functionName} activation=${activationHash} genlayer=${transactionHash}`);
   let transaction = await waitForExecution(transactionHash, functionName);
   transaction = await waitForFinality(transactionHash, transaction);
+  if (["claim_payment", "claim_refund"].includes(functionName)) {
+    const current = await readJson("get_deal", [String(args[0])]);
+    assertSettlementMessages(transaction, BigInt(current.settlementAmountAtto));
+  }
   const proof = { functionName, activationHash, transactionHash, lifecycle: transaction.statusName, consensus: transaction.resultName, execution: transaction.txExecutionResultName };
   record({ phase: "TRANSACTION_VERIFIED", ...proof });
   return proof;
+}
+
+function assertSettlementMessages(transaction, expectedAmount) {
+  const messages = Array.isArray(transaction.messages) ? transaction.messages : [];
+  const routerMessages = messages.filter((message) => String(message.recipient).toLowerCase() === routerAddress.toLowerCase());
+  const values = routerMessages.map((message) => BigInt(message.value || 0));
+  if (routerMessages.length !== 2 || values.filter((value) => value === expectedAmount).length !== 1 || values.filter((value) => value === 0n).length !== 1) {
+    throw new Error(`Settlement claim emitted invalid Router messages: count=${routerMessages.length} values=${values.join(",")}`);
+  }
+  const transfer = routerMessages.find((message) => BigInt(message.value || 0) === expectedAmount);
+  const binding = routerMessages.find((message) => BigInt(message.value || 0) === 0n);
+  const expectedSelector = encodeFunctionData({ abi: routerAbi, functionName: "fund_settlement", args: ["", "", accountZeroAddress(), 0n, 1] }).slice(0, 10);
+  if (String(transfer?.data || "0x") !== "0x" || !String(binding?.data || "0x").startsWith(expectedSelector)) {
+    throw new Error("Settlement claim did not emit the expected pure transfer and binding calldata");
+  }
+  record({ phase: "SETTLEMENT_MESSAGES_VERIFIED", recipient: routerAddress, transferValue: expectedAmount.toString(), bindingValue: "0" });
+}
+
+function accountZeroAddress() {
+  return "0x0000000000000000000000000000000000000000";
 }
 
 async function submitContractWrite(account, functionName, args, value) {
@@ -244,9 +270,17 @@ async function submitContractWrite(account, functionName, args, value) {
 
 async function releaseExactSettlement(deal, account, expectedKind, expectedAmount) {
   if (!deal.settlementId) throw new Error("Pending deal has no settlement ID");
+  let retriedBinding = false;
   const funded = await waitFor(async () => {
     const receipt = await readRouterReceipt(deal.settlementId);
-    return receipt.state === 1 ? receipt : null;
+    if (receipt.state === 1) return receipt;
+    const credit = await retry(() => publicClient.readContract({ address: routerAddress, abi: routerAbi, functionName: "sourceCredits", args: [contractAddress] }), 24);
+    if (!retriedBinding && receipt.state === 0 && credit >= expectedAmount) {
+      retriedBinding = true;
+      record({ phase: "ROUTER_BINDING_RETRY_REQUIRED", dealId: deal.id, settlementId: deal.settlementId, availableCredit: credit.toString() });
+      await writeAndRequireState(account, "retry_settlement_funding", [deal.id], 0n, deal.id, deal.status);
+    }
+    return null;
   }, `router funding ${deal.settlementId}`, 360);
   if (funded.source.toLowerCase() !== contractAddress.toLowerCase() || funded.recipient.toLowerCase() !== account.address.toLowerCase() || funded.amount !== expectedAmount || funded.kind !== expectedKind) {
     throw new Error(`Router receipt does not match the deal: ${JSON.stringify({ ...funded, amount: funded.amount.toString() })}`);

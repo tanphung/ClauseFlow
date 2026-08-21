@@ -702,6 +702,10 @@ legend { width: 100%; padding: 0 0 12px; color: var(--ink); font-size: 11px; fon
 .receiptSummary dl { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 6px; margin: 0; font-size: 8px; }
 .receiptSummary dt { color: rgba(255, 255, 255, 0.5); }
 .receiptSummary dd { margin: 0; color: #fff; overflow-wrap: anywhere; }
+.settlementRecovery { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 14px; padding: 16px 18px; background: #fff8e9; border: 1px solid #e6c989; border-radius: 7px; }
+.settlementRecovery strong { display: block; margin: 3px 0 5px; font-size: 13px; }
+.settlementRecovery p { margin: 0; color: var(--ink-soft); font-size: 10px; }
+.settlementRecovery button { flex: 0 0 auto; }
 .verticalActions { display: grid !important; }
 .verticalActions button { width: 100%; }
 .roleHint { display: flex; align-items: center; gap: 6px; margin: 13px 0 0; font-size: 9px; }
@@ -891,6 +895,7 @@ legend { width: 100%; padding: 0 0 12px; color: var(--ink); font-size: 11px; fon
   .heroProof { justify-self: start; margin-top: 18px; }
   .agreementTab { grid-template-columns: 1fr; }
   .settlementPanel { position: static; }
+  .settlementRecovery { align-items: stretch; flex-direction: column; }
   .evidenceSourceEditor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .commercialFields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ledgerRow { grid-template-columns: minmax(0, 1fr) auto 24px; }

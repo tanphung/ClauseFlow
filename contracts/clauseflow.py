@@ -51,6 +51,7 @@ class SettlementRouter:
             settlement_id: str,
             deal_id: str,
             recipient: Address,
+            amount: u256,
             kind: u8,
             /,
         ) -> None: ...
@@ -381,6 +382,21 @@ class ClauseFlow(gl.Contract):
     def confirm_refund(self, deal_id: str) -> None:
         self._confirm_settlement(deal_id, STATUS_REFUND_PENDING, SETTLEMENT_REFUND)
 
+    @gl.public.write
+    def retry_settlement_funding(self, deal_id: str) -> None:
+        deal = _loads_required(self.deals, deal_id, "Deal does not exist")
+        if deal["status"] not in [STATUS_PAYMENT_PENDING, STATUS_REFUND_PENDING]:
+            raise gl.vm.UserError("Settlement is not awaiting router funding")
+        if deal["settlementRecipient"].lower() != str(gl.message.sender_address).lower():
+            raise gl.vm.UserError("Only the settlement recipient can retry router funding")
+        self._emit_settlement_binding(deal_id, deal)
+        self._append_history(
+            deal_id,
+            "SETTLEMENT_BINDING_RETRIED",
+            "Recipient re-emitted the idempotent receipt binding without transferring additional GEN.",
+            _now_iso(),
+        )
+
     @gl.public.view
     def get_protocol_policy(self) -> str:
         return json.dumps({
@@ -482,13 +498,22 @@ class ClauseFlow(gl.Contract):
         deal["settlementKind"] = str(kind)
         deal["settlementRecipient"] = recipient
         deal["settlementAmountAtto"] = str(amount)
-        deal["nextAction"] = "Wait for router funding, then the exact recipient releases this settlement."
+        deal["nextAction"] = "Wait for Router credit and exact receipt binding, then the exact recipient releases this settlement."
         self.accounted_escrow_atto -= amount
         self.deals[deal_id] = json.dumps(deal, sort_keys=True)
         event = "PAYMENT_PENDING" if kind == SETTLEMENT_PAYMENT else "REFUND_PENDING"
-        self._append_history(deal_id, event, "Deal-specific settlement funded through the bound receipt router.", now)
-        SettlementRouter(self.settlement_router).emit(value=u256(amount)).fund_settlement(
-            settlement_id, deal_id, Address(recipient), u8(kind)
+        self._append_history(deal_id, event, "Exact GEN transfer and deal-specific receipt binding were emitted to the bound Router.", now)
+        router = SettlementRouter(self.settlement_router)
+        router.emit_transfer(value=u256(amount))
+        self._emit_settlement_binding(deal_id, deal)
+
+    def _emit_settlement_binding(self, deal_id: str, deal: dict) -> None:
+        SettlementRouter(self.settlement_router).emit().fund_settlement(
+            deal["settlementId"],
+            deal_id,
+            Address(deal["settlementRecipient"]),
+            u256(int(deal["settlementAmountAtto"])),
+            u8(int(deal["settlementKind"])),
         )
 
     def _confirm_settlement(self, deal_id: str, expected_status: str, expected_kind: int) -> None:

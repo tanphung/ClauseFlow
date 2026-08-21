@@ -140,6 +140,7 @@ def _mock_review(vm, statuses, decision):
 class FakeRouter:
     released = False
     funded = []
+    operations = []
 
     def __init__(self, address):
         self.address = address
@@ -148,8 +149,13 @@ class FakeRouter:
         self.value = int(value)
         return self
 
-    def fund_settlement(self, settlement_id, deal_id, recipient, kind):
-        self.funded.append((settlement_id, deal_id, str(recipient), int(kind), self.value))
+    def emit_transfer(self, value=0):
+        self.operations.append(("transfer", int(value)))
+
+    def fund_settlement(self, settlement_id, deal_id, recipient, amount, kind):
+        row = (settlement_id, deal_id, str(recipient), int(kind), int(amount), self.value)
+        self.funded.append(row)
+        self.operations.append(("bind", settlement_id, int(amount)))
 
     def view(self):
         return self
@@ -303,6 +309,7 @@ def test_settlement_is_bound_to_specific_router_receipt(direct_deploy, direct_vm
     contract.review_delivery(deal_id)
     module = sys.modules[type(contract._instance).__module__]
     FakeRouter.funded = []
+    FakeRouter.operations = []
     FakeRouter.released = False
     original = module.SettlementRouter
     module.SettlementRouter = FakeRouter
@@ -314,6 +321,18 @@ def test_settlement_is_bound_to_specific_router_receipt(direct_deploy, direct_vm
         assert pending["settlementId"].startswith("CF2|")
         assert FakeRouter.funded[0][1] == deal_id
         assert FakeRouter.funded[0][4] == PRICE
+        assert FakeRouter.funded[0][5] == 0
+        assert FakeRouter.operations == [
+            ("transfer", PRICE),
+            ("bind", pending["settlementId"], PRICE),
+        ]
+        direct_vm.sender = direct_bob
+        with direct_vm.expect_revert("Only the settlement recipient"):
+            contract.retry_settlement_funding(deal_id)
+        direct_vm.sender = direct_alice
+        contract.retry_settlement_funding(deal_id)
+        assert FakeRouter.operations[-1] == ("bind", pending["settlementId"], PRICE)
+        assert [operation for operation in FakeRouter.operations if operation[0] == "transfer"] == [("transfer", PRICE)]
         with direct_vm.expect_revert("no released receipt matching"):
             contract.confirm_payment(deal_id)
         FakeRouter.released = True
