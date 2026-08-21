@@ -15,6 +15,7 @@
     "lint:contract": "genvm-lint check contracts/clauseflow.py --json",
     "preflight:bradbury": "node scripts/preflight-bradbury.mjs",
     "deploy:bradbury": "node scripts/deploy-bradbury.mjs",
+    "deploy:bradbury:resume": "node scripts/deploy-bradbury.mjs --resume",
     "smoke:bradbury": "node scripts/bradbury-smoke.mjs",
     "resume:settlement": "node scripts/resume-settlement.mjs",
     "snapshot:onchain": "node scripts/export-onchain-snapshot.mjs",

@@ -25,6 +25,7 @@ const sdk = createClient({ chain: testnetBradbury });
 const consensus = testnetBradbury.consensusMainContract;
 if (!consensus?.address || !consensus.abi) throw new Error("Bradbury consensus contract configuration is unavailable");
 const checkpointPath = ".codex-runtime/deploy-v2.json";
+const resumeDeployment = process.argv.includes("--resume");
 mkdirSync(".codex-runtime", { recursive: true });
 const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 const transient = (error) => /internal error|fetch failed|timeout|timed out|econnreset|etimedout|network error|socket hang up|pipeline backpressure|not currently accepting transactions|request exceeds defined limit|gas rate limit exceeded|node is at capacity/i.test(error instanceof Error ? error.message : String(error));
@@ -35,36 +36,56 @@ console.log(`DEPLOYER_BALANCE=${formatEther(balance)} GEN`);
 if (balance < 100_000_000_000_000_000n) throw new Error("Deployer balance is below 0.1 GEN");
 
 const routerArtifact = compileRouter();
-const routerDeployment = await sendEvmTransaction({ data: routerArtifact.bytecode, label: "ROUTER_DEPLOY" });
-const routerAddress = routerDeployment.receipt.contractAddress;
-if (!routerAddress || routerAddress === zeroAddress) throw new Error("Router deployment did not return a contract address");
-record({ phase: "ROUTER_DEPLOYED", routerAddress, evmHash: routerDeployment.hash, blockNumber: routerDeployment.receipt.blockNumber.toString() });
-console.log(`SETTLEMENT_ROUTER=${routerAddress}`);
-console.log(`ROUTER_DEPLOY_HASH=${routerDeployment.hash}`);
+let routerAddress;
+let txId;
+if (resumeDeployment) {
+  const checkpoint = readCheckpoint();
+  const routerRecord = checkpoint.records?.findLast((entry) => entry.phase === "ROUTER_DEPLOYED");
+  const activationRecord = checkpoint.records?.findLast((entry) => entry.phase === "CLAUSEFLOW_ACTIVATED");
+  if (!routerRecord?.routerAddress || !activationRecord?.transactionHash) throw new Error("Resume requires ROUTER_DEPLOYED and CLAUSEFLOW_ACTIVATED checkpoint records");
+  routerAddress = routerRecord.routerAddress;
+  txId = activationRecord.transactionHash;
+  if (activationRecord.routerAddress?.toLowerCase() !== routerAddress.toLowerCase()) throw new Error("Deployment checkpoint router mismatch");
+  console.log("RESUME_DEPLOYMENT=true");
+  console.log(`SETTLEMENT_ROUTER=${routerAddress}`);
+  console.log(`ROUTER_DEPLOY_HASH=${routerRecord.evmHash}`);
+  console.log(`DEPLOY_EVM_HASH=${activationRecord.activationHash}`);
+  console.log(`DEPLOY_TX_HASH=${txId}`);
+} else {
+  if (readCheckpoint().records?.some((entry) => entry.phase === "CLAUSEFLOW_ACTIVATED")) {
+    throw new Error("An activated deployment checkpoint already exists; use --resume instead of creating a duplicate deployment");
+  }
+  const routerDeployment = await sendEvmTransaction({ data: routerArtifact.bytecode, label: "ROUTER_DEPLOY" });
+  routerAddress = routerDeployment.receipt.contractAddress;
+  if (!routerAddress || routerAddress === zeroAddress) throw new Error("Router deployment did not return a contract address");
+  record({ phase: "ROUTER_DEPLOYED", routerAddress, evmHash: routerDeployment.hash, blockNumber: routerDeployment.receipt.blockNumber.toString() });
+  console.log(`SETTLEMENT_ROUTER=${routerAddress}`);
+  console.log(`ROUTER_DEPLOY_HASH=${routerDeployment.hash}`);
 
-const contractCode = readFileSync("contracts/clauseflow.py");
-const constructorCalldata = abi.calldata.encode(abi.calldata.makeCalldataObject(undefined, [routerAddress], undefined));
-const serializedData = abi.transactions.serialize([contractCode, constructorCalldata, false]);
-const activationData = encodeFunctionData({
-  abi: consensus.abi,
-  functionName: "addTransaction",
-  args: [
-    deployer.address,
-    zeroAddress,
-    BigInt(testnetBradbury.defaultNumberOfInitialValidators),
-    5n,
-    serializedData,
-    BigInt(Math.floor(Date.now() / 1000) + 3600)
-  ]
-});
-const activation = await sendEvmTransaction({ to: consensus.address, data: activationData, label: "CLAUSEFLOW_ACTIVATION", maximumGas: 99_000_000n });
-const events = parseEventLogs({ abi: consensus.abi, logs: activation.receipt.logs, strict: false });
-const created = events.find((event) => event.eventName === "NewTransaction" || event.eventName === "CreatedTransaction");
-const txId = created?.args?.txId;
-if (typeof txId !== "string") throw new Error(`Deployment activation did not emit a transaction ID: ${activation.hash}`);
-record({ phase: "CLAUSEFLOW_ACTIVATED", routerAddress, activationHash: activation.hash, transactionHash: txId });
-console.log(`DEPLOY_EVM_HASH=${activation.hash}`);
-console.log(`DEPLOY_TX_HASH=${txId}`);
+  const contractCode = readFileSync("contracts/clauseflow.py");
+  const constructorCalldata = abi.calldata.encode(abi.calldata.makeCalldataObject(undefined, [routerAddress], undefined));
+  const serializedData = abi.transactions.serialize([contractCode, constructorCalldata, false]);
+  const activationData = encodeFunctionData({
+    abi: consensus.abi,
+    functionName: "addTransaction",
+    args: [
+      deployer.address,
+      zeroAddress,
+      BigInt(testnetBradbury.defaultNumberOfInitialValidators),
+      5n,
+      serializedData,
+      BigInt(Math.floor(Date.now() / 1000) + 3600)
+    ]
+  });
+  const activation = await sendEvmTransaction({ to: consensus.address, data: activationData, label: "CLAUSEFLOW_ACTIVATION", maximumGas: 99_000_000n });
+  const events = parseEventLogs({ abi: consensus.abi, logs: activation.receipt.logs, strict: false });
+  const created = events.find((event) => event.eventName === "NewTransaction" || event.eventName === "CreatedTransaction");
+  txId = created?.args?.txId;
+  if (typeof txId !== "string") throw new Error(`Deployment activation did not emit a transaction ID: ${activation.hash}`);
+  record({ phase: "CLAUSEFLOW_ACTIVATED", routerAddress, activationHash: activation.hash, transactionHash: txId });
+  console.log(`DEPLOY_EVM_HASH=${activation.hash}`);
+  console.log(`DEPLOY_TX_HASH=${txId}`);
+}
 
 let transaction = await waitForGenLayerExecution(txId);
 const contractAddress = transaction.recipient;
@@ -85,10 +106,17 @@ record({
   execution: transaction.txExecutionResultName
 });
 
-const bindData = encodeFunctionData({ abi: routerArtifact.abi, functionName: "bind_clauseflow", args: [contractAddress] });
-const binding = await sendEvmTransaction({ to: routerAddress, data: bindData, label: "ROUTER_BIND" });
-record({ phase: "ROUTER_BOUND", contractAddress, routerAddress, evmHash: binding.hash, blockNumber: binding.receipt.blockNumber.toString() });
-console.log(`ROUTER_BIND_HASH=${binding.hash}`);
+const existingBinding = await retryRpc("ROUTER_BINDING", () => publicClient.readContract({ address: routerAddress, abi: routerArtifact.abi, functionName: "clauseFlow" }));
+if (existingBinding === zeroAddress) {
+  const bindData = encodeFunctionData({ abi: routerArtifact.abi, functionName: "bind_clauseflow", args: [contractAddress] });
+  const binding = await sendEvmTransaction({ to: routerAddress, data: bindData, label: "ROUTER_BIND" });
+  record({ phase: "ROUTER_BOUND", contractAddress, routerAddress, evmHash: binding.hash, blockNumber: binding.receipt.blockNumber.toString() });
+  console.log(`ROUTER_BIND_HASH=${binding.hash}`);
+} else if (existingBinding.toLowerCase() !== contractAddress.toLowerCase()) {
+  throw new Error(`Router is already bound to a different ClauseFlow contract: ${existingBinding}`);
+} else {
+  console.log("ROUTER_ALREADY_BOUND=true");
+}
 
 const [schema, offerIds, dealIds, policy, boundClauseFlow, routerOwner] = await retryRpc("VERIFY_RELEASE", async () => {
   const [nextSchema, nextOfferIds, nextDealIds, nextPolicy, nextBoundClauseFlow, nextRouterOwner] = await Promise.all([
@@ -195,6 +223,10 @@ function record(entry) {
   checkpoint.updatedAt = new Date().toISOString();
   checkpoint.records = [...(checkpoint.records || []), { ...entry, recordedAt: new Date().toISOString() }];
   writeFileSync(checkpointPath, JSON.stringify(checkpoint, null, 2));
+}
+
+function readCheckpoint() {
+  try { return JSON.parse(readFileSync(checkpointPath, "utf8")); } catch { return { version: 2, network: "testnetBradbury", records: [] }; }
 }
 
 async function retryRpc(label, operation, attempts = 12, waitMs = 5_000) {
