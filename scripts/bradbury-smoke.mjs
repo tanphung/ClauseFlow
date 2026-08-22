@@ -179,7 +179,18 @@ async function ensureOffer(title, terms) {
     const offer = await readJson("get_offer", [id]);
     if (offer.title === title) return offer;
   }
-  await writeAndVerify(builder, "structure_offer", terms, 0n);
+
+  const draftRaw = await readRaw("get_structured_offer", [builder.address]);
+  if (typeof draftRaw === "string" && draftRaw.trim()) {
+    const draft = JSON.parse(draftRaw);
+    if (!matchesStructuredTerms(draft.terms, terms)) {
+      throw new Error(`Existing structured offer does not match ${title}; refusing to overwrite or submit a duplicate structure_offer`);
+    }
+    console.log(`RESUME_STRUCTURED_OFFER title=${title} structuredAt=${draft.structuredAt}`);
+  } else {
+    await writeAndVerify(builder, "structure_offer", terms, 0n);
+  }
+
   await writeAndVerify(builder, "publish_offer", terms, 0n);
   const nextIds = await waitFor(async () => {
     const values = await readJson("get_offer_ids");
@@ -188,6 +199,29 @@ async function ensureOffer(title, terms) {
   const created = await readJson("get_offer", [nextIds[nextIds.length - 1]]);
   if (created.title !== title) throw new Error(`Published offer title mismatch: ${created.title}`);
   return created;
+}
+
+function matchesStructuredTerms(draftTerms, terms) {
+  if (!draftTerms || typeof draftTerms !== "object") return false;
+  const [title, serviceDescription, obligations, priceAttoGen, deliveryWindowHours, gracePeriodHours, revisionRounds, revisionWindowHours, reviewWindowHours] = terms;
+  return draftTerms.title === title
+    && draftTerms.serviceDescription === serviceDescription
+    && canonicalJson(draftTerms.obligations) === canonicalJson(obligations)
+    && draftTerms.priceAttoGen === priceAttoGen.toString()
+    && draftTerms.deliveryWindowHours === deliveryWindowHours.toString()
+    && draftTerms.gracePeriodHours === gracePeriodHours.toString()
+    && draftTerms.revisionRounds === revisionRounds.toString()
+    && draftTerms.revisionWindowHours === revisionWindowHours.toString()
+    && draftTerms.reviewWindowHours === reviewWindowHours.toString();
+}
+
+function canonicalJson(value) {
+  const sort = (item) => {
+    if (Array.isArray(item)) return item.map(sort);
+    if (item && typeof item === "object") return Object.fromEntries(Object.keys(item).sort().map((key) => [key, sort(item[key])]));
+    return item;
+  };
+  return JSON.stringify(sort(typeof value === "string" ? JSON.parse(value) : value));
 }
 
 async function ensureDeal(title, offerId, account, amount) {
@@ -334,8 +368,12 @@ async function waitForFinality(hash, current) {
 }
 
 async function readJson(functionName, args = []) {
-  const value = await retry(() => sdk.readContract({ address: contractAddress, functionName, args, transactionHashVariant: "latest-nonfinal" }), 24);
+  const value = await readRaw(functionName, args);
   return typeof value === "string" ? JSON.parse(value) : value;
+}
+
+async function readRaw(functionName, args = []) {
+  return await retry(() => sdk.readContract({ address: contractAddress, functionName, args, transactionHashVariant: "latest-nonfinal" }), 24);
 }
 
 async function readRouterReceipt(settlementId) {
@@ -398,8 +436,9 @@ function acquireLock() {
     try {
       const pid = Number(JSON.parse(readFileSync(lockPath, "utf8")).pid || 0);
       if (pid) { process.kill(pid, 0); active = true; }
-    } catch { rmSync(lockPath, { force: true }); }
+    } catch { /* The lock may be stale or unreadable. */ }
     if (active) throw new Error("Another Bradbury smoke process is active", { cause: error });
+    rmSync(lockPath, { force: true });
     const handle = openSync(lockPath, "wx");
     writeFileSync(handle, JSON.stringify({ pid: process.pid, contractAddress, mode, startedAt: new Date().toISOString() }));
     closeSync(handle);
