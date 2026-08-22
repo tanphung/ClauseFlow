@@ -1,6 +1,6 @@
 window.CLAUSEFLOW_CONFIG = {
-  contractAddress: "0xfa226FED4f2357E0045e09A3fF6F133c721D4567",
-  settlementRouter: "0x2d93c79eb8d050c8328836927808de9cd50b4765",
+  contractAddress: "0xc56a15E6fE4a94F6d63Af2146A9e566fec933b82",
+  settlementRouter: "0xf81ac0031bb35d31252003e8ef2e042941964437",
   protocolVersion: "v2",
   chain: "testnetBradbury",
   explorerUrl: "https://explorer-bradbury.genlayer.com",

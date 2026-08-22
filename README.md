@@ -27,15 +27,15 @@ The v2 contract pair is clean-deployed and verified on Bradbury. The public runt
 | Source repository | [github.com/tanphung/ClauseFlow](https://github.com/tanphung/ClauseFlow) |
 | Intelligent Contract | [contracts/clauseflow.py](contracts/clauseflow.py) |
 | Settlement Router source | [contracts/SettlementRouter.sol](contracts/SettlementRouter.sol) |
-| Bradbury v2 | [`0xfa226F...D4567`](https://explorer-bradbury.genlayer.com/address/0xfa226FED4f2357E0045e09A3fF6F133c721D4567) |
-| Settlement Router | [`0x2d93c7...b4765`](https://explorer-bradbury.genlayer.com/address/0x2d93c79eb8d050c8328836927808de9cd50b4765) |
+| Bradbury v2 | [`0xc56a15...33b82`](https://explorer-bradbury.genlayer.com/address/0xc56a15E6fE4a94F6d63Af2146A9e566fec933b82) |
+| Settlement Router | [`0xf81ac0...64437`](https://explorer-bradbury.genlayer.com/address/0xf81ac0031bb35d31252003e8ef2e042941964437) |
 | Architecture | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | Release evidence dossier | [docs/RELEASE_EVIDENCE.md](docs/RELEASE_EVIDENCE.md) |
 | Security boundaries | [SECURITY.md](SECURITY.md) |
 
 The earlier walkthrough on [X](https://x.com/tanphung000/status/2088260443752243463) documents the v1 pilot only. A new v2 video will be recorded after final on-chain verification.
 
-The v2 deployment transaction is [`0x5c49c5...fb1b2c`](https://explorer-bradbury.genlayer.com/tx/0x5c49c5289f50afae6b76ccf8bd409a3b83b87e4304514abab278701d5efb1b2c): `FINALIZED / AGREE / FINISHED_WITH_RETURN`. The Router binding transaction is [`0xa88c04...b5501`](https://explorer-bradbury.genlayer.com/tx/0xa88c04fc0ea3df720f499d551b4610a6cc39b1e738262eac97d03ebf4d5b5501). Verification returned 22 methods, `CLAUSEFLOW_V2`, and empty initial offer and deal lists.
+The v2 deployment transaction is [`0x081c67...e9c5`](https://explorer-bradbury.genlayer.com/tx/0x081c67dd5b6aedd4aef006a1f32e88d644548c28fc9bd4db4096a7cb2264e9c5): `FINALIZED / AGREE / FINISHED_WITH_RETURN`. The Router binding transaction is [`0x7e254d...9845`](https://explorer-bradbury.genlayer.com/tx/0x7e254d716732d9e6624803f1d23737c9591b4b2974553ba31ed8d2088b089845). Verification returned 22 methods, `CLAUSEFLOW_V2`, and empty initial offer and deal lists.
 
 ## Trust And Consensus
 

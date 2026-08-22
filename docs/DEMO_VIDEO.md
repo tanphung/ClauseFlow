@@ -6,8 +6,8 @@ The reviewer video is generated from the live production app after both pilot ag
 - Video: `demo-video/ClauseFlow-GenLayer-Demo.mp4`
 - Thumbnail: `demo-video/ClauseFlow-Demo-Thumbnail.png`
 - Live app: https://clauseflow-two.vercel.app
-- Contract: https://explorer-bradbury.genlayer.com/address/0xfa226FED4f2357E0045e09A3fF6F133c721D4567
-- Settlement Router: https://explorer-bradbury.genlayer.com/address/0x2d93c79eb8d050c8328836927808de9cd50b4765
+- Contract: https://explorer-bradbury.genlayer.com/address/0xc56a15E6fE4a94F6d63Af2146A9e566fec933b82
+- Settlement Router: https://explorer-bradbury.genlayer.com/address/0xf81ac0031bb35d31252003e8ef2e042941964437
 
 The media directory is intentionally ignored by Git. The final recording must show only state read from the canonical Bradbury contract:
 

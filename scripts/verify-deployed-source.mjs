@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
-const deployedContract = "0xfa226FED4f2357E0045e09A3fF6F133c721D4567";
-const expectedHash = "154196B09A12FE84B78C3BE06A2E355685E08C59E423CE6BC5E8BF087D251110";
+const deployedContract = "0xc56a15E6fE4a94F6d63Af2146A9e566fec933b82";
+const expectedHash = "70C2925ED86B6E0F482F47532DB2E5549841764ECE952B8E782BB57F99CFC80F";
 const source = await readFile(new URL("../contracts/clauseflow.py", import.meta.url), "utf8");
 const runtimeConfig = await readFile(new URL("../public/config.js", import.meta.url), "utf8");
 const normalized = source.replace(/\r\n?/g, "\n");

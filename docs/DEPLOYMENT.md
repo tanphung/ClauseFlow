@@ -7,11 +7,11 @@ The v2 contract pair is deployed and verified. Pilot settlement rows remain pend
 | Field | Verified value |
 | --- | --- |
 | Network | GenLayer Testnet Bradbury (`4221`) |
-| ClauseFlow v2 | [`0xfa226FED4f2357E0045e09A3fF6F133c721D4567`](https://explorer-bradbury.genlayer.com/address/0xfa226FED4f2357E0045e09A3fF6F133c721D4567) |
-| Settlement Router | [`0x2d93c79eb8d050c8328836927808de9cd50b4765`](https://explorer-bradbury.genlayer.com/address/0x2d93c79eb8d050c8328836927808de9cd50b4765) |
-| Router deployment | [`0x3c59d3e75409a06d1a23a8a3fe0ebca501567e058ecf45a7525ea2fee6e3817a`](https://explorer-bradbury.genlayer.com/tx/0x3c59d3e75409a06d1a23a8a3fe0ebca501567e058ecf45a7525ea2fee6e3817a) |
-| ClauseFlow deployment | [`0x5c49c5289f50afae6b76ccf8bd409a3b83b87e4304514abab278701d5efb1b2c`](https://explorer-bradbury.genlayer.com/tx/0x5c49c5289f50afae6b76ccf8bd409a3b83b87e4304514abab278701d5efb1b2c) |
-| Router binding | [`0xa88c04fc0ea3df720f499d551b4610a6cc39b1e738262eac97d03ebf4d5b5501`](https://explorer-bradbury.genlayer.com/tx/0xa88c04fc0ea3df720f499d551b4610a6cc39b1e738262eac97d03ebf4d5b5501) |
+| ClauseFlow v2 | [`0xc56a15E6fE4a94F6d63Af2146A9e566fec933b82`](https://explorer-bradbury.genlayer.com/address/0xc56a15E6fE4a94F6d63Af2146A9e566fec933b82) |
+| Settlement Router | [`0xf81ac0031bb35d31252003e8ef2e042941964437`](https://explorer-bradbury.genlayer.com/address/0xf81ac0031bb35d31252003e8ef2e042941964437) |
+| Router deployment | [`0xbf4ec30be38d52f1bbe6aa10ca34cd585b0297d7ec229fd6c9126a1c947eef1e`](https://explorer-bradbury.genlayer.com/tx/0xbf4ec30be38d52f1bbe6aa10ca34cd585b0297d7ec229fd6c9126a1c947eef1e) |
+| ClauseFlow deployment | [`0x081c67dd5b6aedd4aef006a1f32e88d644548c28fc9bd4db4096a7cb2264e9c5`](https://explorer-bradbury.genlayer.com/tx/0x081c67dd5b6aedd4aef006a1f32e88d644548c28fc9bd4db4096a7cb2264e9c5) |
+| Router binding | [`0x7e254d716732d9e6624803f1d23737c9591b4b2974553ba31ed8d2088b089845`](https://explorer-bradbury.genlayer.com/tx/0x7e254d716732d9e6624803f1d23737c9591b4b2974553ba31ed8d2088b089845) |
 | Deployment lifecycle | `FINALIZED / AGREE / FINISHED_WITH_RETURN` |
 | ClauseFlow schema | 22 methods: 10 writes and 12 views |
 | Initial offer/deal views | `[]` / `[]` |

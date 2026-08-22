@@ -78,10 +78,10 @@ The leader must fetch those sources and assess all four funded obligation IDs. P
 
 - Live app: https://clauseflow-two.vercel.app
 - Repository: https://github.com/tanphung/ClauseFlow
-- Final v2 ClauseFlow: https://explorer-bradbury.genlayer.com/address/0xfa226FED4f2357E0045e09A3fF6F133c721D4567
-- Final v2 Settlement Router: https://explorer-bradbury.genlayer.com/address/0x2d93c79eb8d050c8328836927808de9cd50b4765
-- Deployment: https://explorer-bradbury.genlayer.com/tx/0x5c49c5289f50afae6b76ccf8bd409a3b83b87e4304514abab278701d5efb1b2c
-- Router binding: https://explorer-bradbury.genlayer.com/tx/0xa88c04fc0ea3df720f499d551b4610a6cc39b1e738262eac97d03ebf4d5b5501
+- Final v2 ClauseFlow: https://explorer-bradbury.genlayer.com/address/0xc56a15E6fE4a94F6d63Af2146A9e566fec933b82
+- Final v2 Settlement Router: https://explorer-bradbury.genlayer.com/address/0xf81ac0031bb35d31252003e8ef2e042941964437
+- Deployment: https://explorer-bradbury.genlayer.com/tx/0x081c67dd5b6aedd4aef006a1f32e88d644548c28fc9bd4db4096a7cb2264e9c5
+- Router binding: https://explorer-bradbury.genlayer.com/tx/0x7e254d716732d9e6624803f1d23737c9591b4b2974553ba31ed8d2088b089845
 - Final v2 pilot settlement proof: pending end-to-end verification
 
 The deployment is `FINALIZED / AGREE / FINISHED_WITH_RETURN`, exposes 22 methods, reports `CLAUSEFLOW_V2`, binds the listed router, and began with empty offer and deal lists. Pilot settlement fields remain pending until their exact receipts are finalized and re-read.
