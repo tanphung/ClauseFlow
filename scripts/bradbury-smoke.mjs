@@ -256,7 +256,7 @@ async function writeAndVerify(account, functionName, args, value) {
   const { transactionHash, activationHash } = await submitContractWrite(account, functionName, args, value);
   console.log(`TX ${functionName} activation=${activationHash} genlayer=${transactionHash}`);
   let transaction = await waitForExecution(transactionHash, functionName);
-  transaction = await waitForFinality(transactionHash, transaction);
+  transaction = await waitForFinality(transactionHash, transaction, account);
   if (["claim_payment", "claim_refund"].includes(functionName)) {
     const current = await readJson("get_deal", [String(args[0])]);
     assertSettlementMessages(transaction, BigInt(current.settlementAmountAtto));
@@ -354,8 +354,15 @@ async function waitForExecution(hash, functionName) {
   throw new Error(`${functionName} did not reach successful execution: ${hash}`);
 }
 
-async function waitForFinality(hash, current) {
+async function waitForFinality(hash, current, account) {
+  let finalizationSubmitted = false;
   for (let attempt = 1; attempt <= 2160 && current.statusName !== "FINALIZED"; attempt += 1) {
+    if (current.statusName === "READY_TO_FINALIZE" && !finalizationSubmitted) {
+      const evmHash = await retry(() => sdk.finalizeTransaction({ account, txId: hash }));
+      finalizationSubmitted = true;
+      record({ phase: "FINALIZATION_SUBMITTED", transactionHash: hash, evmHash });
+      console.log(`FINALIZE ${hash} ${evmHash}`);
+    }
     await delay(5_000);
     current = await retry(() => sdk.getTransaction({ hash }));
     if (["UNDETERMINED", "CANCELED"].includes(current.statusName)) throw new Error(`Transaction failed before finality: ${hash}`);
