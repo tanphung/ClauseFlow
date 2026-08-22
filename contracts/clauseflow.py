@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import re
+from genlayer.gl._internal.gl_call import gl_call_generic
+from genlayer.py.evm.calldata import MethodEncoder
 
 
 PROTOCOL_VERSION = "CLAUSEFLOW_V2"
@@ -29,6 +31,15 @@ ALLOWED_OBLIGATION_CATEGORIES = ["SCOPE", "DELIVERABLE", "ACCEPTANCE", "EVIDENCE
 ALLOWED_EVIDENCE_TYPES = ["DELIVERY", "DEMO", "DOCUMENTATION", "SOURCE", "AUDIT", "OTHER"]
 ALLOWED_VERSION_KINDS = ["GIT_COMMIT", "IPFS_CID", "VERCEL_DEPLOYMENT"]
 ALLOWED_ASSESSMENT_STATUSES = ["SATISFIED", "PARTIAL", "NOT_SATISFIED", "UNVERIFIABLE"]
+
+# The pinned runtime's generated EVM view proxy is not usable from contract code.
+# Keep the ABI encoding explicit so settlement confirmation still performs the
+# same deterministic EVM read against the bound Router receipt.
+ROUTER_MATCHES_RELEASED = MethodEncoder(
+    "matches_released",
+    (str, str, Address, u256, u8, Address),
+    bool,
+)
 
 
 @gl.evm.contract_interface
@@ -522,7 +533,8 @@ class ClauseFlow(gl.Contract):
             raise gl.vm.UserError("Settlement is not awaiting confirmation")
         if int(deal["settlementKind"]) != expected_kind:
             raise gl.vm.UserError("Settlement kind does not match this confirmation")
-        matched = SettlementRouter(self.settlement_router).view().matches_released(
+        matched = _router_matches_released(
+            self.settlement_router,
             deal["settlementId"],
             deal_id,
             Address(deal["settlementRecipient"]),
@@ -563,6 +575,30 @@ class ClauseFlow(gl.Contract):
             "note": _clean_limit(note, 520),
         })
         self.deal_histories[deal_id] = json.dumps(history, sort_keys=True)
+
+
+def _router_matches_released(
+    router_address: Address,
+    settlement_id: str,
+    deal_id: str,
+    recipient: Address,
+    amount: u256,
+    kind: u8,
+    source: Address,
+) -> bool:
+    calldata = ROUTER_MATCHES_RELEASED.encode_call(
+        (settlement_id, deal_id, recipient, amount, kind, source)
+    )
+    result = gl_call_generic(
+        {
+            "EthCall": {
+                "address": router_address,
+                "calldata": calldata,
+            }
+        },
+        ROUTER_MATCHES_RELEASED.decode_ret,
+    )
+    return bool(result.get())
 
 
 def _canonical_offer_terms(

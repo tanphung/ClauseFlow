@@ -40,6 +40,10 @@ if (process.argv.includes("--settlement-canary")) {
   await runSettlementCanary();
   process.exit(0);
 }
+if (process.argv.includes("--confirmation-canary")) {
+  await runSettlementConfirmationCanary();
+  process.exit(0);
+}
 let routerAddress;
 let txId;
 if (resumeDeployment) {
@@ -320,4 +324,94 @@ async function runSettlementCanary() {
   console.log(`CANARY_RELEASE_HASH=${release.hash}`);
   console.log(`CANARY_SETTLEMENT_ID=${settlementId}`);
   console.log("CANARY_VERIFIED=true");
+}
+
+async function runSettlementConfirmationCanary() {
+  const amount = 1_000_000_000_000_000n;
+  const marker = `ethcall-confirm-${Date.now()}`;
+  const routerDeployment = await sendEvmTransaction({ data: routerArtifact.bytecode, label: "CONFIRM_CANARY_ROUTER_DEPLOY" });
+  const routerAddress = routerDeployment.receipt.contractAddress;
+  if (!routerAddress || routerAddress === zeroAddress) throw new Error("Confirmation canary Router deployment returned no address");
+
+  const contractCode = readFileSync("tests/integration/settlement_confirmation_canary.py");
+  const constructorCalldata = abi.calldata.encode(abi.calldata.makeCalldataObject(undefined, [routerAddress], undefined));
+  const serializedDeployment = abi.transactions.serialize([contractCode, constructorCalldata, false]);
+  const deploymentActivation = encodeFunctionData({
+    abi: consensus.abi,
+    functionName: "addTransaction",
+    args: [deployer.address, zeroAddress, BigInt(testnetBradbury.defaultNumberOfInitialValidators), 5n, serializedDeployment, BigInt(Math.floor(Date.now() / 1000) + 3600)]
+  });
+  const deploymentEvm = await sendEvmTransaction({ to: consensus.address, data: deploymentActivation, label: "CONFIRM_CANARY_IC_ACTIVATION", maximumGas: 99_000_000n });
+  const deploymentEvents = parseEventLogs({ abi: consensus.abi, logs: deploymentEvm.receipt.logs, strict: false });
+  const deploymentId = deploymentEvents.find((event) => event.eventName === "NewTransaction" || event.eventName === "CreatedTransaction")?.args?.txId;
+  if (typeof deploymentId !== "string") throw new Error("Confirmation canary deployment emitted no transaction ID");
+  let deployment = await waitForGenLayerExecution(deploymentId);
+  deployment = await waitForGenLayerFinality(deploymentId, deployment);
+  const canaryAddress = deployment.recipient;
+  if (!/^0x[a-fA-F0-9]{40}$/.test(canaryAddress || "")) throw new Error("Confirmation canary deployment returned no address");
+
+  const bindData = encodeFunctionData({ abi: routerArtifact.abi, functionName: "bind_clauseflow", args: [canaryAddress] });
+  const binding = await sendEvmTransaction({ to: routerAddress, data: bindData, label: "CONFIRM_CANARY_ROUTER_BIND" });
+
+  const probeCalldata = abi.calldata.encode(abi.calldata.makeCalldataObject("probe", [marker, deployer.address], undefined));
+  const serializedProbe = abi.transactions.serialize([probeCalldata, false]);
+  const probeActivation = encodeFunctionData({
+    abi: consensus.abi,
+    functionName: "addTransaction",
+    args: [deployer.address, canaryAddress, BigInt(testnetBradbury.defaultNumberOfInitialValidators), 5n, serializedProbe, BigInt(Math.floor(Date.now() / 1000) + 3600)]
+  });
+  const probeEvm = await sendEvmTransaction({ to: consensus.address, data: probeActivation, value: amount, label: "CONFIRM_CANARY_PROBE_ACTIVATION", maximumGas: 99_000_000n });
+  const probeEvents = parseEventLogs({ abi: consensus.abi, logs: probeEvm.receipt.logs, strict: false });
+  const probeId = probeEvents.find((event) => event.eventName === "NewTransaction" || event.eventName === "CreatedTransaction")?.args?.txId;
+  if (typeof probeId !== "string") throw new Error("Confirmation canary probe emitted no transaction ID");
+  let probe = await waitForGenLayerExecution(probeId);
+  probe = await waitForGenLayerFinality(probeId, probe);
+  const messages = Array.isArray(probe.messages) ? probe.messages.filter((message) => String(message.recipient).toLowerCase() === routerAddress.toLowerCase()) : [];
+  const values = messages.map((message) => BigInt(message.value || 0));
+  if (messages.length !== 2 || values.filter((value) => value === amount).length !== 1 || values.filter((value) => value === 0n).length !== 1) {
+    throw new Error(`Confirmation canary emitted invalid Router messages: count=${messages.length} values=${values.join(",")}`);
+  }
+
+  const settlementId = await retryRpc("CONFIRM_CANARY_SETTLEMENT_ID", () => sdk.readContract({ address: canaryAddress, functionName: "get_settlement_id", args: [], transactionHashVariant: "latest-nonfinal" }), 24);
+  let receipt;
+  for (let attempt = 1; attempt <= 120; attempt += 1) {
+    receipt = await retryRpc("CONFIRM_CANARY_RECEIPT", () => publicClient.readContract({ address: routerAddress, abi: routerArtifact.abi, functionName: "get_settlement", args: [settlementId] }));
+    if (Number(receipt[5]) === 1) break;
+    if (attempt % 12 === 0) console.log(`WAIT_CONFIRM_CANARY_RECEIPT state=${receipt[5]}`);
+    await delay(5_000);
+  }
+  if (!receipt || Number(receipt[5]) !== 1 || receipt[0].toLowerCase() !== canaryAddress.toLowerCase() || receipt[2].toLowerCase() !== deployer.address.toLowerCase() || receipt[3] !== amount || Number(receipt[4]) !== 1) {
+    throw new Error("Confirmation canary Router receipt did not bind the exact source, recipient, amount, and kind");
+  }
+  const releaseData = encodeFunctionData({ abi: routerArtifact.abi, functionName: "release_settlement", args: [settlementId] });
+  const release = await sendEvmTransaction({ to: routerAddress, data: releaseData, label: "CONFIRM_CANARY_RELEASE" });
+  const released = await publicClient.readContract({ address: routerAddress, abi: routerArtifact.abi, functionName: "get_settlement", args: [settlementId] });
+  if (Number(released[5]) !== 2 || await publicClient.getBalance({ address: routerAddress }) !== 0n) throw new Error("Confirmation canary settlement did not release cleanly");
+
+  const confirmCalldata = abi.calldata.encode(abi.calldata.makeCalldataObject("confirm", [], undefined));
+  const serializedConfirm = abi.transactions.serialize([confirmCalldata, false]);
+  const confirmActivation = encodeFunctionData({
+    abi: consensus.abi,
+    functionName: "addTransaction",
+    args: [deployer.address, canaryAddress, BigInt(testnetBradbury.defaultNumberOfInitialValidators), 5n, serializedConfirm, BigInt(Math.floor(Date.now() / 1000) + 3600)]
+  });
+  const confirmEvm = await sendEvmTransaction({ to: consensus.address, data: confirmActivation, label: "CONFIRM_CANARY_CONFIRM_ACTIVATION", maximumGas: 99_000_000n });
+  const confirmEvents = parseEventLogs({ abi: consensus.abi, logs: confirmEvm.receipt.logs, strict: false });
+  const confirmId = confirmEvents.find((event) => event.eventName === "NewTransaction" || event.eventName === "CreatedTransaction")?.args?.txId;
+  if (typeof confirmId !== "string") throw new Error("Confirmation canary confirm emitted no transaction ID");
+  let confirm = await waitForGenLayerExecution(confirmId);
+  confirm = await waitForGenLayerFinality(confirmId, confirm);
+  const confirmed = await retryRpc("CONFIRM_CANARY_VIEW", () => sdk.readContract({ address: canaryAddress, functionName: "get_confirmed", args: [], transactionHashVariant: "latest-nonfinal" }), 24);
+  if (confirmed !== true) throw new Error("Confirmation canary did not persist the EVM receipt verification");
+
+  console.log(`CONFIRM_CANARY_ROUTER=${routerAddress}`);
+  console.log(`CONFIRM_CANARY_ROUTER_DEPLOY_HASH=${routerDeployment.hash}`);
+  console.log(`CONFIRM_CANARY_CONTRACT=${canaryAddress}`);
+  console.log(`CONFIRM_CANARY_DEPLOY_TX=${deploymentId}`);
+  console.log(`CONFIRM_CANARY_BIND_HASH=${binding.hash}`);
+  console.log(`CONFIRM_CANARY_PROBE_TX=${probeId}`);
+  console.log(`CONFIRM_CANARY_RELEASE_HASH=${release.hash}`);
+  console.log(`CONFIRM_CANARY_CONFIRM_TX=${confirmId}`);
+  console.log(`CONFIRM_CANARY_SETTLEMENT_ID=${settlementId}`);
+  console.log("CONFIRM_CANARY_VERIFIED=true");
 }

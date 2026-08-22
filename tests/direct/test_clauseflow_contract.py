@@ -312,7 +312,9 @@ def test_settlement_is_bound_to_specific_router_receipt(direct_deploy, direct_vm
     FakeRouter.operations = []
     FakeRouter.released = False
     original = module.SettlementRouter
+    original_matches_released = module._router_matches_released
     module.SettlementRouter = FakeRouter
+    module._router_matches_released = lambda *_args: FakeRouter.released
     try:
         direct_vm.sender = direct_alice
         contract.claim_payment(deal_id)
@@ -344,6 +346,7 @@ def test_settlement_is_bound_to_specific_router_receipt(direct_deploy, direct_vm
             contract.confirm_payment(deal_id)
     finally:
         module.SettlementRouter = original
+        module._router_matches_released = original_matches_released
 
 
 def test_rejected_deal_routes_refund_only_to_client(direct_deploy, direct_vm, direct_alice, direct_bob, direct_charlie):
