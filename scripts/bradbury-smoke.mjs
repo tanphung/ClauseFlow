@@ -184,9 +184,15 @@ async function ensureOffer(title, terms) {
   if (typeof draftRaw === "string" && draftRaw.trim()) {
     const draft = JSON.parse(draftRaw);
     if (!matchesStructuredTerms(draft.terms, terms)) {
-      throw new Error(`Existing structured offer does not match ${title}; refusing to overwrite or submit a duplicate structure_offer`);
+      const publishedOfferId = String(draft.publishedOfferId || "");
+      if (!publishedOfferId || !ids.map(String).includes(publishedOfferId)) {
+        throw new Error(`Existing unpublished structured offer does not match ${title}; refusing to overwrite or submit a duplicate structure_offer`);
+      }
+      console.log(`PREVIOUS_DRAFT_ALREADY_PUBLISHED offer=${publishedOfferId}; structuring ${title}`);
+      await writeAndVerify(builder, "structure_offer", terms, 0n);
+    } else {
+      console.log(`RESUME_STRUCTURED_OFFER title=${title} structuredAt=${draft.structuredAt}`);
     }
-    console.log(`RESUME_STRUCTURED_OFFER title=${title} structuredAt=${draft.structuredAt}`);
   } else {
     await writeAndVerify(builder, "structure_offer", terms, 0n);
   }
@@ -358,10 +364,21 @@ async function waitForFinality(hash, current, account) {
   let finalizationSubmitted = false;
   for (let attempt = 1; attempt <= 2160 && current.statusName !== "FINALIZED"; attempt += 1) {
     if (current.statusName === "READY_TO_FINALIZE" && !finalizationSubmitted) {
-      const evmHash = await retry(() => sdk.finalizeTransaction({ account, txId: hash }));
-      finalizationSubmitted = true;
-      record({ phase: "FINALIZATION_SUBMITTED", transactionHash: hash, evmHash });
-      console.log(`FINALIZE ${hash} ${evmHash}`);
+      try {
+        const evmHash = await retry(() => sdk.finalizeTransaction({ account, txId: hash }));
+        finalizationSubmitted = true;
+        record({ phase: "FINALIZATION_SUBMITTED", transactionHash: hash, evmHash });
+        console.log(`FINALIZE ${hash} ${evmHash}`);
+      } catch (error) {
+        current = await retry(() => sdk.getTransaction({ hash }));
+        const finalizedSuccessfully = current.statusName === "FINALIZED"
+          && current.txExecutionResultName === "FINISHED_WITH_RETURN"
+          && ["AGREE", "MAJORITY_AGREE"].includes(current.resultName);
+        if (!finalizedSuccessfully) throw error;
+        finalizationSubmitted = true;
+        record({ phase: "FINALIZATION_ALREADY_COMPLETED", transactionHash: hash });
+        console.log(`FINALIZE_ALREADY_COMPLETED ${hash}`);
+      }
     }
     await delay(5_000);
     current = await retry(() => sdk.getTransaction({ hash }));
