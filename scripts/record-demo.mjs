@@ -228,7 +228,12 @@ async function runPayment(target, seconds, text) {
     await click(target, row);
     await target.evaluate(() => window.scrollTo({ top: 0, behavior: "smooth" }));
     await setCaption(target, text, seconds);
-    await wait(target, seconds * 0.14);
+    await wait(target, seconds * 0.05);
+    await click(target, target.getByRole("button", { name: "Refresh settlement proof", exact: true }));
+    const receipt = target.locator(".receiptSummary").filter({ hasText: "Released" });
+    await receipt.waitFor({ state: "visible", timeout: 15_000 });
+    await point(target, receipt);
+    await wait(target, seconds * 0.1);
     await click(target, target.getByRole("button", { name: "Evidence & review", exact: true }));
     await point(target, target.locator(".reviewScore"));
     await wait(target, seconds * 0.08);
@@ -252,7 +257,12 @@ async function runRefund(target, seconds, text) {
     await click(target, row);
     await target.evaluate(() => window.scrollTo({ top: 0, behavior: "smooth" }));
     await setCaption(target, text, seconds);
-    await wait(target, seconds * 0.12);
+    await wait(target, seconds * 0.04);
+    await click(target, target.getByRole("button", { name: "Refresh settlement proof", exact: true }));
+    const receipt = target.locator(".receiptSummary").filter({ hasText: "Released" });
+    await receipt.waitFor({ state: "visible", timeout: 15_000 });
+    await point(target, receipt);
+    await wait(target, seconds * 0.09);
     await click(target, target.getByRole("button", { name: "Evidence & review", exact: true }));
     await point(target, target.locator(".reviewScore"));
     await wait(target, seconds * 0.08);
