@@ -13,10 +13,10 @@ The produced reviewer video and upload copy are documented in [`DEMO_VIDEO.md`](
    Reload production. Show the bundled, contract-bound snapshot immediately, then the status transition to `Live on-chain data synced`. Point out the two terminal agreements and balance-backed totals.
 
 2. **Paid agreement**
-   Open `ClauseFlow release evidence dossier`, show immutable terms, then the full validator report. Explain that the leader creates the detailed report while protocol-selected validators independently refetch every URL and verify accessibility, criteria, deliverables, missing items, score, and settlement decision. Point at individual Finding and Validator reasoning fields before showing the `PAID 0.02 GEN` timeline.
+   Open `ClauseFlow v2 immutable enforcement dossier`, show the four immutable obligations, then the full validator report. Explain that the leader creates the detailed report while protocol-selected validators independently refetch every URL and verify version binding, all obligation IDs, findings, reasoning, score, missing items, and settlement decision. Point at individual Finding and Validator reasoning fields before showing the exact Builder receipt and `PAID 0.02 GEN` timeline.
 
 3. **Refunded agreement**
-   Open `ClauseFlow accessibility audit agreement`. Show the `REJECTED 0/100` report, failed criteria, missing dedicated audit deliverable, and the `REFUNDED 0.015 GEN` timeline with zero active escrow.
+   Open `ClauseFlow v2 accessibility audit non-delivery`. Show the `REJECTED 0/100` report for both accepted audit obligations, the missing `AUDIT` evidence type, exact Client receipt, and the `REFUNDED 0.015 GEN` timeline with zero active escrow.
 
 4. **Discovery and workspace**
    Demonstrate public title and address filters. Open the empty Create workspace, then the accepted published offer terms. Do not connect a wallet or submit a transaction during recording.

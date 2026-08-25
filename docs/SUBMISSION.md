@@ -1,6 +1,6 @@
 # ClauseFlow v2 Project Submission Notes
 
-This file is a candidate reviewer package. Final addresses, transaction links, totals, and the v2 demo video must be inserted only after clean Bradbury verification.
+This reviewer package describes the finalized v2 Bradbury release. The repository, live dApp, deployed contracts, immutable evidence and terminal settlement records refer to the same release.
 
 ## Title
 
@@ -14,7 +14,7 @@ Before funding, every binding promise is represented by a stable obligation ID, 
 
 Deterministic code enforces the funded delivery, grace, revision, review-timeout, and refund rules. Settlement uses a dedicated router receipt bound to the exact deal, ClauseFlow source, recipient, amount, payment/refund kind, and released state. This closes the gap between what the parties accepted and what settlement actually enforces.
 
-The repository contains the complete Intelligent Contract, Settlement Router, public dApp, tests, deployment tooling, architecture, and evidence dossier. The final submission will include an end-to-end video showing the two-wallet Bradbury pilot and independent validator reports.
+The repository contains the complete Intelligent Contract, Settlement Router, public dApp, tests, deployment tooling, architecture, and evidence dossier. The demo shows the two-wallet Bradbury pilot and the validator reports stored by the contract; it does not claim external customer adoption.
 
 ## Why GenLayer Is Required
 
@@ -39,7 +39,7 @@ Addresses, amounts, clocks, counters, and receipt identity are deterministic. Wh
 - refund pilot with exact `REJECTED` per-obligation report and released Client receipt
 - zero accounted escrow after both terminal confirmations
 - public commit-pinned evidence and SHA-256 values
-- new v2 video URL
+- v2 demo video supplied with the resubmission
 
 ## Category
 

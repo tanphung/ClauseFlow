@@ -19,7 +19,7 @@ These controls keep the accepted agreement and the executable settlement policy 
 
 ## Release Status
 
-The v2 contract pair is clean-deployed and verified on Bradbury. The public runtime now targets v2; the two end-to-end pilot settlements remain pending and will be documented only after their exact receipts and terminal states are verified.
+The v2 contract pair and two-wallet Bradbury pilot are fully verified. The public runtime targets only this release. One agreement reached `PAID` after all four obligations were satisfied; the second reached `REFUNDED` after both required audit obligations were rejected for missing `AUDIT` evidence.
 
 | Surface | Link |
 | --- | --- |
@@ -33,9 +33,20 @@ The v2 contract pair is clean-deployed and verified on Bradbury. The public runt
 | Release evidence dossier | [docs/RELEASE_EVIDENCE.md](docs/RELEASE_EVIDENCE.md) |
 | Security boundaries | [SECURITY.md](SECURITY.md) |
 
-The earlier walkthrough on [X](https://x.com/tanphung000/status/2088260443752243463) documents the v1 pilot only. A new v2 video will be recorded after final on-chain verification.
+The earlier walkthrough on [X](https://x.com/tanphung000/status/2088260443752243463) documents the v1 pilot only and is not evidence for this release. The v2 reviewer path is the live dashboard and the finalized proof below.
 
 The v2 deployment transaction is [`0x081c67...e9c5`](https://explorer-bradbury.genlayer.com/tx/0x081c67dd5b6aedd4aef006a1f32e88d644548c28fc9bd4db4096a7cb2264e9c5): `FINALIZED / AGREE / FINISHED_WITH_RETURN`. The Router binding transaction is [`0x7e254d...9845`](https://explorer-bradbury.genlayer.com/tx/0x7e254d716732d9e6624803f1d23737c9591b4b2974553ba31ed8d2088b089845). Verification returned 22 methods, `CLAUSEFLOW_V2`, and empty initial offer and deal lists.
+
+## Finalized Pilot Proof
+
+Every listed GenLayer write is `FINALIZED / AGREE / FINISHED_WITH_RETURN`. The Router release transactions are successful Bradbury EVM receipts.
+
+| Path | Validator review | Settlement claim | Exact Router release | Terminal confirmation |
+| --- | --- | --- | --- | --- |
+| `PAID` 0.02 GEN | [`0xb104c0...abbce4`](https://explorer-bradbury.genlayer.com/tx/0xb104c0c4b505b0de13bbb3d8bca15814395e63f43debf5a5fa8a1715b2abbce4) | [`0x6bcc5d...e0926a`](https://explorer-bradbury.genlayer.com/tx/0x6bcc5da27198d6a1a27db8bda4a0f9233ebaffac94bf3a554d29997effe0926a) | `0x3179930e6006e63a8304e63308ac6d067086f5a287350f2c2d950ab272949ed7` | [`0x11b9d4...d645e5`](https://explorer-bradbury.genlayer.com/tx/0x11b9d45ac686bb6c9cb3f3ba09750d8a9817c3538b8ef704121176b0e7d645e5) |
+| `REFUNDED` 0.015 GEN | [`0x5180d1...346d5b`](https://explorer-bradbury.genlayer.com/tx/0x5180d1c879d7f12681ec77c0b6cdbde38e717cf09fdb3bc4378fd4dfa4346d5b) | [`0x85838c...3e7ce6`](https://explorer-bradbury.genlayer.com/tx/0x85838c88fd24fb52ffdc1dae1d7fdbb04c29735df61674f611ba4cddd43e7ce6) | `0xd877c0c41e12ad316b06dd76b638aaefdeaba901fc25d48e186a899dc9be281f` | [`0xd68603...918e30`](https://explorer-bradbury.genlayer.com/tx/0xd6860343e86928c70d1eecceacba4277e022cfa865119ca9dfc8537dba918e30) |
+
+Final contract views report two offers, two funded and completed deals, `0.035 GEN` funded, `0.02 GEN` paid, `0.015 GEN` refunded, and zero active escrow, pending settlements, or contract balance.
 
 ## Trust And Consensus
 

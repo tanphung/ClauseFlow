@@ -82,6 +82,9 @@ The leader must fetch those sources and assess all four funded obligation IDs. P
 - Final v2 Settlement Router: https://explorer-bradbury.genlayer.com/address/0xf81ac0031bb35d31252003e8ef2e042941964437
 - Deployment: https://explorer-bradbury.genlayer.com/tx/0x081c67dd5b6aedd4aef006a1f32e88d644548c28fc9bd4db4096a7cb2264e9c5
 - Router binding: https://explorer-bradbury.genlayer.com/tx/0x7e254d716732d9e6624803f1d23737c9591b4b2974553ba31ed8d2088b089845
-- Final v2 pilot settlement proof: pending end-to-end verification
+- Paid review: https://explorer-bradbury.genlayer.com/tx/0xb104c0c4b505b0de13bbb3d8bca15814395e63f43debf5a5fa8a1715b2abbce4
+- Paid confirmation: https://explorer-bradbury.genlayer.com/tx/0x11b9d45ac686bb6c9cb3f3ba09750d8a9817c3538b8ef704121176b0e7d645e5
+- Rejected review: https://explorer-bradbury.genlayer.com/tx/0x5180d1c879d7f12681ec77c0b6cdbde38e717cf09fdb3bc4378fd4dfa4346d5b
+- Refund confirmation: https://explorer-bradbury.genlayer.com/tx/0xd6860343e86928c70d1eecceacba4277e022cfa865119ca9dfc8537dba918e30
 
-The deployment is `FINALIZED / AGREE / FINISHED_WITH_RETURN`, exposes 22 methods, reports `CLAUSEFLOW_V2`, binds the listed router, and began with empty offer and deal lists. Pilot settlement fields remain pending until their exact receipts are finalized and re-read.
+The deployment and all listed GenLayer writes are `FINALIZED / AGREE / FINISHED_WITH_RETURN`. The contract exposes 22 methods, reports `CLAUSEFLOW_V2`, binds the listed router, and began with empty offer and deal lists. Final views contain one `PAID` deal with all four obligations satisfied and one `REFUNDED` deal with both audit obligations rejected, plus zero active escrow.
