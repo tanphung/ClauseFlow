@@ -19,11 +19,19 @@ const context = await browser.newContext({
 const startedAt = Date.now();
 const page = await context.newPage();
 let pointerAnchor = { x: 960, y: 540, width: 80, height: 48 };
+let delayDashboardReads = false;
 const recordedScenes = [];
+
+await page.route("**/*", async (route) => {
+  if (delayDashboardReads && route.request().method() === "POST") {
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 2_500));
+  }
+  await route.continue();
+});
 
 await page.goto("https://clauseflow-two.vercel.app", { waitUntil: "domcontentloaded", timeout: 60_000 });
 await page.getByRole("heading", { name: "Public on-chain agreement dashboard", exact: true }).waitFor({ state: "visible", timeout: 30_000 });
-await page.getByRole("region", { name: "Protocol summary", exact: true }).getByText("0.015", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+await page.locator(".statsBand").getByText("0.015", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
 await installRecordingOverlay(page);
 const preRollSeconds = (Date.now() - startedAt) / 1000;
 
@@ -191,19 +199,21 @@ async function recordScene(id, action) {
 
 async function runDashboard(target, seconds, text) {
   await runTimed(seconds, async () => {
+    delayDashboardReads = true;
     await target.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
     await target.getByRole("heading", { name: "Public on-chain agreement dashboard", exact: true }).waitFor({ state: "visible", timeout: 30_000 });
     await installRecordingOverlay(target);
     await setCaption(target, text, seconds);
-    const snapshotStatus = target.getByRole("status").filter({ hasText: /Verified on-chain snapshot|Cached on-chain data/ });
+    const snapshotStatus = target.locator(".syncBanner").filter({ hasText: /Verified on-chain snapshot|Cached on-chain data/ });
     await snapshotStatus.waitFor({ state: "visible", timeout: 5_000 });
     await point(target, snapshotStatus);
     await wait(target, seconds * 0.08);
-    const liveStatus = target.getByRole("status").filter({ hasText: /Live on-chain data synced/ });
+    delayDashboardReads = false;
+    const liveStatus = target.locator(".syncBanner").filter({ hasText: /Live on-chain data synced/ });
     const liveSynced = await liveStatus.waitFor({ state: "visible", timeout: 8_000 }).then(() => true).catch(() => false);
     await point(target, liveSynced ? liveStatus : snapshotStatus);
     await wait(target, seconds * 0.06);
-    await point(target, target.getByRole("region", { name: "Protocol summary", exact: true }));
+    await point(target, target.locator(".statsBand"));
     await wait(target, seconds * 0.12);
     const rows = target.locator("button.ledgerRow");
     await point(target, rows.first());
@@ -219,7 +229,7 @@ async function runPayment(target, seconds, text) {
     await target.evaluate(() => window.scrollTo({ top: 0, behavior: "smooth" }));
     await setCaption(target, text, seconds);
     await wait(target, seconds * 0.14);
-    await click(target, target.getByRole("tab", { name: "Evidence & review", exact: true }));
+    await click(target, target.getByRole("button", { name: "Evidence & review", exact: true }));
     await point(target, target.locator(".reviewScore"));
     await wait(target, seconds * 0.08);
     await point(target, target.locator(".fullReportCue"));
@@ -228,7 +238,7 @@ async function runPayment(target, seconds, text) {
     await wait(target, seconds * 0.16);
     await point(target, target.locator(".assessmentCard").nth(1));
     await wait(target, seconds * 0.1);
-    await click(target, target.getByRole("tab", { name: "On-chain history", exact: true }));
+    await click(target, target.getByRole("button", { name: "On-chain history", exact: true }));
     await point(target, target.locator(".historyList"));
     await wait(target, seconds * 0.1);
   });
@@ -243,14 +253,14 @@ async function runRefund(target, seconds, text) {
     await target.evaluate(() => window.scrollTo({ top: 0, behavior: "smooth" }));
     await setCaption(target, text, seconds);
     await wait(target, seconds * 0.12);
-    await click(target, target.getByRole("tab", { name: "Evidence & review", exact: true }));
+    await click(target, target.getByRole("button", { name: "Evidence & review", exact: true }));
     await point(target, target.locator(".reviewScore"));
     await wait(target, seconds * 0.08);
     await point(target, target.locator(".assessmentCard").first());
     await wait(target, seconds * 0.14);
     await point(target, target.locator(".reviewPanel .clause").filter({ hasText: "Missing items" }));
     await wait(target, seconds * 0.12);
-    await click(target, target.getByRole("tab", { name: "On-chain history", exact: true }));
+    await click(target, target.getByRole("button", { name: "On-chain history", exact: true }));
     await point(target, target.locator(".historyList"));
     await wait(target, seconds * 0.1);
   });
@@ -261,12 +271,12 @@ async function runDiscovery(target, seconds, text) {
     await hideCaption(target);
     await click(target, target.getByRole("button", { name: "Dashboard", exact: true }));
     await setCaption(target, text, seconds);
-    const search = target.getByRole("textbox", { name: "Search agreements", exact: true });
+    const search = target.getByPlaceholder("Search title or address", { exact: true });
     await click(target, search);
     await search.fill("accessibility");
     await wait(target, seconds * 0.26);
     await search.fill("");
-    const builder = target.getByRole("textbox", { name: "Builder address filter", exact: true });
+    const builder = target.getByLabel("Builder address", { exact: true });
     await click(target, builder);
     await builder.fill("0xd2A9");
     await wait(target, seconds * 0.24);
@@ -277,7 +287,7 @@ async function runDiscovery(target, seconds, text) {
 async function runWorkspace(target, seconds, text) {
   await runTimed(seconds, async () => {
     await hideCaption(target);
-    await click(target, target.getByRole("button", { name: "Create", exact: true }));
+    await click(target, target.getByRole("button", { name: "New offer", exact: true }));
     await setCaption(target, text, seconds);
     await point(target, target.getByRole("textbox", { name: "Offer title", exact: true }));
     await wait(target, seconds * 0.26);
@@ -297,7 +307,7 @@ async function runClose(target, seconds, text) {
     await setCaption(target, text, seconds * 0.48);
     await point(target, target.locator(".heroProof"));
     await wait(target, seconds * 0.14);
-    await point(target, target.getByRole("region", { name: "Protocol summary", exact: true }));
+    await point(target, target.locator(".statsBand"));
     await wait(target, seconds * 0.14);
     await hideCaption(target);
     await showIntro(target, text, seconds * 0.52);
